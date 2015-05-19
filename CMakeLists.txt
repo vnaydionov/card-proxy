@@ -1,0 +1,53 @@
+
+cmake_minimum_required (VERSION 2.8)
+project (card_proxy)
+
+option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
+
+find_path (BOOST_INCLUDEDIR boost/lexical_cast.hpp /usr/include)
+set (BOOST_LIBRARYDIR /usr/lib)
+set (Boost_USE_STATIC_LIBS OFF)
+set (Boost_USE_MULTITHREADED ON)
+set (Boost_NO_SYSTEM_PATHS ON)
+
+find_package (Boost 1.46.0 COMPONENTS system thread date_time chrono)
+
+if ((NOT Boost_DATE_TIME_LIBRARY) OR (NOT Boost_THREAD_LIBRARY))
+    message (FATAL_ERROR "Boost not found!!")
+endif ()
+add_definitions (-DYB_USE_TUPLE)
+
+if (Boost_SYSTEM_LIBRARY)
+    set (YB_BOOST_LIBS ${Boost_SYSTEM_LIBRARY})
+endif ()
+if (Boost_CHRONO_LIBRARY)
+    set (YB_BOOST_LIBS ${YB_BOOST_LIBS} ${Boost_CHRONO_LIBRARY})
+endif ()
+set (YB_BOOST_LIBS ${YB_BOOST_LIBS} ${Boost_THREAD_LIBRARY}
+                   ${Boost_DATE_TIME_LIBRARY})
+
+function (check_yborm_root YBORM_ROOT)
+    if (EXISTS ${YBORM_ROOT})
+        find_path (YBORM_INCLUDES orm/sql_driver.h ${YBORM_ROOT}/include/yb)
+        find_library (YBUTIL_LIB ybutil ${YBORM_ROOT}/lib)
+        find_library (YBORM_LIB yborm ${YBORM_ROOT}/lib)
+        if (YBORM_INCLUDES AND YBUTIL_LIB AND YBORM_LIB)
+	        message (STATUS "YB.ORM found: ${YBORM_ROOT}")
+        endif ()
+    endif ()
+endfunction ()
+
+if (YBORM_ROOT)
+    check_yborm_root (${YBORM_ROOT})
+else ()
+    check_yborm_root (/usr/local)
+endif ()
+
+if ((NOT YBORM_INCLUDES) OR (NOT YBUTIL_LIB) OR (NOT YBORM_LIB))
+    message(SEND_ERROR "YB.ORM not found!!")
+endif ()
+
+add_subdirectory (src)
+
+install (FILES README.md DESTINATION doc)
+

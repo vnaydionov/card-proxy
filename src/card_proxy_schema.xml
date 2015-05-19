@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<schema>
+    <table name="T_CONFIG" sequence="S_PRODUCT" class="Config" xml-name="config">
+        <column name="CKEY" type="string" size="40" null="false">
+            <primary-key />
+        </column>
+        <column name="CVALUE" type="string" size="100" null="false" />
+    </table>
+    <table name="T_DEK" sequence="S_DEK" class="DataKey" xml-name="data_key">
+        <column name="ID" type="longint">
+            <primary-key />
+        </column>
+        <column name="DEK_CRYPTED" type="string" size="100" />
+        <column name="START_TS" type="datetime" null="false" default="sysdate" />
+        <column name="FINISH_TS" type="datetime" />
+    </table>
+    <table name="T_CARD" sequence="S_CARD" class="Card" xml-name="card">
+        <column name="ID" type="longint">
+            <primary-key />
+        </column>
+        <column name="PAN_CRYPTED" type="string" size="100" null="false" />
+        <column name="DEK_ID" type="longint" null="false">
+            <foreign-key table="T_DEK" />
+        </column>
+        <column name="TS" type="datetime" null="false" default="sysdate" />
+    </table>
+    <table name="T_INCOMING_REQUEST" sequence="S_INCOMING_REQUEST" class="IncomingRequest" xml-name="incoming_request">
+        <column name="ID" type="longint">
+            <primary-key />
+        </column>
+        <column name="DEK_ID" type="longint" null="false">
+            <foreign-key table="T_DEK" />
+        </column>
+        <column name="USER_EID" type="string" size="100" null="false" />
+        <column name="BALANCE" type="decimal" null="false" default="0" />
+        <column name="RESERVED" type="decimal" null="false" default="0" />
+    </table>
+</schema>
