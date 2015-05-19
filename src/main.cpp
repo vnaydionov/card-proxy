@@ -56,8 +56,8 @@ public:
         TimerGuard t(*logger);
         try {
             logger->info("started, params: " + dict2str(params));
-            int version = params.get_as<int>("version");
-            YB_ASSERT(version >= 2);
+            //int version = params.get_as<int>("version");
+            //YB_ASSERT(version >= 2);
             auto_ptr<Session> session(
                     theApp::instance().new_session());
             ElementTree::ElementPtr res = f_(*session, *logger, params);
