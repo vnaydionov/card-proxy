@@ -6,24 +6,31 @@
         </column>
         <column name="CVALUE" type="string" size="100" null="false" />
     </table>
+
     <table name="T_DEK" sequence="S_DEK" class="DataKey" xml-name="data_key">
         <column name="ID" type="longint">
             <primary-key />
         </column>
         <column name="DEK_CRYPTED" type="string" size="100" />
         <column name="START_TS" type="datetime" null="false" default="sysdate" />
+        <column name="COUNTER" type="longint" null="false" default="0" />
         <column name="FINISH_TS" type="datetime" />
     </table>
+
     <table name="T_CARD" sequence="S_CARD" class="Card" xml-name="card">
         <column name="ID" type="longint">
             <primary-key />
         </column>
+        <column name="TS" type="datetime" null="false" default="sysdate" />
         <column name="PAN_CRYPTED" type="string" size="100" null="false" />
+        <column name="PAN_MASKED" type="string" size="100" null="false" />
+        <column name="EXPDATE" type="datetime" null="false" />
+        <column name="CHNAME" type="string" size="100" />
         <column name="DEK_ID" type="longint" null="false">
             <foreign-key table="T_DEK" />
         </column>
-        <column name="TS" type="datetime" null="false" default="sysdate" />
     </table>
+
     <table name="T_INCOMING_REQUEST" sequence="S_INCOMING_REQUEST" class="IncomingRequest" xml-name="incoming_request">
         <column name="ID" type="longint">
             <primary-key />
