@@ -73,7 +73,7 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     Domain::Card card;
     Yb::LongInt token = get_random();
     card.card_token = token;
-    card.dt = Yb::now();
+    card.ts = Yb::now();
     card.pan = params["pan"];/*convert data to string*/
     card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
     card.card_holder = params["card_holder"];
