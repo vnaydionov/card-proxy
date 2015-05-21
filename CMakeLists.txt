@@ -4,6 +4,17 @@ project (card_proxy)
 
 option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
 
+if (CMAKE_COMPILER_IS_GNUCXX)
+    SET(ENABLE_CXX11 "-std=c++11")
+
+    EXECUTE_PROCESS(COMMAND "${CMAKE_CXX_COMPILER} -dumpversion" OUTPUT_VARIABLE GCC_VERSION)
+    if (GCC_VERSION VERSION_LESS 4.7)
+        SET(ENABLE_CXX11 "-std=c++0x")
+    endif()
+
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -Wno-deprecated-declarations")
+endif()
+
 find_path (BOOST_INCLUDEDIR boost/lexical_cast.hpp /usr/include)
 set (BOOST_LIBRARYDIR /usr/lib)
 set (Boost_USE_STATIC_LIBS OFF)

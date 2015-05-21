@@ -3,6 +3,7 @@
 #include "domain/IncomingRequest.h"
 #include "domain/DataKey.h"
 #include "domain/Config.h"
+#include "card_proxy.h"
 #include "domain/Card.h"
 #include <iostream>
 
@@ -68,8 +69,6 @@ get_random()
 ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
         const StringDict &params)
 {
- 
-    
     ElementTree::ElementPtr resp = mk_resp("success");
     Domain::Card card;
 
@@ -83,8 +82,8 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     
     card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
     card.card_holder = params["card_holder"];
-    std::string pan_m1 =  params["pan"].substr(0,6);
-    std::string pan_m2 =  params["pan"].substr(16,20);
+    std::string pan_m1 =  params["pan"].substr(0, 6);
+    std::string pan_m2 =  params["pan"].substr(params["pan"].size() - 4, 4);
     card.pan_masked = pan_m1 + "****" + pan_m2;
     card.save(session);
     session.commit();
@@ -150,6 +149,16 @@ public:
 
 #define WRAP(func) CardProxyHttpWrapper(#func, func)
 
+void test_code() {
+    auto_ptr<Session> session = theApp::instance().new_session();
+    Domain::Card card(*session);
+    card.pan_crypted = "crypted_pan";
+    card.pan_masked = "masked_pan";
+    card.ts = Yb::now();
+    session->commit();
+}
+
+
 int main(int argc, char *argv[])
 {
     string log_name = "card_proxy.log";
@@ -158,6 +167,7 @@ int main(int argc, char *argv[])
     string error_body = mk_resp("internal_error")->serialize();
     string prefix = "/card_bind/";
     int port = 9119;
+    //test_code();
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),
     };
