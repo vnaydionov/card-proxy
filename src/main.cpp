@@ -3,6 +3,7 @@
 #include "domain/IncomingRequest.h"
 #include "domain/DataKey.h"
 #include "domain/Config.h"
+#include "card_proxy.h"
 
 using namespace std;
 using namespace Yb;
@@ -78,6 +79,16 @@ public:
 
 #define WRAP(func) CardProxyHttpWrapper(#func, func)
 
+void test_code() {
+    auto_ptr<Session> session = theApp::instance().new_session();
+    Domain::Card card(*session);
+    card.pan_crypted = "crypted_pan";
+    card.pan_masked = "masked_pan";
+    card.ts = Yb::now();
+    session->commit();
+}
+
+
 int main(int argc, char *argv[])
 {
     string log_name = "card_proxy.log";
@@ -86,6 +97,7 @@ int main(int argc, char *argv[])
     string error_body = mk_resp("internal_error")->serialize();
     string prefix = "/card_bind/";
     int port = 9119;
+    //test_code();
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),
     };
