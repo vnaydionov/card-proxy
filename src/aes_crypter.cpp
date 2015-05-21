@@ -3,17 +3,25 @@
 #include "aes_crypter.h"
 
 
-AESCrypter::AESCrypter() {
-
+AESCrypter::AESCrypter()
+    : _key_size(256)
+    , _block_size(128)
+{
 }
 
-AESCrypter::AESCrypter(const std::string &key) {
+AESCrypter::AESCrypter(const std::string &key)
+    : _key_size(256)
+    , _block_size(128)
+{
 	const unsigned char *_key = (unsigned char*)key.c_str();
 	AES_set_encrypt_key(_key, this->_key_size, &this->encrypt_key);
 	AES_set_decrypt_key(_key, this->_key_size, &this->decrypt_key);
 }
 
-AESCrypter::AESCrypter(const unsigned char *key) {
+AESCrypter::AESCrypter(const unsigned char *key)
+    : _key_size(256)
+    , _block_size(128)
+{
 	AES_set_encrypt_key(key, this->_key_size, &this->encrypt_key);
 	AES_set_decrypt_key(key, this->_key_size, &this->decrypt_key);
 }

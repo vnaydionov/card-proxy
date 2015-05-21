@@ -27,7 +27,7 @@ std::string CardProxy::get_card_token(Yb::Session &session, const CardData &card
     card.pan_crypted = base64_pan;
     card.pan_masked = base64_pan;
     //card.expdate = card_data.expdate;
-    card.chname = card_data.chname;
+    //card.chname = card_data.chname;
     session.commit();
 
 	return base64_pan;

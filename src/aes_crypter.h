@@ -13,8 +13,8 @@ public:
 	std::string decrypt(const std::string &in_cipher);
 
 private:
-	int _key_size = 256;
-	int _block_size = 128;
+	int _key_size;
+	int _block_size;
 	AES_KEY encrypt_key, decrypt_key;
 
 };

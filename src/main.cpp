@@ -77,8 +77,8 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     card.pan = params["pan"];/*convert data to string*/
     card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
     card.card_holder = params["card_holder"];
-    std::string pan_m1 =  params["pan"].substr(0,6);
-    std::string pan_m2 =  params["pan"].substr(16,20);
+    std::string pan_m1 =  params["pan"].substr(0, 6);
+    std::string pan_m2 =  params["pan"].substr(params["pan"].size() - 4, 4);
     card.pan_masked = pan_m1 + "****" + pan_m2;
     card.save(session);
     session.commit();

@@ -3,12 +3,16 @@
 
 #include "utils.h"
 
-BinDecConverter::BinDecConverter() {
-	this->_mode = CYCLE_FORWARD;
+BinDecConverter::BinDecConverter()
+    : _terminator(0xF)
+    , _mode(CYCLE_FORWARD)
+{
 }
 
-BinDecConverter::BinDecConverter(BinDecConverterFillMode mode) {
-	this->_mode = mode;
+BinDecConverter::BinDecConverter(BinDecConverterFillMode mode)
+    : _terminator(0xF)
+    , _mode(mode)
+{
 }
 
 std::string BinDecConverter::encode(const std::string &in) {

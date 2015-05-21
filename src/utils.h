@@ -34,7 +34,7 @@ public:
 	BinDecConverterFillMode get_mode();
 
 private:
-	int _terminator = 0xF;
+	int _terminator;
 	BinDecConverterFillMode _mode;
 };
 
