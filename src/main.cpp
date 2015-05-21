@@ -72,10 +72,15 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     
     ElementTree::ElementPtr resp = mk_resp("success");
     Domain::Card card;
+
     Yb::LongInt token = get_random();
     card.card_token = token;
     card.dt = Yb::now();
-    card.pan = params["pan"];/*convert data to string*/
+    card.pan = params["pan"];
+
+    Card rs = Yb::query<Card>(session)
+      .filter_by(Card::c.pan == params["pan"]).one();
+    
     card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
     card.card_holder = params["card_holder"];
     std::string pan_m1 =  params["pan"].substr(0,6);
@@ -88,7 +93,7 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     resp->sub_element("card_id",Yb::to_string(card_id));
     resp->sub_element("card_holder",card.card_holder);
     resp->sub_element("pan_masked", card.pan_masked);
-    std::string expire_dtYear =Yb::to_string(params.get_as<string>("expire_year"));/*convert data to string*/
+    std::string expire_dtYear = Yb::to_string(params.get_as<string>("expire_year"));/*convert data to string*/
     std::string expire_dtMonth =Yb::to_string(params.get_as<string>("expire_month"));/*convert data to string*/
     std::string expire_dtCD = expire_dtMonth +"/"+ expire_dtYear;
     resp->sub_element("expire.dt",expire_dtCD);
