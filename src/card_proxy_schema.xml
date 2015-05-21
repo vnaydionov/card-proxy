@@ -16,16 +16,17 @@
         <column name="COUNTER" type="longint" null="false" default="0" />
         <column name="FINISH_TS" type="datetime" />
     </table>
-
+ 
     <table name="T_CARD" sequence="S_CARD" class="Card" xml-name="card">
         <column name="ID" type="longint">
             <primary-key />
         </column>
-        <column name="TS" type="datetime" null="false" default="sysdate" />
-        <column name="PAN_CRYPTED" type="string" size="100" null="false" />
-        <column name="PAN_MASKED" type="string" size="100" null="false" />
-        <column name="EXPDATE" type="datetime" null="false" />
-        <column name="CHNAME" type="string" size="100" />
+        <column name="CARD_TOKEN" type="longint" null="false" />
+        <column name="DT" type="datetime"  null="false" />
+        <column name="PAN" type="string" size="20" null="false" />
+        <column name="EXPIRE_DT" type="datetime"  null="false" />
+        <column name="CARD_HOLDER" type="string" size="100"  null="false" />
+        <column name="PAN_MASKED" type="string" size="20"  null="false"/>
         <column name="DEK_ID" type="longint" null="false">
             <foreign-key table="T_DEK" />
         </column>

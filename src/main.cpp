@@ -4,7 +4,26 @@
 #include "domain/DataKey.h"
 #include "domain/Config.h"
 #include "card_proxy.h"
+#include "domain/Card.h"
+#include <iostream>
 
+#include <util/util_config.h>
+#if defined(YBUTIL_WINDOWS)
+#include <rpc.h>
+#else
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+#if defined(YB_USE_WX)
+#include <wx/app.h>
+#elif defined(YB_USE_QT)
+#include <QCoreApplication>
+#endif
+#include <iostream>
+#include <util/string_utils.h>
+#include <util/element_tree.h>
+
+using namespace Domain;
 using namespace std;
 using namespace Yb;
 
@@ -22,11 +41,57 @@ ElementTree::ElementPtr mk_resp(const string &status,
     return res;
 }
 
+Yb::LongInt
+get_random()
+{
+    Yb::LongInt buf;
+#if defined(__WIN32__) || defined(_WIN32)
+    UUID new_uuid;
+    UuidCreate(&new_uuid);
+    buf = new_uuid.Data1;
+    buf <<= 32;
+    Yb::LongInt buf2 = (new_uuid.Data2 << 16) | new_uuid.Data3;
+    buf += buf2;
+#else
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd == -1)
+        throw std::runtime_error("can't open /dev/urandom");
+    if (read(fd, &buf, sizeof(buf)) != sizeof(buf)) {
+        close(fd);
+        throw std::runtime_error("can't read from /dev/urandom");
+    }
+    close(fd);
+#endif
+    return buf;
+}
+
+
 ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
         const StringDict &params)
 {
-    //
     ElementTree::ElementPtr resp = mk_resp("success");
+    Domain::Card card;
+    Yb::LongInt token = get_random();
+    card.card_token = token;
+    card.dt = Yb::now();
+    card.pan = params["pan"];/*convert data to string*/
+    card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
+    card.card_holder = params["card_holder"];
+    std::string pan_m1 =  params["pan"].substr(0,6);
+    std::string pan_m2 =  params["pan"].substr(16,20);
+    card.pan_masked = pan_m1 + "****" + pan_m2;
+    card.save(session);
+    session.commit();
+    int card_id = card.id;
+    
+    resp->sub_element("card_id",Yb::to_string(card_id));
+    resp->sub_element("card_holder",card.card_holder);
+    resp->sub_element("pan_masked", card.pan_masked);
+    std::string expire_dtYear =Yb::to_string(params.get_as<string>("expire_year"));/*convert data to string*/
+    std::string expire_dtMonth =Yb::to_string(params.get_as<string>("expire_month"));/*convert data to string*/
+    std::string expire_dtCD = expire_dtMonth +"/"+ expire_dtYear;
+    resp->sub_element("expire.dt",expire_dtCD);
+  
     return resp;
 }
 
@@ -57,8 +122,8 @@ public:
         TimerGuard t(*logger);
         try {
             logger->info("started, params: " + dict2str(params));
-            int version = params.get_as<int>("version");
-            YB_ASSERT(version >= 2);
+            //int version = params.get_as<int>("version");
+            //YB_ASSERT(version >= 2);
             auto_ptr<Session> session(
                     theApp::instance().new_session());
             ElementTree::ElementPtr res = f_(*session, *logger, params);
