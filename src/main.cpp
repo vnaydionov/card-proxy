@@ -144,13 +144,20 @@ public:
 
 #define WRAP(func) CardProxyHttpWrapper(#func, func)
 
-void test_code() {
-    auto_ptr<Session> session = theApp::instance().new_session();
-    Domain::Card card(*session);
-    card.pan_crypted = "crypted_pan";
-    card.pan_masked = "masked_pan";
-    card.ts = Yb::now();
-    session->commit();
+ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
+        const StringDict &params)
+{
+    ElementTree::ElementPtr resp = mk_resp("success");
+    Yb::LongInt token = get_random();
+    Yb::LongInt dek_total_count = Yb::query<DataKey>(session).count();
+    Yb::LongInt dek_active_count = Yb::query<DataKey>(session)
+            .filter_by(DataKey::c.counter <= 10).count(); //config value
+
+    resp->sub_element("random_token", Yb::to_string(token));
+    resp->sub_element("dek_total_count", Yb::to_string(dek_total_count));
+    resp->sub_element("dek_active_count", Yb::to_string(dek_active_count));
+  
+    return resp;
 }
 
 
@@ -162,10 +169,12 @@ int main(int argc, char *argv[])
     string error_body = mk_resp("internal_error")->serialize();
     string prefix = "/card_bind/";
     int port = 9119;
-    //test_code();
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),
+        WRAP(dek_status),
     };
+    Yb::LongInt random = get_random();
+    std::cout << Yb::to_string(random) << std::endl;
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     return run_server_app(log_name, db_name, port,
             handlers, n_handlers, error_content_type, error_body, prefix);
