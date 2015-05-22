@@ -16,8 +16,8 @@ enum BinDecConverterFillMode {
 int calc_decode_length(const std::string &b64input, const int length);
 std::string encode_base64(const std::string &message, const int length);
 std::string decode_base64(const std::string &b64message, const int length);
+std::string string_to_bitstring(const std::string &input);
 
-//template for bitset size
 class BinDecConverter {
 public:
 	BinDecConverter();
@@ -26,6 +26,7 @@ public:
 	std::string encode(const std::string &in);
 	std::string decode(const std::string &in);
 
+    //template for bitset size ???
 	std::bitset<128> encode_bitset(const std::string &in);
 	std::string decode_bitset(const std::bitset<128> &in);
 

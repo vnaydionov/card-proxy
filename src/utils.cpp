@@ -79,15 +79,15 @@ std::string BinDecConverter::decode(const std::string &in) {
 	return result;
 }
 
-//static const std::string base64_chars =
-//			 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-//			 "abcdefghijklmnopqrstuvwxyz"
-//			 "0123456789+/";
-
-
-//static inline bool is_base64(unsigned char c) {
-//  return (isalnum(c) || (c == '+') || (c == '/'));
-//}
+std::string string_to_bitstring(const std::string &input) {
+    int in_size = input.size();
+    const char *str = input.c_str();
+    std::string result(in_size * 8, 0); 
+	for(int i = 0; i < in_size; ++i)
+		for(int j = 0; j < 8; ++j)
+			result[i * 8 + j] = (str[i] >> j & 0x1) + 48;
+    return result;
+}
 
 std::string encode_base64(const std::string &message,
 		const int length) {

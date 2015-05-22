@@ -4,61 +4,64 @@
 
 
 AESCrypter::AESCrypter()
-    : _key_size(256)
-    , _block_size(128)
+	: _key_size(256)
+	, _block_size_bit(128)
+	, _block_size(16)
 {
 }
 
 AESCrypter::AESCrypter(const std::string &key)
-    : _key_size(256)
-    , _block_size(128)
+	: _key_size(256)
+	, _block_size_bit(128)
+	, _block_size(16)
 {
 	const unsigned char *_key = (unsigned char*)key.c_str();
-	AES_set_encrypt_key(_key, this->_key_size, &this->encrypt_key);
-	AES_set_decrypt_key(_key, this->_key_size, &this->decrypt_key);
+	AES_set_encrypt_key(_key, _key_size, &_encrypt_key);
+	AES_set_decrypt_key(_key, _key_size, &_decrypt_key);
 }
 
 AESCrypter::AESCrypter(const unsigned char *key)
-    : _key_size(256)
-    , _block_size(128)
+	: _key_size(256)
+	, _block_size_bit(128)
+	, _block_size(16)
 {
-	AES_set_encrypt_key(key, this->_key_size, &this->encrypt_key);
-	AES_set_decrypt_key(key, this->_key_size, &this->decrypt_key);
+	AES_set_encrypt_key(key, _key_size, &_encrypt_key);
+	AES_set_decrypt_key(key, _key_size, &_decrypt_key);
 }
 
-std::string AESCrypter::encrypt(const std::string &in_text) {
-	int mas_pos;
-	int blocks = in_text.size() % 16 == 0 ? in_text.size() / 16
-										  : in_text.size() / 16 + 1;
-	// if % 16 != 0 add some trash
-	std::string result;
-	unsigned char *in_text_char = (unsigned char*)in_text.c_str();
-	unsigned char *cipher_block = new unsigned char[16 * blocks];
+std::string AESCrypter::encrypt(const std::string &input_text) {
+	if(input_text.size() == 0 || input_text.size() % _block_size != 0) 
+		throw std::string("Block size is not %KRATEN% " + std::to_string(_block_size) + ": " + std::to_string(input_text.size()));
+	int mas_pos, blocks = input_text.size() / _block_size;
+	unsigned char *input_text_char = (unsigned char*)input_text.c_str();
+	unsigned char *cipher_block = new unsigned char[blocks * _block_size];
 	for(int i = 0; i < blocks; ++i) {
-		mas_pos = i * 16;
-		AES_encrypt(&in_text_char[mas_pos], &cipher_block[mas_pos], &this->encrypt_key);
+		mas_pos = i * _block_size;
+		AES_encrypt(&input_text_char[mas_pos], &cipher_block[mas_pos], &_encrypt_key);
 	}
-	//cipher_block[mas_pos + this->_block_size / 8 + 1] = '\n';
-	result = std::string((char*) cipher_block);
+	std::string result(blocks * _block_size, 0);
+	for(int i = 0; i < blocks * _block_size; ++i)
+		result[i] = cipher_block[i];
 	return result;
 }
 
 std::string AESCrypter::decrypt(const std::string &input_cipher) {
-	int mas_pos, blocks = input_cipher.size() / 16; //change for base64
-	std::string result;
+	if(input_cipher.size() == 0 || input_cipher.size() % _block_size != 0) 
+		throw std::string("Block size is not %KRATEN% " + std::to_string(_block_size) + ": " + std::to_string(input_cipher.size()));
+	int mas_pos, blocks = input_cipher.size() / _block_size;
 	unsigned char *input_cipher_char = (unsigned char*)input_cipher.c_str();
-	unsigned char *text_block = new unsigned char[16 * blocks];
+	unsigned char *text_block = new unsigned char[blocks * _block_size];
 	for(int i = 0; i < blocks; ++i) {
-		mas_pos = i * 16;
-		AES_decrypt(&input_cipher_char[mas_pos], &text_block[mas_pos], &this->decrypt_key);
+		mas_pos = i * _block_size;
+		AES_decrypt(&input_cipher_char[mas_pos], &text_block[mas_pos], &_decrypt_key);
 	}
-	//text_block[mas_pos + this->_block_size / 8 + 1] = '\n';
-	result = std::string((char*) text_block);
+	std::string result(blocks * _block_size, 0);
+	for(int i = 0; i < blocks * _block_size; ++i) 
+		result[i] = text_block[i];
 	return result;
 }
 
 
 AESCrypter::~AESCrypter() {
-	// TODO Auto-generated destructor stub
 }
 
