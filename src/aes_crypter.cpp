@@ -32,7 +32,6 @@ std::string AESCrypter::encrypt(const std::string &in_text) {
 										  : in_text.size() / 16 + 1;
 	// if % 16 != 0 add some trash
 	std::string result;
-	std::cout << in_text.c_str() << std::endl;
 	unsigned char *in_text_char = (unsigned char*)in_text.c_str();
 	unsigned char *cipher_block = new unsigned char[16 * blocks];
 	for(int i = 0; i < blocks; ++i) {

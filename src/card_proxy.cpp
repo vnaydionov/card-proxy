@@ -21,7 +21,7 @@ std::string CardProxy::get_card_token(Yb::Session &session, const CardData &card
 	AESCrypter aes_crypter(this->_key);
 	std::string bindec_pan = BinDecConverter().encode(card_data.pan);
 	std::string cripted_pan = aes_crypter.encrypt(bindec_pan);
-	std::string base64_pan = Base64Converter().encode_base64(cripted_pan);
+	std::string base64_pan = encode_base64(cripted_pan, cripted_pan.length());
 	//write to db
     Domain::Card card(session);
     card.pan_crypted = base64_pan;
@@ -35,7 +35,7 @@ std::string CardProxy::get_card_token(Yb::Session &session, const CardData &card
 
 CardData CardProxy::get_card_data(Yb::Session &session, const std::string &token) {
 	//find dataset by token;
-	std::string cripted_pan = Base64Converter().decode_base64(token);
+	std::string cripted_pan = decode_base64(token, token.length());
 	std::string decrypted_pan = AESCrypter(this->_key).decrypt(cripted_pan);
 	std::string pan = BinDecConverter().decode(decrypted_pan);
 	//Domain::Card card = Card;

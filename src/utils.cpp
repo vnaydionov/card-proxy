@@ -4,25 +4,26 @@
 #include "utils.h"
 
 BinDecConverter::BinDecConverter()
-    : _terminator(0xF)
-    , _mode(CYCLE_FORWARD)
+	: _terminator(0xF)
+	, _mode(CYCLE_FORWARD)
 {
 }
 
 BinDecConverter::BinDecConverter(BinDecConverterFillMode mode)
-    : _terminator(0xF)
-    , _mode(mode)
+	: _terminator(0xF)
+	, _mode(mode)
 {
 }
 
 std::string BinDecConverter::encode(const std::string &in) {
 	int t_len = in.length();
-	int blocks_cnt = (t_len - 1) % 32 == 0 ? t_len / 32 : t_len / 32 + 1;
+	// text len + terminator
+	int blocks_cnt = (t_len + 1) % 32 == 0 ? t_len / 32 : t_len / 32 + 1;
 	int result_len = blocks_cnt * 16;
 	std::string result(result_len, 0);
 	for(int i = 0; i < result_len * 2; ++i) {
 		unsigned t_value;
-		if (i < t_len)
+		if (i < t_len) // check isdigit
 			t_value = (in[i] - 48);
 		else if (i == t_len)
 			t_value = this->_terminator;
@@ -55,12 +56,11 @@ std::string BinDecConverter::encode(const std::string &in) {
 std::bitset<128> BinDecConverter::encode_bitset(const std::string &in) {
 	std::string bits = this->encode(in);
 	std::bitset<128> result;
-	for(int i = 0; i < 16; ++i) {
+	for(int i = 0; i < 16; ++i)
 		for(int j = 0; j < 8; ++j) {
 			int index = 128 - (i + 1) * 8 + j;
 			result[index] = bits[i] >> j & 0x1;
 		}
-	}
 	return result;
 }
 
@@ -79,89 +79,70 @@ std::string BinDecConverter::decode(const std::string &in) {
 	return result;
 }
 
-static const std::string base64_chars =
-             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-             "abcdefghijklmnopqrstuvwxyz"
-             "0123456789+/";
+//static const std::string base64_chars =
+//			 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+//			 "abcdefghijklmnopqrstuvwxyz"
+//			 "0123456789+/";
 
 
-static inline bool is_base64(unsigned char c) {
-  return (isalnum(c) || (c == '+') || (c == '/'));
+//static inline bool is_base64(unsigned char c) {
+//  return (isalnum(c) || (c == '+') || (c == '/'));
+//}
+
+std::string encode_base64(const std::string &message,
+		const int length) {
+	BIO *bio;
+	BIO *b64;
+	FILE* stream;
+
+	int encoded_size = 4 * ceil((double)length / 3);
+	char *buffer = new char[encoded_size + 1];
+    const char *c_message = message.c_str();
+
+	stream = fmemopen(buffer, encoded_size + 1, "w");
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new_fp(stream, BIO_NOCLOSE);
+	bio = BIO_push(b64, bio);
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(bio, c_message, length);
+	(void)BIO_flush(bio);
+	BIO_free_all(bio);
+	fclose(stream);
+
+	return std::string(buffer);
 }
 
-std::string Base64Converter::encode_base64(const std::string &input) {
-	std::string ret;
-	int i = 0;
-	int j = 0;
-	const char *bytes_to_encode = input.c_str();
-	unsigned char char_array_3[3];
-	unsigned char char_array_4[4];
-	int in_len = input.size();
-	std::cout << "encode len: " << in_len << std::endl;
+int calc_decode_length(const std::string &b64input, const int length) {
+	int padding = 0;
 
-	while (in_len--) {
-		char_array_3[i++] = *(bytes_to_encode++);
-	    if (i == 3) {
-	    	char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-	    	char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-	    	char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-	    	char_array_4[3] = char_array_3[2] & 0x3f;
-	    	for(i = 0; (i <4) ; i++)
-	    		ret += base64_chars[char_array_4[i]];
-	    	i = 0;
-	    }
-	}
+	// Check for trailing '=''s as padding
+	if(b64input[length - 1] == '=' && b64input[length - 2] == '=')
+		padding = 2;
+	else if (b64input[length - 1] == '=')
+		padding = 1;
 
-	if (i) {
-		for(j = i; j < 3; j++)
-			char_array_3[j] = '\0';
-		char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-		char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-		char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-		char_array_4[3] = char_array_3[2] & 0x3f;
-		for (j = 0; (j < i + 1); j++)
-			ret += base64_chars[char_array_4[j]];
-		while((i++ < 3))
-			ret += '=';
-	}
-	return ret;
+	return (int)length * 0.75 - padding;
 }
 
-std::string Base64Converter::decode_base64(const std::string &encoded_input) {
-	size_t in_len = encoded_input.size();
-	size_t i = 0;
-	size_t j = 0;
-	int in_ = 0;
-	unsigned char char_array_4[4], char_array_3[3];
-	std::string ret;
+std::string decode_base64(const std::string &b64message, const int length) {
+	BIO *bio;
+	BIO *b64;
 
-	while (in_len-- && ( encoded_input[in_] != '=') && is_base64(encoded_input[in_])) {
-		char_array_4[i++] = encoded_input[in_]; in_++;
-		if (i ==4) {
-			for (i = 0; i <4; i++)
-				char_array_4[i] = static_cast<unsigned char>(base64_chars.find(char_array_4[i]));
-			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-			char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-			for (i = 0; (i < 3); i++)
-				ret += char_array_3[i];
-			i = 0;
-		}
-	}
+	int decoded_length = calc_decode_length(b64message, length);
+	char *buffer = new char[decoded_length + 1];
+    const char *c_b64message = b64message.c_str();
 
-	if (i) {
-		for (j = i; j <4; j++)
-			char_array_4[j] = 0;
+	FILE* stream = fmemopen((char*)c_b64message, length, "r");
 
-		for (j = 0; j <4; j++)
-			char_array_4[j] = static_cast<unsigned char>(base64_chars.find(char_array_4[j]));
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_new_fp(stream, BIO_NOCLOSE);
+	bio = BIO_push(b64, bio);
+	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+	decoded_length = BIO_read(bio, buffer, length);
+	buffer[decoded_length] = '\0';
 
-		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-		char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-		for (j = 0; (j < i - 1); j++)
-			ret += char_array_3[j];
-	}
+	BIO_free_all(bio);
+	fclose(stream);
 
-	return ret;
+	return std::string(buffer); 
 }

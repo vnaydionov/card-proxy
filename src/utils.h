@@ -2,6 +2,7 @@
 #define UTILS_H
 #include <bitset>
 #include <string>
+#include <math.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 
@@ -12,11 +13,9 @@ enum BinDecConverterFillMode {
 	RANDOM
 };
 
-class Base64Converter {
-public:
-	std::string encode_base64(const std::string &input);
-	std::string decode_base64(const std::string &input);
-};
+int calc_decode_length(const std::string &b64input, const int length);
+std::string encode_base64(const std::string &message, const int length);
+std::string decode_base64(const std::string &b64message, const int length);
 
 //template for bitset size
 class BinDecConverter {
