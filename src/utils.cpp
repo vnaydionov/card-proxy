@@ -89,14 +89,14 @@ std::string string_to_bitstring(const std::string &input) {
     return result;
 }
 
-std::string encode_base64(const std::string &message,
-		const int length) {
+std::string encode_base64(const std::string &message) {
 	BIO *bio;
 	BIO *b64;
 	FILE* stream;
 
+    int length = message.length();
 	int encoded_size = 4 * ceil((double)length / 3);
-	char *buffer = new char[encoded_size + 1];
+	char *buffer = new char[encoded_size + 1]; //memleak?
     const char *c_message = message.c_str();
 
 	stream = fmemopen(buffer, encoded_size + 1, "w");
@@ -112,8 +112,9 @@ std::string encode_base64(const std::string &message,
 	return std::string(buffer);
 }
 
-int calc_decode_length(const std::string &b64input, const int length) {
+int calc_decode_length(const std::string &b64input) {
 	int padding = 0;
+    int length = b64input.length();
 
 	// Check for trailing '=''s as padding
 	if(b64input[length - 1] == '=' && b64input[length - 2] == '=')
@@ -124,11 +125,12 @@ int calc_decode_length(const std::string &b64input, const int length) {
 	return (int)length * 0.75 - padding;
 }
 
-std::string decode_base64(const std::string &b64message, const int length) {
+std::string decode_base64(const std::string &b64message) {
 	BIO *bio;
 	BIO *b64;
 
-	int decoded_length = calc_decode_length(b64message, length);
+    int length = b64message.length();
+	int decoded_length = calc_decode_length(b64message);
 	char *buffer = new char[decoded_length + 1];
     const char *c_b64message = b64message.c_str();
 

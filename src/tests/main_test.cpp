@@ -14,8 +14,8 @@ void test_base64_coding() {
 
     std::cout << "test_base64_coding" << std::endl;
     for (int i = 0; i < len; ++i) {
-        std::string encode64 = encode_base64(messages[i], messages[i].length());
-        std::string decode64 = decode_base64(encode64, encode64.length());
+        std::string encode64 = encode_base64(messages[i]);
+        std::string decode64 = decode_base64(encode64);
         if(messages[i].compare(decode64) == 0)
             std::cout << "Result:    Success!" << std::endl;
         else {
@@ -99,8 +99,8 @@ void test_full_coding() {
             std::string encode_bindec = bindec_convert.encode(messages[i]);
             std::string encode_aes = aes_crypter.encrypt(encode_bindec);
             //std::cout << string_to_bitstring(encode_aes) << std::endl;
-            std::string encode_b64 = encode_base64(encode_aes, encode_aes.length());
-            std::string decode_b64 = decode_base64(encode_b64, encode_b64.length());
+            std::string encode_b64 = encode_base64(encode_aes);
+            std::string decode_b64 = decode_base64(encode_b64);
             std::string decode_aes = aes_crypter.decrypt(decode_b64);
             std::string decode_bindec = bindec_convert.decode(decode_aes); 
             //std::cout << string_to_bitstring(decode_aes) << std::endl;
