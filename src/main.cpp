@@ -71,21 +71,28 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
 {
     ElementTree::ElementPtr resp = mk_resp("success");
     Domain::Card card;
-
-    Yb::LongInt token = get_random();
-    card.card_token = token;
-    card.dt = Yb::now();
-    card.pan = params["pan"];
-
-    Card rs = Yb::query<Card>(session)
-      .filter_by(Card::c.pan == params["pan"]).one();
+    try
+    {
+        card = Yb::query<Card>(session)
+            .filter_by(Card::c.pan == params["pan"] && Card::c.expire_dt == Yb::dt_make(params.get_as<int>("expire_year"),
+            params.get_as<int>("expire_month"),1)).one();
+    }
     
-    card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
-    card.card_holder = params["card_holder"];
-    std::string pan_m1 =  params["pan"].substr(0, 6);
-    std::string pan_m2 =  params["pan"].substr(params["pan"].size() - 4, 4);
-    card.pan_masked = pan_m1 + "****" + pan_m2;
-    card.save(session);
+    catch (NoDataFound &e)
+    {
+        session.debug("Vstavka v base");
+        Yb::LongInt token = get_random();
+        card.card_token = token;
+        card.ts = Yb::now();
+        card.pan = params["pan"];
+        card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
+        card.card_holder = params["card_holder"];
+        std::string pan_m1 =  params["pan"].substr(0, 6);
+        std::string pan_m2 =  params["pan"].substr(params["pan"].size() - 4, 4);
+        card.pan_masked = pan_m1 + "****" + pan_m2;
+        card.save(session);
+    }
+
     session.commit();
     int card_id = card.id;
     
