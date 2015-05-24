@@ -39,6 +39,8 @@ void test_bindec_convert() {
     std::cout << "test_bindec_convert" << std::endl;
     for (int i = 0; i < len; ++i) {
         std::string encode_bindec = bindec_converter.encode(messages[i]);
+        std::cout << string_to_bitstring(encode_bindec) << std::endl;
+        std::cout << string_to_hexstring(encode_bindec) << std::endl;
         std::string decode_bindec = bindec_converter.decode(encode_bindec);
         if(messages[i].compare(decode_bindec) == 0)
             std::cout << "Result:    Success!" << std::endl;
@@ -96,14 +98,19 @@ void test_full_coding() {
     BinDecConverter bindec_convert;
     for(int i = 0; i < len; ++i) {
         try {
+            //std::cout << "Input: " << messages[i] << std::endl;
             std::string encode_bindec = bindec_convert.encode(messages[i]);
+            //std::cout << "Encode bindec: " << string_to_bitstring(encode_bindec) << std::endl;
             std::string encode_aes = aes_crypter.encrypt(encode_bindec);
-            //std::cout << string_to_bitstring(encode_aes) << std::endl;
+            //std::cout << "Encode aes: " << string_to_bitstring(encode_aes) << std::endl;
             std::string encode_b64 = encode_base64(encode_aes);
+            //std::cout << "Encode b64: " << encode_b64 << std::endl;
             std::string decode_b64 = decode_base64(encode_b64);
+            //std::cout << "Decode b64: " << string_to_bitstring(decode_b64) << std::endl;
             std::string decode_aes = aes_crypter.decrypt(decode_b64);
+            //std::cout << "Decode aes: " << string_to_bitstring(decode_aes) << std::endl;
             std::string decode_bindec = bindec_convert.decode(decode_aes); 
-            //std::cout << string_to_bitstring(decode_aes) << std::endl;
+            //std::cout << "Decode bindec: " << decode_bindec << std::endl;
             if (messages[i].compare(decode_bindec) == 0)
                 std::cout << "Result:    Success!" << std::endl;
             else {
@@ -146,10 +153,11 @@ void test_dek_coding() {
     
 //TODO: random data generation
 //TODO: unittesting
+//TODO: add predicted tests
 int main() {
     test_bindec_convert();
-    test_base64_coding();
-    test_aes_coding();
-    test_full_coding();
-    test_dek_coding();
+//    test_base64_coding();
+//    test_aes_coding();
+//    test_full_coding();
+//    test_dek_coding();
 }

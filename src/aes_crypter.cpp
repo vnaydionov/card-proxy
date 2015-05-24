@@ -29,6 +29,12 @@ AESCrypter::AESCrypter(const unsigned char *key)
 	AES_set_decrypt_key(key, _key_size, &_decrypt_key);
 }
 
+void AESCrypter::set_master_key(const std::string &key) {
+	const unsigned char *_key = (unsigned char*)key.c_str();
+	AES_set_encrypt_key(_key, _key_size, &_encrypt_key);
+	AES_set_decrypt_key(_key, _key_size, &_decrypt_key);
+}
+
 std::string AESCrypter::encrypt(const std::string &input_text) {
 	if(input_text.size() == 0 || input_text.size() % _block_size != 0) 
 		throw std::string("Block size is not %KRATEN% " + std::to_string(_block_size) + ": " + std::to_string(input_text.size()));

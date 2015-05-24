@@ -16,7 +16,12 @@ enum BinDecConverterFillMode {
 int calc_decode_length(const std::string &b64input, const int length);
 std::string encode_base64(const std::string &message);
 std::string decode_base64(const std::string &b64message);
+
 std::string string_to_bitstring(const std::string &input);
+std::string string_to_hexstring(const std::string &input);
+
+std::string get_master_key();
+std::string generate_dek();
 
 class BinDecConverter {
 public:

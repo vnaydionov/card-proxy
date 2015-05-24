@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <iostream>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "utils.h"
 
@@ -48,6 +50,8 @@ std::string BinDecConverter::encode(const std::string &in) {
 		}
 		if (i % 2 == 0)
 			t_value <<= 4;
+        else
+            t_value &= 0xF;
 		result[i / 2] |= t_value;
 	}
 	return result;
@@ -79,13 +83,32 @@ std::string BinDecConverter::decode(const std::string &in) {
 	return result;
 }
 
+
 std::string string_to_bitstring(const std::string &input) {
     int in_size = input.size();
     const char *str = input.c_str();
-    std::string result(in_size * 8, 0); 
+    std::string result(in_size * 9 - 1, ' '); 
 	for(int i = 0; i < in_size; ++i)
-		for(int j = 0; j < 8; ++j)
-			result[i * 8 + j] = (str[i] >> j & 0x1) + 48;
+		for(int j = 0, k = 7; j < 8; ++j, --k) //hard logic
+			result[i * 9 + j] = (str[i] >> k & 0x1) + 48;
+    return result;
+}
+
+char _int_to_hexchar(const int &val) {
+    if (val < 10)
+        return 48 + val;
+    else
+        return 65 + (val - 10);
+}
+ 
+std::string string_to_hexstring(const std::string &input) {
+    int in_size = input.size();
+    const char *str = input.c_str();
+    std::string result(in_size * 3 - 1, ' '); 
+	for(int i = 0; i < in_size; ++i) {
+        result[i * 3] = _int_to_hexchar(str[i] >> 4 & 0xF);
+        result[i * 3 + 1] = _int_to_hexchar(str[i] & 0xF);
+    }
     return result;
 }
 
@@ -148,3 +171,41 @@ std::string decode_base64(const std::string &b64message) {
 
 	return std::string(buffer); 
 }
+
+std::string get_master_key() {
+    // make there UBER LOGIC FOR COMPOSE MASTER KEY
+    return "abcdefghijklmnop";
+}
+
+void convert_bits_to_ascii(unsigned char *input, int len) {
+    int tmp;
+    for(int i = 0; i < len; ++i) {
+        tmp = input[i] % 64;
+        if (tmp < 10)
+            input[i] = tmp + 48;
+        else if (tmp < 36)
+            input[i] = (tmp - 10) + 65;
+        else if (tmp < 62)
+            input[i] = (tmp - 36) + 97;
+        else if (tmp < 63)
+            input[i] = 43;
+        else
+            input[i] = 47;
+    }
+}
+        
+
+std::string generate_dek() {
+    unsigned char dek[32];
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd == -1)
+        throw std::runtime_error("Can't open /dev/urandom");
+    if (read(fd, &dek, sizeof(dek)) != sizeof(dek)) {
+        close(fd);
+        throw std::runtime_error("Can't read from /dev/urandom");
+    }
+    close(fd);
+    convert_bits_to_ascii(dek, 32);
+    return std::string((char*) dek);
+}
+

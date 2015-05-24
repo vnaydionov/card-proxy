@@ -4,8 +4,9 @@
 #include "domain/DataKey.h"
 #include "domain/Config.h"
 #include "card_proxy.h"
+#include "utils.h"
+#include "aes_crypter.h"
 #include "domain/Card.h"
-#include <iostream>
 
 #include <util/util_config.h>
 #if defined(YBUTIL_WINDOWS)
@@ -148,15 +149,59 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
         const StringDict &params)
 {
     ElementTree::ElementPtr resp = mk_resp("success");
-    Yb::LongInt token = get_random();
     Yb::LongInt dek_total_count = Yb::query<DataKey>(session).count();
     Yb::LongInt dek_active_count = Yb::query<DataKey>(session)
             .filter_by(DataKey::c.counter <= 10).count(); //config value
 
-    resp->sub_element("random_token", Yb::to_string(token));
     resp->sub_element("dek_total_count", Yb::to_string(dek_total_count));
     resp->sub_element("dek_active_count", Yb::to_string(dek_active_count));
   
+    return resp;
+}
+
+ElementTree::ElementPtr dek_generate(Session &session, ILogger &logger,
+        const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    Domain::DataKey data_key;
+    AESCrypter aes_crypter;
+    std::string master_key = get_master_key();
+    std::string dek = generate_dek();
+    aes_crypter.set_master_key(master_key);
+    std::string crypted_dek = aes_crypter.encrypt(dek);
+    std::string encoded_dek = encode_base64(crypted_dek);
+    data_key.dek_crypted = encoded_dek;
+    data_key.start_ts = Yb::now();
+    data_key.finish_ts = Yb::dt_make(2020, 12, 31);
+    data_key.counter = 0;
+    data_key.save(session);
+    session.commit();
+    resp->sub_element("DEK", dek);
+    resp->sub_element("ENCODED_DEK", encoded_dek);
+    resp->sub_element("ID", Yb::to_string(data_key.id.value()));
+    return resp;
+}
+
+ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
+        const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    AESCrypter aes_crypter;
+    std::string master_key = get_master_key();
+    aes_crypter.set_master_key(master_key);
+    auto data_keys = Yb::query<Domain::DataKey>(session)
+            .filter_by(Domain::DataKey::c.counter < 10)
+            .all();
+    for (auto &data_key : data_keys) {
+        ElementTree::ElementPtr dk = resp->sub_element("data_key");
+        std::string dek_crypted = data_key.dek_crypted.value();
+        std::string dek_decoded = decode_base64(dek_crypted);
+        std::string dek_decrypted = aes_crypter.decrypt(dek_decoded);
+        std::cout << dek_decrypted << std::endl;
+        dk->sub_element("id", Yb::to_string(data_key.id.value()));
+        dk->sub_element("dek", dek_decrypted);
+        dk->sub_element("counter", Yb::to_string(data_key.counter.value()));
+        dk->sub_element("start_ts", Yb::to_string(data_key.start_ts.value()));
+        dk->sub_element("finish_ts", Yb::to_string(data_key.finish_ts.value()));
+    }
     return resp;
 }
 
@@ -172,9 +217,9 @@ int main(int argc, char *argv[])
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),
         WRAP(dek_status),
+        WRAP(dek_generate),
+        WRAP(dek_list),
     };
-    Yb::LongInt random = get_random();
-    std::cout << Yb::to_string(random) << std::endl;
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     return run_server_app(log_name, db_name, port,
             handlers, n_handlers, error_content_type, error_body, prefix);

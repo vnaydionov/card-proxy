@@ -11,6 +11,7 @@ public:
 
 	std::string encrypt(const std::string &input_text);
 	std::string decrypt(const std::string &input_cipher);
+    void set_master_key(const std::string &key);
 
 private:
 	const int _key_size;
