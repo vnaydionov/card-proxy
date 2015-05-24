@@ -3,16 +3,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "domain/DataKey.h"
+
 #include "utils.h"
+
+using namespace Domain;
 
 BinDecConverter::BinDecConverter()
 	: _terminator(0xF)
 	, _mode(CYCLE_FORWARD)
 {
 }
-
 BinDecConverter::BinDecConverter(BinDecConverterFillMode mode)
-	: _terminator(0xF)
+    : _terminator(0xF)
 	, _mode(mode)
 {
 }
@@ -198,9 +201,37 @@ void convert_bits_to_ascii(unsigned char *input, int len) {
             input[i] = 47;
     }
 }
-        
 
-std::string generate_dek() {
+DEKPoolStatus get_dek_pool_status(Yb::Session &session) {
+    DEKPoolStatus dek_status;
+    dek_status.total_count= Yb::query<DataKey>(session).count();
+    dek_status.active_count = Yb::query<DataKey>(session)
+            .filter_by(DataKey::c.counter < 10).count();
+    dek_status.use_count = 0;
+    return dek_status;
+}
+
+void generate_new_dek(Yb::Session &session) {
+    Domain::DataKey data_key;
+    std::string dek_value = generate_dek_value();
+}
+
+Domain::DataKey get_active_dek(Yb::Session &session) {
+    DEKPoolStatus dek_status = get_dek_pool_status(session);
+    while(dek_status.active_count < 10) { 
+        generate_new_dek(session);
+        dek_status = get_dek_pool_status(session);
+    }
+
+    DataKey dek = Yb::query<DataKey>(session)
+            .filter_by(DataKey::c.counter < 10)
+            .order_by(DataKey::c.counter)
+            .one();
+    return dek;
+}
+
+
+std::string generate_dek_value() {
     unsigned char dek[32];
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1)

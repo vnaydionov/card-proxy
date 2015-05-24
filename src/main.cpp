@@ -149,13 +149,9 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
         const StringDict &params)
 {
     ElementTree::ElementPtr resp = mk_resp("success");
-    Yb::LongInt dek_total_count = Yb::query<DataKey>(session).count();
-    Yb::LongInt dek_active_count = Yb::query<DataKey>(session)
-            .filter_by(DataKey::c.counter <= 10).count(); //config value
-
-    resp->sub_element("dek_total_count", Yb::to_string(dek_total_count));
-    resp->sub_element("dek_active_count", Yb::to_string(dek_active_count));
-  
+    DEKPoolStatus dek_status = get_dek_pool_status(session);
+    resp->sub_element("total_count", Yb::to_string(dek_status.total_count));
+    resp->sub_element("active_count", Yb::to_string(dek_status.active_count));
     return resp;
 }
 
@@ -165,7 +161,7 @@ ElementTree::ElementPtr dek_generate(Session &session, ILogger &logger,
     Domain::DataKey data_key;
     AESCrypter aes_crypter;
     std::string master_key = get_master_key();
-    std::string dek = generate_dek();
+    std::string dek = generate_dek_value();
     aes_crypter.set_master_key(master_key);
     std::string crypted_dek = aes_crypter.encrypt(dek);
     std::string encoded_dek = encode_base64(crypted_dek);
@@ -204,6 +200,16 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
     return resp;
 }
 
+ElementTree::ElementPtr dek(Session &session, ILogger &logger,
+        const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    DataKey dek = get_active_dek(session);
+    dek.counter = dek.counter + 2;
+    dek.save(session);
+    session.commit();
+    resp->sub_element("dek", dek.dek_crypted.value());
+    return resp;
+}
 
 int main(int argc, char *argv[])
 {
@@ -218,6 +224,7 @@ int main(int argc, char *argv[])
         WRAP(dek_status),
         WRAP(dek_generate),
         WRAP(dek_list),
+        WRAP(dek),
     };
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     return run_server_app(log_name, db_name, port,

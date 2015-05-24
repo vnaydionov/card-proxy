@@ -6,6 +6,11 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 
+#include <orm/data_object.h>
+#include <orm/domain_object.h>
+
+#include "domain/DataKey.h"
+
 enum BinDecConverterFillMode {
 	ZERO,
 	CYCLE_FORWARD,
@@ -18,6 +23,12 @@ enum StringHexMode {
     LOWERCASE,
 };
 
+struct DEKPoolStatus {
+    long total_count;
+    long active_count;
+    long use_count;
+};
+
 int calc_decode_length(const std::string &b64input, const int length);
 std::string encode_base64(const std::string &message);
 std::string decode_base64(const std::string &b64message);
@@ -26,7 +37,9 @@ std::string string_to_bitstring(const std::string &input);
 std::string string_to_hexstring(const std::string &input);
 
 std::string get_master_key();
-std::string generate_dek();
+Domain::DataKey get_active_dek(Yb::Session &session);
+std::string generate_dek_value();
+DEKPoolStatus get_dek_pool_status(Yb::Session &session);
 
 class BinDecConverter {
 public:
