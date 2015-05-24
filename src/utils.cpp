@@ -94,11 +94,16 @@ std::string string_to_bitstring(const std::string &input) {
     return result;
 }
 
-char _int_to_hexchar(const int &val) {
+char _int_to_hexchar(const int &val, const StringHexMode mode = UPPERCASE) {
     if (val < 10)
         return 48 + val;
     else
-        return 65 + (val - 10);
+        switch(mode) {
+            case UPPERCASE:
+                return 65 + (val - 10);
+            case LOWERCASE:
+                return 97 + (val - 10);
+        }
 }
  
 std::string string_to_hexstring(const std::string &input) {
@@ -174,7 +179,7 @@ std::string decode_base64(const std::string &b64message) {
 
 std::string get_master_key() {
     // make there UBER LOGIC FOR COMPOSE MASTER KEY
-    return "abcdefghijklmnop";
+    return "12345678901234567890123456789012"; // 32 bytes
 }
 
 void convert_bits_to_ascii(unsigned char *input, int len) {

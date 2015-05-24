@@ -195,7 +195,6 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
         std::string dek_crypted = data_key.dek_crypted.value();
         std::string dek_decoded = decode_base64(dek_crypted);
         std::string dek_decrypted = aes_crypter.decrypt(dek_decoded);
-        std::cout << dek_decrypted << std::endl;
         dk->sub_element("id", Yb::to_string(data_key.id.value()));
         dk->sub_element("dek", dek_decrypted);
         dk->sub_element("counter", Yb::to_string(data_key.counter.value()));

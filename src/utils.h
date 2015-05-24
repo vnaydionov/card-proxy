@@ -13,6 +13,11 @@ enum BinDecConverterFillMode {
 	RANDOM
 };
 
+enum StringHexMode {
+	UPPERCASE,
+    LOWERCASE,
+};
+
 int calc_decode_length(const std::string &b64input, const int length);
 std::string encode_base64(const std::string &message);
 std::string decode_base64(const std::string &b64message);
