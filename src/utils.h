@@ -6,10 +6,10 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 
-#include <orm/data_object.h>
-#include <orm/domain_object.h>
+//#include <orm/data_object.h>
+//#include <orm/domain_object.h>
 
-#include "domain/DataKey.h"
+//#include "domain/DataKey.h"
 
 enum BinDecConverterFillMode {
 	ZERO,
@@ -34,12 +34,15 @@ std::string encode_base64(const std::string &message);
 std::string decode_base64(const std::string &b64message);
 
 std::string string_to_bitstring(const std::string &input);
+std::string string_from_bitstring(const std::string &bit_input);
+
 std::string string_to_hexstring(const std::string &input);
+std::string string_from_hexstring(const std::string &hex_input);
 
 std::string get_master_key();
-Domain::DataKey get_active_dek(Yb::Session &session);
+//Domain::DataKey get_active_dek(Yb::Session &session);
 std::string generate_dek_value();
-DEKPoolStatus get_dek_pool_status(Yb::Session &session);
+//DEKPoolStatus get_dek_pool_status(Yb::Session &session);
 
 class BinDecConverter {
 public:

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "aes_crypter.h"
+#include "utils.h"
 
 
 AESCrypter::AESCrypter()
@@ -37,7 +38,9 @@ void AESCrypter::set_master_key(const std::string &key) {
 
 std::string AESCrypter::encrypt(const std::string &input_text) {
 	if(input_text.size() == 0 || input_text.size() % _block_size != 0) 
-		throw std::string("Block size is not %KRATEN% " + std::to_string(_block_size) + ": " + std::to_string(input_text.size()));
+		throw std::string("Encrypt: block size is not %KRATEN% " +
+                std::to_string(_block_size) + ": " + std::to_string(input_text.size()) +
+                " - " + string_to_hexstring(input_text));
 	int mas_pos, blocks = input_text.size() / _block_size;
 	unsigned char *input_text_char = (unsigned char*)input_text.c_str();
 	unsigned char *cipher_block = new unsigned char[blocks * _block_size];
@@ -53,7 +56,9 @@ std::string AESCrypter::encrypt(const std::string &input_text) {
 
 std::string AESCrypter::decrypt(const std::string &input_cipher) {
 	if(input_cipher.size() == 0 || input_cipher.size() % _block_size != 0) 
-		throw std::string("Block size is not %KRATEN% " + std::to_string(_block_size) + ": " + std::to_string(input_cipher.size()));
+		throw std::string("Decrypt: block size is not %KRATEN% " +
+                std::to_string(_block_size) + ": " + std::to_string(input_cipher.size()) +
+                " - " + string_to_hexstring(input_cipher));
 	int mas_pos, blocks = input_cipher.size() / _block_size;
 	unsigned char *input_cipher_char = (unsigned char*)input_cipher.c_str();
 	unsigned char *text_block = new unsigned char[blocks * _block_size];

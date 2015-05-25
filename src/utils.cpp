@@ -3,11 +3,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "domain/DataKey.h"
-
 #include "utils.h"
 
-using namespace Domain;
+//using namespace Domain;
 
 BinDecConverter::BinDecConverter()
 	: _terminator(0xF)
@@ -40,10 +38,14 @@ std::string BinDecConverter::encode(const std::string &in) {
 					break;
 				case CYCLE_FORWARD:
 					t_index = i - t_len - 1;
+                    if (t_index >= t_len)
+                        t_index = t_index % t_len;
 					t_value = in[t_index];
 					break;
 				case CYCLE_BACKWARD:
 					t_index = t_len - (i - t_len);
+                    if (t_index < 0)
+                        t_index = t_len - 1 - ((t_index + 1) * -1) % t_len;
 					t_value = in[t_index];
 					break;
 				case RANDOM:
@@ -97,7 +99,7 @@ std::string string_to_bitstring(const std::string &input) {
     return result;
 }
 
-char _int_to_hexchar(const int &val, const StringHexMode mode = UPPERCASE) {
+char int_to_hexchar(const int &val, const StringHexMode mode = UPPERCASE) {
     if (val < 10)
         return 48 + val;
     else
@@ -108,14 +110,36 @@ char _int_to_hexchar(const int &val, const StringHexMode mode = UPPERCASE) {
                 return 97 + (val - 10);
         }
 }
+
+int hexchar_to_int(const char &val) {
+    if (val >= 48 && val <= 57)
+        return val - 48;
+    else if (val >= 65 && val <= 70)
+        return val - 65 + 10;
+    else if (val >= 97 && val <= 102)
+        return val - 97 + 10;
+    //error
+    return -1;
+}
  
 std::string string_to_hexstring(const std::string &input) {
     int in_size = input.size();
     const char *str = input.c_str();
     std::string result(in_size * 3 - 1, ' '); 
 	for(int i = 0; i < in_size; ++i) {
-        result[i * 3] = _int_to_hexchar(str[i] >> 4 & 0xF);
-        result[i * 3 + 1] = _int_to_hexchar(str[i] & 0xF);
+        result[i * 3]     = int_to_hexchar(str[i] >> 4 & 0xF);
+        result[i * 3 + 1] = int_to_hexchar(str[i] & 0xF);
+    }
+    return result;
+}
+
+std::string string_from_hexstring(const std::string &hex_input) {
+    int in_size = hex_input.size() - (hex_input.size() / 3);
+    const char *str = hex_input.c_str();
+    std::string result(in_size, 0); 
+	for(int i = 0; i < in_size; ++i) {
+        result[i] |= hexchar_to_int(str[i * 3]) << 4;
+        result[i] |= hexchar_to_int(str[i * 3 + 1]);
     }
     return result;
 }
@@ -202,33 +226,33 @@ void convert_bits_to_ascii(unsigned char *input, int len) {
     }
 }
 
-DEKPoolStatus get_dek_pool_status(Yb::Session &session) {
-    DEKPoolStatus dek_status;
-    dek_status.total_count= Yb::query<DataKey>(session).count();
-    dek_status.active_count = Yb::query<DataKey>(session)
-            .filter_by(DataKey::c.counter < 10).count();
-    dek_status.use_count = 0;
-    return dek_status;
-}
+//DEKPoolStatus get_dek_pool_status(Yb::Session &session) {
+//    DEKPoolStatus dek_status;
+//    dek_status.total_count= Yb::query<DataKey>(session).count();
+//    dek_status.active_count = Yb::query<DataKey>(session)
+//            .filter_by(DataKey::c.counter < 10).count();
+//    dek_status.use_count = 0;
+//    return dek_status;
+//}
 
-void generate_new_dek(Yb::Session &session) {
-    Domain::DataKey data_key;
-    std::string dek_value = generate_dek_value();
-}
+//void generate_new_dek(Yb::Session &session) {
+//    Domain::DataKey data_key;
+//    std::string dek_value = generate_dek_value();
+//}
 
-Domain::DataKey get_active_dek(Yb::Session &session) {
-    DEKPoolStatus dek_status = get_dek_pool_status(session);
-    while(dek_status.active_count < 10) { 
-        generate_new_dek(session);
-        dek_status = get_dek_pool_status(session);
-    }
-
-    DataKey dek = Yb::query<DataKey>(session)
-            .filter_by(DataKey::c.counter < 10)
-            .order_by(DataKey::c.counter)
-            .one();
-    return dek;
-}
+//Domain::DataKey get_active_dek(Yb::Session &session) {
+//    DEKPoolStatus dek_status = get_dek_pool_status(session);
+//    while(dek_status.active_count < 10) { 
+//        generate_new_dek(session);
+//        dek_status = get_dek_pool_status(session);
+//    }
+//
+//    DataKey dek = Yb::query<DataKey>(session)
+//            .filter_by(DataKey::c.counter < 10)
+//            .order_by(DataKey::c.counter)
+//            .one();
+//    return dek;
+//}
 
 
 std::string generate_dek_value() {
