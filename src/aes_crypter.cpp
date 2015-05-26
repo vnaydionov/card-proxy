@@ -41,10 +41,10 @@ std::string AESCrypter::encrypt(const std::string &input_text) {
 		throw std::string("Encrypt: block size is not %KRATEN% " +
                 std::to_string(_block_size) + ": " + std::to_string(input_text.size()) +
                 " - " + string_to_hexstring(input_text));
-	int mas_pos, blocks = input_text.size() / _block_size;
+	int blocks = input_text.size() / _block_size;
 	unsigned char *input_text_char = (unsigned char*)input_text.c_str();
 	unsigned char *cipher_block = new unsigned char[blocks * _block_size];
-	for(int i = 0; i < blocks; ++i) {
+	for(int i = 0, mas_pos; i < blocks; ++i) {
 		mas_pos = i * _block_size;
 		AES_encrypt(&input_text_char[mas_pos], &cipher_block[mas_pos], &_encrypt_key);
 	}
@@ -59,10 +59,10 @@ std::string AESCrypter::decrypt(const std::string &input_cipher) {
 		throw std::string("Decrypt: block size is not %KRATEN% " +
                 std::to_string(_block_size) + ": " + std::to_string(input_cipher.size()) +
                 " - " + string_to_hexstring(input_cipher));
-	int mas_pos, blocks = input_cipher.size() / _block_size;
+	int blocks = input_cipher.size() / _block_size;
 	unsigned char *input_cipher_char = (unsigned char*)input_cipher.c_str();
 	unsigned char *text_block = new unsigned char[blocks * _block_size];
-	for(int i = 0; i < blocks; ++i) {
+	for(int i = 0, mas_pos; i < blocks; ++i) {
 		mas_pos = i * _block_size;
 		AES_decrypt(&input_cipher_char[mas_pos], &text_block[mas_pos], &_decrypt_key);
 	}

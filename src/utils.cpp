@@ -5,14 +5,13 @@
 
 #include "utils.h"
 
-//using namespace Domain;
 
 BinDecConverter::BinDecConverter()
 	: _terminator(0xF)
 	, _mode(CYCLE_FORWARD)
 {
 }
-BinDecConverter::BinDecConverter(BinDecConverterFillMode mode)
+BinDecConverter::BinDecConverter(const BinDecConverterFillMode mode)
     : _terminator(0xF)
 	, _mode(mode)
 {
@@ -62,17 +61,6 @@ std::string BinDecConverter::encode(const std::string &in) {
 	return result;
 }
 
-std::bitset<128> BinDecConverter::encode_bitset(const std::string &in) {
-	std::string bits = this->encode(in);
-	std::bitset<128> result;
-	for(int i = 0; i < 16; ++i)
-		for(int j = 0; j < 8; ++j) {
-			int index = 128 - (i + 1) * 8 + j;
-			result[index] = bits[i] >> j & 0x1;
-		}
-	return result;
-}
-
 std::string BinDecConverter::decode(const std::string &in) {
 	int blocks_cnt = in.size() / 16, result_len = blocks_cnt * 2;
 	std::string result;
@@ -88,6 +76,9 @@ std::string BinDecConverter::decode(const std::string &in) {
 	return result;
 }
 
+std::string get_master_key() {
+    return "12345678901234567890123456789012"; // 32 bytes
+}
 
 std::string string_to_bitstring(const std::string &input) {
     int in_size = input.size();
@@ -99,7 +90,7 @@ std::string string_to_bitstring(const std::string &input) {
     return result;
 }
 
-char int_to_hexchar(const int &val, const StringHexMode mode = UPPERCASE) {
+char int_to_hexchar(const int &val, const StringHexCaseMode mode = UPPERCASE) {
     if (val < 10)
         return 48 + val;
     else
@@ -204,15 +195,9 @@ std::string decode_base64(const std::string &b64message) {
 	return std::string(buffer); 
 }
 
-std::string get_master_key() {
-    // make there UBER LOGIC FOR COMPOSE MASTER KEY
-    return "12345678901234567890123456789012"; // 32 bytes
-}
-
 void convert_bits_to_ascii(unsigned char *input, int len) {
-    int tmp;
     for(int i = 0; i < len; ++i) {
-        tmp = input[i] % 64;
+        int tmp = input[i] % 64;
         if (tmp < 10)
             input[i] = tmp + 48;
         else if (tmp < 36)
@@ -226,37 +211,8 @@ void convert_bits_to_ascii(unsigned char *input, int len) {
     }
 }
 
-//DEKPoolStatus get_dek_pool_status(Yb::Session &session) {
-//    DEKPoolStatus dek_status;
-//    dek_status.total_count= Yb::query<DataKey>(session).count();
-//    dek_status.active_count = Yb::query<DataKey>(session)
-//            .filter_by(DataKey::c.counter < 10).count();
-//    dek_status.use_count = 0;
-//    return dek_status;
-//}
-
-//void generate_new_dek(Yb::Session &session) {
-//    Domain::DataKey data_key;
-//    std::string dek_value = generate_dek_value();
-//}
-
-//Domain::DataKey get_active_dek(Yb::Session &session) {
-//    DEKPoolStatus dek_status = get_dek_pool_status(session);
-//    while(dek_status.active_count < 10) { 
-//        generate_new_dek(session);
-//        dek_status = get_dek_pool_status(session);
-//    }
-//
-//    DataKey dek = Yb::query<DataKey>(session)
-//            .filter_by(DataKey::c.counter < 10)
-//            .order_by(DataKey::c.counter)
-//            .one();
-//    return dek;
-//}
-
-
-std::string generate_dek_value() {
-    unsigned char dek[32];
+std::string generate_dek_value(const int length) {
+    unsigned char dek[length];
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1)
         throw std::runtime_error("Can't open /dev/urandom");
@@ -265,7 +221,7 @@ std::string generate_dek_value() {
         throw std::runtime_error("Can't read from /dev/urandom");
     }
     close(fd);
-    convert_bits_to_ascii(dek, 32);
+    convert_bits_to_ascii(dek, length);
     return std::string((char*) dek);
 }
 

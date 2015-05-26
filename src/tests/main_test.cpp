@@ -20,9 +20,8 @@ std::string generate_random_number(const int length) {
 
 std::string generate_random_string(const int length) {
     std::string result(length, 0);
-    int tmp;
     for(int i = 0; i < length; ++i) {
-        tmp = rand() % 62;
+        int tmp = rand() % 62;
         if (tmp < 26) 
             result[i] = 65 + tmp;
         else if (tmp < 52)
@@ -335,7 +334,7 @@ void test_aes_coding() {
         "gjhfdghsdfgahoad"
     };
     int len = sizeof(messages) / sizeof(messages[0]);
-    std::string key = "123456789012345";
+    std::string key = "12345678901234567890123456789012";
 
     std::cout << "test_aes_coding" << std::endl;
     AESCrypter aes_crypter(key);
@@ -349,7 +348,7 @@ void test_aes_coding() {
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input: " << messages[i] << " Decode: " << decode_aes << std::endl;
             }
-        } catch(std::string err) {
+        } catch(std::string &err) {
             std::cout << err << std::endl;
         }
     }
@@ -372,7 +371,6 @@ void test_full_coding() {
     for(int i = 0; i < len; ++i) {
         try {
             std::string encode_bindec = bindec_convert.encode(messages[i]);
-            std::cout << string_to_hexstring(encode_bindec) << std::endl;
             std::string encode_aes = aes_crypter.encrypt(encode_bindec);
             std::string encode_b64 = encode_base64(encode_aes);
             std::string decode_b64 = decode_base64(encode_b64);
@@ -384,7 +382,7 @@ void test_full_coding() {
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input: " << messages[i] << " Decode: " << decode_aes << "." << std::endl;
             }
-        } catch(std::string err) {
+        } catch(std::string &err) {
             std::cout << err << std::endl;
         }
     }
@@ -411,7 +409,7 @@ void test_dek_coding() {
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input: " << dek[i] << " Decode: " << decode_dek << "." << std::endl;
             }
-        } catch(std::string err) {
+        } catch(std::string &err) {
             std::cout << err << std::endl;
         }
     }

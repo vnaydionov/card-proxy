@@ -5,6 +5,7 @@
 #include "domain/Config.h"
 #include "card_proxy.h"
 #include "utils.h"
+#include "crypt_utils.h"
 #include "aes_crypter.h"
 #include "domain/Card.h"
 
@@ -158,22 +159,26 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek_generate(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    Domain::DataKey data_key;
-    AESCrypter aes_crypter;
-    std::string master_key = get_master_key();
-    std::string dek = generate_dek_value();
-    aes_crypter.set_master_key(master_key);
-    std::string crypted_dek = aes_crypter.encrypt(dek);
-    std::string encoded_dek = encode_base64(crypted_dek);
-    data_key.dek_crypted = encoded_dek;
-    data_key.start_ts = Yb::now();
-    data_key.finish_ts = Yb::dt_make(2020, 12, 31);
-    data_key.counter = 0;
-    data_key.save(session);
-    session.commit();
-    resp->sub_element("DEK", dek);
-    resp->sub_element("ENCODED_DEK", encoded_dek);
+    //generate_dek_value();
+    //Domain::DataKey data_key;
+    //AESCrypter aes_crypter;
+    //std::string master_key = assemble_master_key();
+    //std::string dek = generate_dek_value();
+    //aes_crypter.set_master_key(master_key);
+    //std::string crypted_dek = aes_crypter.encrypt(dek);
+    //std::string encoded_dek = encode_base64(crypted_dek);
+    //data_key.dek_crypted = encoded_dek;
+    //data_key.start_ts = Yb::now();
+    //data_key.finish_ts = Yb::dt_make(2020, 12, 31);
+    //data_key.counter = 0;
+    //data_key.save(session);
+    //session.commit();
+    DataKey data_key = generate_new_dek(session);
     resp->sub_element("ID", Yb::to_string(data_key.id.value()));
+    resp->sub_element("DEK", data_key.dek_crypted);
+    resp->sub_element("START_TS", Yb::to_string(data_key.start_ts.value()));
+    resp->sub_element("FINISH_TS", Yb::to_string(data_key.finish_ts.value()));
+    resp->sub_element("COUNTER", Yb::to_string(data_key.counter.value()));
     return resp;
 }
 
@@ -181,7 +186,7 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
     AESCrypter aes_crypter;
-    std::string master_key = get_master_key();
+    std::string master_key = assemble_master_key();
     aes_crypter.set_master_key(master_key);
     auto data_keys = Yb::query<Domain::DataKey>(session)
             .filter_by(Domain::DataKey::c.counter < 10)
@@ -203,11 +208,12 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DataKey dek = get_active_dek(session);
+    DataKey dek = get_active_dek();
     dek.counter = dek.counter + 2;
     dek.save(session);
     session.commit();
     resp->sub_element("dek", dek.dek_crypted.value());
+    resp->sub_element("counter", Yb::to_string(dek.counter.value()));
     return resp;
 }
 
