@@ -5,8 +5,32 @@
 #include <string>
 #include <fstream>
 #include <util/nlogger.h>
+#include <util/element_tree.h>
 #include <util/singleton.h>
 #include <orm/data_object.h>
+
+#define SETTINGS_FILE "settings.xml"
+
+class AppSettings {
+    Yb::ElementTree::ElementPtr root_;
+    std::string file_name_;
+    bool modified_;
+
+public:
+    AppSettings(const std::string &file_name = SETTINGS_FILE);
+    ~AppSettings();
+
+    void fill_tree();
+    void save_to_xml();
+    const std::string to_string() const;
+
+    void set_port(int port);
+    void set_prefix(std::string prefix);
+
+    int get_port();
+    std::string get_prefix();
+};
+
 
 class App: public Yb::ILogger
 {

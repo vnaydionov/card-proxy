@@ -4,6 +4,53 @@
 
 using namespace std;
 
+AppSettings::AppSettings(const std::string &file_name)
+    : file_name_(file_name)
+    , modified_(false) {
+}
+
+AppSettings::~AppSettings() {
+    if(modified_)
+        save_to_xml();
+}
+
+void AppSettings::fill_tree() {
+    std::ifstream file(file_name_.c_str());
+    if(file.good()) {
+        root_ = Yb::ElementTree::parse(file);
+        modified_ = false;
+    } else {
+        root_ = Yb::ElementTree::new_element("Settings");
+        root_->sub_element("port", "9119");
+        root_->sub_element("prefix", "card_bind");
+        modified_ = true;
+        save_to_xml();
+    }
+}
+
+void AppSettings::save_to_xml() {
+    std::ofstream file(file_name_.c_str());
+    if (file.good()) {
+        file << to_string() << std::endl;
+        file.close();
+        modified_ = false;
+    } else 
+        std::cerr << "Couldn't open'" << file_name_ << "' for writing" << std::endl;
+}
+
+const std::string AppSettings::to_string() const {
+    return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + 
+        root_->serialize();
+}
+
+std::string AppSettings::get_prefix() {
+    return root_->find_first("prefix")->get_text();
+}
+
+int AppSettings::get_port() {
+    return std::stoi(root_->find_first("port")->get_text());
+}
+
 void App::init_log(const string &log_name)
 {
     if (!log_.get()) {

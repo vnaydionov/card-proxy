@@ -219,12 +219,14 @@ ElementTree::ElementPtr dek(Session &session, ILogger &logger,
 
 int main(int argc, char *argv[])
 {
+    AppSettings app_settings;
+    app_settings.fill_tree();
     string log_name = "card_proxy.log";
     string db_name = "card_proxy_db";
     string error_content_type = "text/xml";
     string error_body = mk_resp("internal_error")->serialize();
-    string prefix = "/card_bind/";
-    int port = 9119;
+    string prefix = app_settings.get_prefix(); //"/card_bind/";
+    int port = app_settings.get_port();//9119;
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),
         WRAP(dek_status),
