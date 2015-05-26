@@ -21,4 +21,17 @@ private:
 
 };
 
+class AESBlockSizeException {
+public:
+    AESBlockSizeException();
+    AESBlockSizeException(const int &size, const std::string &val);
+    virtual ~AESBlockSizeException();
+
+    std::string get_string();
+    int get_block_size();
+
+private:
+    std::string value;
+    int block_size;
+};
 #endif /* AESCRYPTER_H_ */

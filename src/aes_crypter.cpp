@@ -38,9 +38,7 @@ void AESCrypter::set_master_key(const std::string &key) {
 
 std::string AESCrypter::encrypt(const std::string &input_text) {
 	if(input_text.size() == 0 || input_text.size() % _block_size != 0) 
-		throw std::string("Encrypt: block size is not %KRATEN% " +
-                std::to_string(_block_size) + ": " + std::to_string(input_text.size()) +
-                " - " + string_to_hexstring(input_text));
+        throw AESBlockSizeException(_block_size, input_text);
 	int blocks = input_text.size() / _block_size;
 	unsigned char *input_text_char = (unsigned char*)input_text.c_str();
 	unsigned char *cipher_block = new unsigned char[blocks * _block_size];
@@ -56,9 +54,7 @@ std::string AESCrypter::encrypt(const std::string &input_text) {
 
 std::string AESCrypter::decrypt(const std::string &input_cipher) {
 	if(input_cipher.size() == 0 || input_cipher.size() % _block_size != 0) 
-		throw std::string("Decrypt: block size is not %KRATEN% " +
-                std::to_string(_block_size) + ": " + std::to_string(input_cipher.size()) +
-                " - " + string_to_hexstring(input_cipher));
+        throw AESBlockSizeException(_block_size, input_cipher);
 	int blocks = input_cipher.size() / _block_size;
 	unsigned char *input_cipher_char = (unsigned char*)input_cipher.c_str();
 	unsigned char *text_block = new unsigned char[blocks * _block_size];
@@ -74,5 +70,22 @@ std::string AESCrypter::decrypt(const std::string &input_cipher) {
 
 
 AESCrypter::~AESCrypter() {
+}
+
+AESBlockSizeException::AESBlockSizeException() : block_size(0), value("") {
+}
+
+AESBlockSizeException::AESBlockSizeException(const int &size ,const std::string &val) : block_size(size), value(val) {
+}
+
+AESBlockSizeException::~AESBlockSizeException() {
+}
+
+std::string AESBlockSizeException::get_string() {
+    return this->value;
+}
+
+int AESBlockSizeException::get_block_size() {
+    return this->block_size;
 }
 
