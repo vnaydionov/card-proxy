@@ -326,19 +326,14 @@ void test_bindec_decoding_cycle_backward() {
     }
 }
 
-void test_aes_coding() {
-    std::string messages[] = {
-        "1234567891234567",
-        "1231241435984941",
-        "dadjahkjadflajdh",
-        "gjhfdghsdfgahoad"
-    };
-    int len = sizeof(messages) / sizeof(messages[0]);
+void test_aes_end_to_end() {
+    std::cout << "test_aes_end_to_end" << std::endl;
+    std::vector<std::string> messages;
     std::string key = "12345678901234567890123456789012";
-
-    std::cout << "test_aes_coding" << std::endl;
     AESCrypter aes_crypter(key);
-    for(int i = 0; i < len; ++i) {
+    for(int i = 0; i < AES_TESTS; i++)
+        messages.push_back(generate_random_string(16 * (rand() % 5 + 1))); //[16, 32, 48, 64, 80]
+    for(int i = 0; i < AES_TESTS; ++i) {
         try {   
             std::string encode_aes = aes_crypter.encrypt(messages[i]);
             std::string decode_aes = aes_crypter.decrypt(encode_aes);
@@ -346,10 +341,71 @@ void test_aes_coding() {
                 std::cout << "Result:    Success!" << std::endl;
             else {
                 std::cout << "Result:    Fail!" << std::endl;
-                std::cout << "Input: " << messages[i] << " Decode: " << decode_aes << std::endl;
+                std::cout << "Input: " << messages[i] 
+                    << " Decode: " << decode_aes << std::endl;
             }
-        } catch(std::string &err) {
-            std::cout << err << std::endl;
+        } catch(AESBlockSizeException &exc) {
+            std::cout << "Invalid block size: " << exc.get_string().length()
+                << ", expected %" << exc.get_block_size() << " ["
+                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+        }
+    }
+}
+
+void test_aes_encoding() { 
+    std::cout << "test_aes_encoding" << std::endl;
+    std::vector<std::pair<std::string, std::string> > messages;
+    std::vector<std::pair<std::string, std::string> >::iterator it;
+    std::string key = "12345678901234567890123456789012";
+    AESCrypter aes_crypter(key);
+    messages.push_back(std::make_pair("1234567890123456",   "CF 21 48 02 A9 EA F1 F8 A1 68 91 6A 80 7F 60 54"));
+    messages.push_back(std::make_pair("abcdefghijklmnop",   "CB 3B D7 7F 8B 72 28 4A 17 66 21 88 4E 3E 06 C9"));
+    messages.push_back(std::make_pair("ABCDEFGHIJKLMNOP",   "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27"));
+    
+    for(it = messages.begin(); it != messages.end(); ++it) {
+        try { 
+            std::string aes_encode = aes_crypter.encrypt(it->first);
+            if(it->second.compare(string_to_hexstring(aes_encode)) == 0)
+                std::cout << "Result:    Success!" << std::endl;
+            else {
+                std::cout << "Result:    Fail!" << std::endl;
+                std::cout << "Input:  " << it->first << std::endl; 
+                std::cout << "Wait:   " << it->second << std::endl;
+                std::cout << "Encode: " << aes_encode << std::endl;
+            }
+        } catch(AESBlockSizeException &exc) {
+            std::cout << "Invalid block size: " << exc.get_string().length()
+                << ", expected %" << exc.get_block_size() << " ["
+                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+        }
+    }
+}
+
+void test_aes_decoding() { 
+    std::cout << "test_aes_decoding" << std::endl;
+    std::vector<std::pair<std::string, std::string> > messages;
+    std::vector<std::pair<std::string, std::string> >::iterator it;
+    std::string key = "12345678901234567890123456789012";
+    AESCrypter aes_crypter(key);
+    messages.push_back(std::make_pair("1234567890123456",   "CF 21 48 02 A9 EA F1 F8 A1 68 91 6A 80 7F 60 54"));
+    messages.push_back(std::make_pair("abcdefghijklmnop",   "CB 3B D7 7F 8B 72 28 4A 17 66 21 88 4E 3E 06 C9"));
+    messages.push_back(std::make_pair("ABCDEFGHIJKLMNOP",   "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27"));
+    
+    for(it = messages.begin(); it != messages.end(); ++it) {
+        try { 
+            std::string aes_decode = aes_crypter.decrypt(string_from_hexstring(it->second));
+            if(it->first.compare(aes_decode) == 0)
+                std::cout << "Result:    Success!" << std::endl;
+            else {
+                std::cout << "Result:    Fail!" << std::endl;
+                std::cout << "Input:  " << it->first << std::endl; 
+                std::cout << "Wait:   " << it->second << std::endl;
+                std::cout << "Encode: " << aes_decode << std::endl;
+            }
+        } catch(AESBlockSizeException &exc) {
+            std::cout << "Invalid block size: " << exc.get_string().length()
+                << ", expected %" << exc.get_block_size() << " ["
+                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
         }
     }
 }
@@ -441,7 +497,9 @@ int main() {
     test_bindec_end_to_end_random();
     
     //aes
-    test_aes_coding();
+    test_aes_end_to_end();
+    test_aes_encoding();
+    test_aes_decoding();
 
     test_full_coding();
     test_dek_coding();

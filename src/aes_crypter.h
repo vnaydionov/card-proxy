@@ -34,4 +34,10 @@ private:
     std::string value;
     int block_size;
 };
+
+class AESEncryptBlockSizeException : public AESBlockSizeException {
+};
+
+class AESDecryptBlockSizeException : public AESBlockSizeException {
+};
 #endif /* AESCRYPTER_H_ */
