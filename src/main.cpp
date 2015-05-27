@@ -3,10 +3,10 @@
 #include "domain/IncomingRequest.h"
 #include "domain/DataKey.h"
 #include "domain/Config.h"
-#include "card_proxy.h"
 #include "utils.h"
-#include "crypt_utils.h"
+#include "crypt.h"
 #include "aes_crypter.h"
+#include "card_data.h"
 #include "domain/Card.h"
 
 #include <util/util_config.h>
@@ -173,7 +173,7 @@ ElementTree::ElementPtr dek_generate(Session &session, ILogger &logger,
     //data_key.counter = 0;
     //data_key.save(session);
     //session.commit();
-    DataKey data_key = generate_new_dek(session);
+    DataKey data_key = generate_new_data_key(session);
     resp->sub_element("ID", Yb::to_string(data_key.id.value()));
     resp->sub_element("DEK", data_key.dek_crypted);
     resp->sub_element("START_TS", Yb::to_string(data_key.start_ts.value()));
@@ -208,7 +208,7 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DataKey dek = get_active_dek();
+    DataKey dek = get_active_data_key(session);
     dek.counter = dek.counter + 2;
     dek.save(session);
     session.commit();

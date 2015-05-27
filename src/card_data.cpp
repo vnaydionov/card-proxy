@@ -3,10 +3,13 @@
 CardData::CardData() {
 }
 
-CardData::CardData(std::string chname, std::string pan,
-                   std::string expdate, std::string cvn) {
-    this->chname = chname;
-    this->pan = pan;
-    this->expdate = expdate;
-    this->cvn = cvn;
 }
+
+Card::CardData(const std::string &chname, const std::string &pan,
+        const std::string &masked_pan, const std::string &expdate,
+        const std::string &cvn)
+        : _chname(chname), _pan(pan), _masked_pan(masked_pan)
+        , _expdate(expdate), _cvn(cvn) {
+}
+
+

@@ -5,9 +5,11 @@
 class CardData { 
 public:
     CardData();
-    CardData(std::string chname, std::string pan, std::string expdate, std::string cvn);
+    CardData(const std::string &chname, const std::string &pan,
+            const std::string &masked_pan, const std::string &expdate,
+            const std::string &cvn);
     virtual ~CardData();
 
-   std::string chname, pan, expdate, cvn;
+    std::string _chname, _pan, _masked_pan, _expdate, _cvn;
 };
 #endif

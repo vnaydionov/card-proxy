@@ -125,7 +125,7 @@ std::string string_to_hexstring(const std::string &input) {
 }
 
 std::string string_from_hexstring(const std::string &hex_input) {
-    int in_size = hex_input.size() - (hex_input.size() / 3);
+    int in_size = (hex_input.size() - (hex_input.size() / 3)) / 2;
     const char *str = hex_input.c_str();
     std::string result(in_size, 0); 
 	for(int i = 0; i < in_size; ++i) {
@@ -225,3 +225,23 @@ std::string generate_dek_value(const int length) {
     return std::string((char*) dek);
 }
 
+std::string generate_random_number(const int length) {
+    std::string result(length, 0);
+    for(int i = 0; i < length; ++i) 
+        result[i] = rand() % 10 + 48;
+    return result;
+}
+
+std::string generate_random_string(const int length) {
+    std::string result(length, 0);
+    for(int i = 0; i < length; ++i) {
+        int tmp = rand() % 62;
+        if (tmp < 26) 
+            result[i] = 65 + tmp;
+        else if (tmp < 52)
+            result[i] = 97 + (tmp - 26);
+        else
+            result[i] = 48 + (tmp - 52);
+    }
+    return result;
+}

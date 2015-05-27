@@ -8,30 +8,8 @@
 
 #define B64_TESTS      10
 #define BINDEC_TESTS   20
-#define AES_TESTS      10
+#define AES_TESTS      100
 
-
-std::string generate_random_number(const int length) {
-    std::string result(length, 0);
-    for(int i = 0; i < length; ++i) 
-        result[i] = rand() % 10 + 48;
-    return result;
-}
-
-std::string generate_random_string(const int length) {
-    std::string result(length, 0);
-    for(int i = 0; i < length; ++i) {
-        int tmp = rand() % 62;
-        if (tmp < 26) 
-            result[i] = 65 + tmp;
-        else if (tmp < 52)
-            result[i] = 97 + (tmp - 26);
-        else
-            result[i] = 48 + (tmp - 52);
-    }
-    return result;
-}
-        
 void test_base64_end_to_end() {
     std::cout << "test_base64_end_to_end" << std::endl;
     std::vector<std::string> messages;

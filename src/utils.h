@@ -37,6 +37,8 @@ std::string string_from_hexstring(const std::string &hex_input);
 std::string generate_dek_value(const int length = 32);
 std::string get_master_key();
 
+std::string generate_random_number(const int length);
+std::string generate_random_string(const int length);
 
 class BinDecConverter {
 public:
