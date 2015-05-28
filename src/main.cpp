@@ -159,20 +159,6 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek_generate(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    //generate_dek_value();
-    //Domain::DataKey data_key;
-    //AESCrypter aes_crypter;
-    //std::string master_key = assemble_master_key();
-    //std::string dek = generate_dek_value();
-    //aes_crypter.set_master_key(master_key);
-    //std::string crypted_dek = aes_crypter.encrypt(dek);
-    //std::string encoded_dek = encode_base64(crypted_dek);
-    //data_key.dek_crypted = encoded_dek;
-    //data_key.start_ts = Yb::now();
-    //data_key.finish_ts = Yb::dt_make(2020, 12, 31);
-    //data_key.counter = 0;
-    //data_key.save(session);
-    //session.commit();
     DataKey data_key = generate_new_data_key(session);
     resp->sub_element("ID", Yb::to_string(data_key.id.value()));
     resp->sub_element("DEK", data_key.dek_crypted);
@@ -210,7 +196,6 @@ ElementTree::ElementPtr dek(Session &session, ILogger &logger,
     ElementTree::ElementPtr resp = mk_resp("success");
     DataKey dek = get_active_data_key(session);
     dek.counter = dek.counter + 2;
-    dek.save(session);
     session.commit();
     resp->sub_element("dek", dek.dek_crypted.value());
     resp->sub_element("counter", Yb::to_string(dek.counter.value()));
@@ -225,7 +210,7 @@ int main(int argc, char *argv[])
     string db_name = "card_proxy_db";
     string error_content_type = "text/xml";
     string error_body = mk_resp("internal_error")->serialize();
-    string prefix = app_settings.get_prefix(); //"/card_bind/";
+    string prefix = "/card_bind/";//app_settings.get_prefix(); //"/card_bind/";
     int port = app_settings.get_port();//9119;
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),

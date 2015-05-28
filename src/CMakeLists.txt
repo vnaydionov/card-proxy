@@ -8,7 +8,7 @@ include_directories (
 
 add_executable (card_proxy
     tcp_socket.cpp micro_http.cpp app_class.cpp helpers.cpp main.cpp
-    utils.cpp aes_crypter.cpp crypt.cpp
+    utils.cpp aes_crypter.cpp crypt.cpp card_data.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp)

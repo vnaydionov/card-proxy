@@ -6,7 +6,6 @@ class AESCrypter {
 public:
 	AESCrypter();
 	AESCrypter(const std::string &key);
-	AESCrypter(const unsigned char *key);
 	virtual ~AESCrypter();
 
 	std::string encrypt(const std::string &input_text);

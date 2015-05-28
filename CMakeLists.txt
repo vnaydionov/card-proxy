@@ -4,6 +4,7 @@ project (card_proxy)
 
 option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 if (CMAKE_COMPILER_IS_GNUCXX)
     SET(ENABLE_CXX11 "-std=c++11")
 

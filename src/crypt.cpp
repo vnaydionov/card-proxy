@@ -18,12 +18,12 @@ std::string CardCrypter::get_token(const CardData &card_data) {
     std::string pure_data_key = master_crypter.decrypt(aes_data_key);
     AESCrypter data_key_crypter(pure_data_key);
     
-
-    card.card_token = std::stoi(generate_random_number(6));
+    card.card_token = 999999;
     card.ts = Yb::now();
     card.expire_dt = Yb::dt_make(2020, 12, 31); //TODO
     card.card_holder = card_data._chname;
     card.pan_masked = card_data._masked_pan;
+    card.pan_crypted = encrypt_pan(data_key_crypter, card_data._pan);
     //card.dek_id = data_key.id;
     card.save(session);
     session.commit();
@@ -32,6 +32,8 @@ std::string CardCrypter::get_token(const CardData &card_data) {
 }
 
 CardData CardCrypter::get_card(const std::string &token) {
+    CardData card;
+    return card;
 }
 
 std::string CardCrypter::encrypt_pan(AESCrypter &crypter, const std::string &pan) {
@@ -63,21 +65,26 @@ Domain::DataKey generate_new_data_key(Yb::Session &session) {
     Domain::DataKey data_key;
     AESCrypter aes_crypter;
     std::string master_key = assemble_master_key();
-    std::string dek_value = generate_dek_value();
-    aes_crypter.set_master_key(master_key);
-    std::string crypted_dek = aes_crypter.encrypt(dek_value);
-    std::string encoded_dek = encode_base64(crypted_dek);
-    
-    data_key.dek_crypted = encoded_dek;
-    data_key.start_ts = Yb::now();
-    data_key.finish_ts = Yb::dt_make(2020, 12, 31);
-    data_key.counter = 0;
-    data_key.save(session);
-    session.commit();
+    std::string dek_value = generate_dek_value(32);
+    try {
+        aes_crypter.set_master_key(master_key);
+        std::string crypted_dek = aes_crypter.encrypt(dek_value);
+        std::string encoded_dek = encode_base64(crypted_dek);
+        data_key.dek_crypted = encoded_dek;
+        data_key.start_ts = Yb::now();
+        data_key.finish_ts = Yb::dt_make(2020, 12, 31);
+        data_key.counter = 0;
+        data_key.save(session);
+        session.commit();
+    } catch(AESBlockSizeException &exc) {
+        std::cout << "Invalid block size: " << exc.get_string().length()
+            << ", expected %" << exc.get_block_size() << " ["
+            << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+    }
+    return data_key;
 }
 
 Domain::DataKey get_active_data_key(Yb::Session &session) {
-    //std::auto_ptr<Yb::Session> session(theApp::instance().new_session());
     DEKPoolStatus dek_status = get_dek_pool_status(session);
     //lol
     while(dek_status.active_count < 50) { 
@@ -89,6 +96,6 @@ Domain::DataKey get_active_data_key(Yb::Session &session) {
     DataKey dek = Yb::query<DataKey>(session)
             .filter_by(DataKey::c.counter < 10)
             .order_by(DataKey::c.counter)
-            .one();
+            .range(0, 1).one();
     return dek;
 }

@@ -1,6 +1,6 @@
 #ifndef CARDDATA_H_
 #define CARDDATA_H_
-#include "helpers.h"
+#include <string>
 
 class CardData { 
 public:
@@ -8,7 +8,7 @@ public:
     CardData(const std::string &chname, const std::string &pan,
             const std::string &masked_pan, const std::string &expdate,
             const std::string &cvn);
-    virtual ~CardData();
+    ~CardData();
 
     std::string _chname, _pan, _masked_pan, _expdate, _cvn;
 };

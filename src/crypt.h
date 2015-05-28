@@ -11,7 +11,6 @@
 #include "domain/DataKey.h"
 #include "domain/Card.h"
 
-
 struct DEKPoolStatus {
     long total_count;
     long active_count;
@@ -21,8 +20,10 @@ struct DEKPoolStatus {
 std::string assemble_master_key();
 
 std::string generate_token();
+
 Domain::DataKey get_active_data_key(Yb::Session &session);
 Domain::DataKey generate_new_data_key(Yb::Session &session);
+
 DEKPoolStatus get_dek_pool_status(Yb::Session &session);
 
 class CardCrypter {
@@ -40,5 +41,4 @@ private:
 
     std::string encrypt_pan(AESCrypter &crypter, const std::string &pan);
 };
-
 #endif

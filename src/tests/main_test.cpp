@@ -6,21 +6,21 @@
 #include "../aes_crypter.h"
 
 
-#define B64_TESTS      10
-#define BINDEC_TESTS   20
-#define AES_TESTS      100
+#define B64_TESTS       50
+#define BINDEC_TESTS    50
+#define AES_TESTS       50
+#define AES_LONG_TESTS  50
+#define FULL_TESTS      50
 
 void test_base64_end_to_end() {
-    std::cout << "test_base64_end_to_end" << std::endl;
+    std::cout << "test_base64_end_to_end..." << std::endl;
     std::vector<std::string> messages;
     for(int i = 0; i < B64_TESTS; i++)
         messages.push_back(generate_random_string(rand() % 20 + 10));
     for (int i = 0; i < B64_TESTS ; ++i) {
         std::string encode64 = encode_base64(messages[i]);
         std::string decode64 = decode_base64(encode64);
-        if(messages[i].compare(decode64) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(messages[i].compare(decode64) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << messages[i] << " Decode: " << decode64 << std::endl;
         }
@@ -28,7 +28,7 @@ void test_base64_end_to_end() {
 }
 
 void test_base64_encoding() {
-    std::cout << "test_base64_encoding" << std::endl;
+    std::cout << "test_base64_encoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     //Argentina 
@@ -46,9 +46,7 @@ void test_base64_encoding() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string encode64 = encode_base64(it->first);
-        if(it->second.compare(encode64) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->second.compare(encode64) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << it->first << " Encode: " << encode64 << std::endl;
         }
@@ -56,7 +54,7 @@ void test_base64_encoding() {
 }
 
 void test_base64_decoding() {
-    std::cout << "test_base64_decoding" << std::endl;
+    std::cout << "test_base64_decoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     //England 
@@ -72,9 +70,7 @@ void test_base64_decoding() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string decode64 = decode_base64(it->second);
-        if(it->first.compare(decode64) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->first.compare(decode64) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << it->second << " Decode: " << decode64 << std::endl;
         }
@@ -82,7 +78,7 @@ void test_base64_decoding() {
 }
 
 void test_bindec_end_to_end_zero() {
-    std::cout << "test_bindec_end_to_end_zero" << std::endl;
+    std::cout << "test_bindec_end_to_end_zero..." << std::endl;
     std::vector<std::string> messages;
     BinDecConverter bindec_converter = BinDecConverter(ZERO);
     for(int i = 0; i < BINDEC_TESTS; i++)
@@ -90,9 +86,7 @@ void test_bindec_end_to_end_zero() {
     for(int i = 0; i < BINDEC_TESTS ; ++i) {
         std::string encode_bindec = bindec_converter.encode(messages[i]);
         std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(messages[i].compare(decode_bindec) != 0) { 
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
         }
@@ -100,7 +94,7 @@ void test_bindec_end_to_end_zero() {
 }
 
 void test_bindec_end_to_end_cycle_forward() {
-    std::cout << "test_bindec_end_to_end_cycle_forward" << std::endl;
+    std::cout << "test_bindec_end_to_end_cycle_forward..." << std::endl;
     std::vector<std::string> messages;
     BinDecConverter bindec_converter = BinDecConverter(CYCLE_FORWARD);
     for(int i = 0; i < BINDEC_TESTS; i++)
@@ -108,9 +102,7 @@ void test_bindec_end_to_end_cycle_forward() {
     for(int i = 0; i < BINDEC_TESTS ; ++i) {
         std::string encode_bindec = bindec_converter.encode(messages[i]);
         std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(messages[i].compare(decode_bindec) != 0) { 
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
         }
@@ -118,7 +110,7 @@ void test_bindec_end_to_end_cycle_forward() {
 }
 
 void test_bindec_end_to_end_cycle_backward() {
-    std::cout << "test_bindec_end_to_end_cycle_backward" << std::endl;
+    std::cout << "test_bindec_end_to_end_cycle_backward..." << std::endl;
     std::vector<std::string> messages;
     BinDecConverter bindec_converter = BinDecConverter(CYCLE_BACKWARD);
     for(int i = 0; i < BINDEC_TESTS; i++)
@@ -126,9 +118,7 @@ void test_bindec_end_to_end_cycle_backward() {
     for(int i = 0; i < BINDEC_TESTS ; ++i) {
         std::string encode_bindec = bindec_converter.encode(messages[i]);
         std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(messages[i].compare(decode_bindec) != 0) { 
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
         }
@@ -136,7 +126,7 @@ void test_bindec_end_to_end_cycle_backward() {
 }
 
 void test_bindec_end_to_end_random() {
-    std::cout << "test_bindec_end_to_end_random" << std::endl;
+    std::cout << "test_bindec_end_to_end_random..." << std::endl;
     std::vector<std::string> messages;
     BinDecConverter bindec_converter = BinDecConverter(RANDOM);
     for(int i = 0; i < BINDEC_TESTS; i++)
@@ -144,9 +134,7 @@ void test_bindec_end_to_end_random() {
     for(int i = 0; i < BINDEC_TESTS ; ++i) {
         std::string encode_bindec = bindec_converter.encode(messages[i]);
         std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(messages[i].compare(decode_bindec) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
         }
@@ -154,7 +142,7 @@ void test_bindec_end_to_end_random() {
 }
 
 void test_bindec_encoding_zero() {
-    std::cout << "test_bindec_encoding_zero" << std::endl;
+    std::cout << "test_bindec_encoding_zero..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     BinDecConverter bindec_converter = BinDecConverter(ZERO);
@@ -167,9 +155,7 @@ void test_bindec_encoding_zero() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string bindec_encode = string_to_hexstring(bindec_converter.encode(it->first));
-        if(it->second.compare(bindec_encode) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->second.compare(bindec_encode) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
@@ -179,7 +165,7 @@ void test_bindec_encoding_zero() {
 }
 
 void test_bindec_decoding_zero() {
-    std::cout << "test_bindec_decoding_zero" << std::endl;
+    std::cout << "test_bindec_decoding_zero..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     BinDecConverter bindec_converter = BinDecConverter(ZERO);
@@ -192,9 +178,7 @@ void test_bindec_decoding_zero() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string bindec_decode = bindec_converter.decode(string_from_hexstring(it->second));
-        if(it->first.compare(bindec_decode) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->first.compare(bindec_decode) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
@@ -205,7 +189,7 @@ void test_bindec_decoding_zero() {
 }
 
 void test_bindec_encoding_cycle_forward() {
-    std::cout << "test_bindec_encoding_cycle_forward" << std::endl;
+    std::cout << "test_bindec_encoding_cycle_forward..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     BinDecConverter bindec_converter = BinDecConverter(CYCLE_FORWARD);
@@ -218,9 +202,7 @@ void test_bindec_encoding_cycle_forward() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string bindec_encode = string_to_hexstring(bindec_converter.encode(it->first));
-        if(it->second.compare(bindec_encode) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->second.compare(bindec_encode) != 0) { 
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
@@ -230,7 +212,7 @@ void test_bindec_encoding_cycle_forward() {
 }
 
 void test_bindec_decoding_cycle_forward() {
-    std::cout << "test_bindec_decoding_cycle_forward" << std::endl;
+    std::cout << "test_bindec_decoding_cycle_forward..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     BinDecConverter bindec_converter = BinDecConverter(CYCLE_FORWARD);
@@ -243,9 +225,7 @@ void test_bindec_decoding_cycle_forward() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string bindec_decode = bindec_converter.decode(string_from_hexstring(it->second));
-        if(it->first.compare(bindec_decode) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->first.compare(bindec_decode) != 0) { 
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
@@ -255,7 +235,7 @@ void test_bindec_decoding_cycle_forward() {
 }
 
 void test_bindec_encoding_cycle_backward() {
-    std::cout << "test_bindec_encoding_cycle_backward" << std::endl;
+    std::cout << "test_bindec_encoding_cycle_backward..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     BinDecConverter bindec_converter = BinDecConverter(CYCLE_BACKWARD);
@@ -268,9 +248,7 @@ void test_bindec_encoding_cycle_backward() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string bindec_encode = string_to_hexstring(bindec_converter.encode(it->first));
-        if(it->second.compare(bindec_encode) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->second.compare(bindec_encode) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
@@ -280,7 +258,7 @@ void test_bindec_encoding_cycle_backward() {
 }
 
 void test_bindec_decoding_cycle_backward() {
-    std::cout << "test_bindec_decoding_cycle_backward" << std::endl;
+    std::cout << "test_bindec_decoding_cycle_backward..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     BinDecConverter bindec_converter = BinDecConverter(CYCLE_BACKWARD);
@@ -293,9 +271,7 @@ void test_bindec_decoding_cycle_backward() {
     
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string bindec_decode = bindec_converter.decode(string_from_hexstring(it->second));
-        if(it->first.compare(bindec_decode) == 0)
-            std::cout << "Result:    Success!" << std::endl;
-        else {
+        if(it->first.compare(bindec_decode) != 0) { 
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
@@ -305,7 +281,7 @@ void test_bindec_decoding_cycle_backward() {
 }
 
 void test_aes_end_to_end() {
-    std::cout << "test_aes_end_to_end" << std::endl;
+    std::cout << "test_aes_end_to_end..." << std::endl;
     std::vector<std::string> messages;
     std::string key = "12345678901234567890123456789012";
     AESCrypter aes_crypter(key);
@@ -315,9 +291,7 @@ void test_aes_end_to_end() {
         try {   
             std::string encode_aes = aes_crypter.encrypt(messages[i]);
             std::string decode_aes = aes_crypter.decrypt(encode_aes);
-            if (messages[i].compare(decode_aes) == 0)
-                std::cout << "Result:    Success!" << std::endl;
-            else {
+            if (messages[i].compare(decode_aes) != 0) { 
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input: " << messages[i] 
                     << " Decode: " << decode_aes << std::endl;
@@ -331,7 +305,7 @@ void test_aes_end_to_end() {
 }
 
 void test_aes_encoding() { 
-    std::cout << "test_aes_encoding" << std::endl;
+    std::cout << "test_aes_encoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     std::string key = "12345678901234567890123456789012";
@@ -343,9 +317,7 @@ void test_aes_encoding() {
     for(it = messages.begin(); it != messages.end(); ++it) {
         try { 
             std::string aes_encode = aes_crypter.encrypt(it->first);
-            if(it->second.compare(string_to_hexstring(aes_encode)) == 0)
-                std::cout << "Result:    Success!" << std::endl;
-            else {
+            if(it->second.compare(string_to_hexstring(aes_encode)) != 0) { 
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input:  " << it->first << std::endl; 
                 std::cout << "Wait:   " << it->second << std::endl;
@@ -360,7 +332,7 @@ void test_aes_encoding() {
 }
 
 void test_aes_decoding() { 
-    std::cout << "test_aes_decoding" << std::endl;
+    std::cout << "test_aes_decoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
     std::string key = "12345678901234567890123456789012";
@@ -372,9 +344,7 @@ void test_aes_decoding() {
     for(it = messages.begin(); it != messages.end(); ++it) {
         try { 
             std::string aes_decode = aes_crypter.decrypt(string_from_hexstring(it->second));
-            if(it->first.compare(aes_decode) == 0)
-                std::cout << "Result:    Success!" << std::endl;
-            else {
+            if(it->first.compare(aes_decode) != 0) { 
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input:  " << it->first << std::endl; 
                 std::cout << "Wait:   " << it->second << std::endl;
@@ -388,21 +358,16 @@ void test_aes_decoding() {
     }
 }
             
-void test_full_coding() {
-    std::string messages[] = {
-        "1234567891234567",
-        "1231241435984941",
-        "12312312312312432",
-        "334234588778685123",
-        "87982634723692523942",
-    };
-    int len = sizeof(messages) / sizeof(messages[0]);
-    std::string key = "123456789012345";
-
-    std::cout << "test_full_coding" << std::endl;
+void test_coding_end_to_end() {
+    std::cout << "test_coding_end_to_end..." << std::endl;
+    std::vector<std::string> messages;
+    std::string key = "12345678901234567890123456789012";
     AESCrypter aes_crypter(key);
     BinDecConverter bindec_convert;
-    for(int i = 0; i < len; ++i) {
+    for(int i = 0; i < FULL_TESTS; i++)
+        messages.push_back(generate_random_number(rand() % 5 + 16));
+
+    for(int i = 0; i < FULL_TESTS; i++) {
         try {
             std::string encode_bindec = bindec_convert.encode(messages[i]);
             std::string encode_aes = aes_crypter.encrypt(encode_bindec);
@@ -410,41 +375,14 @@ void test_full_coding() {
             std::string decode_b64 = decode_base64(encode_b64);
             std::string decode_aes = aes_crypter.decrypt(decode_b64);
             std::string decode_bindec = bindec_convert.decode(decode_aes); 
-            if (messages[i].compare(decode_bindec) == 0)
-                std::cout << "Result:    Success!" << std::endl;
-            else {
+            if (messages[i].compare(decode_bindec) != 0) { 
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input: " << messages[i] << " Decode: " << decode_aes << "." << std::endl;
             }
-        } catch(std::string &err) {
-            std::cout << err << std::endl;
-        }
-    }
-}
-
-void test_dek_coding() {
-    std::string dek[] = {
-        "12345678901234567890123456789012", //32
-        "12312414359849413434513451242346",
-        "88946319839517858134581732839258",
-    };
-    int len = sizeof(dek) / sizeof(dek[0]);
-    std::string key = "123456789012345";
-    
-    std::cout << "test_dek_coding" << std::endl;
-    AESCrypter aes_crypter(key);
-    for(int i = 0; i < len; ++i) {
-        try {
-            std::string encode_dek = aes_crypter.encrypt(dek[i]);
-            std::string decode_dek = aes_crypter.decrypt(encode_dek);
-            if (dek[i].compare(decode_dek) == 0)
-                std::cout << "Result:    Success!" << std::endl;
-            else {
-                std::cout << "Result:    Fail!" << std::endl;
-                std::cout << "Input: " << dek[i] << " Decode: " << decode_dek << "." << std::endl;
-            }
-        } catch(std::string &err) {
-            std::cout << err << std::endl;
+        } catch(AESBlockSizeException &exc) {
+            std::cout << "Invalid block size: " << exc.get_string().length()
+                << ", expected %" << exc.get_block_size() << " ["
+                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
         }
     }
 }
@@ -479,6 +417,5 @@ int main() {
     test_aes_encoding();
     test_aes_decoding();
 
-    test_full_coding();
-    test_dek_coding();
+    test_coding_end_to_end();
 }

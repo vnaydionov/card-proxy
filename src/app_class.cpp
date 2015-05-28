@@ -22,7 +22,7 @@ void AppSettings::fill_tree() {
     } else {
         root_ = Yb::ElementTree::new_element("Settings");
         root_->sub_element("port", "9119");
-        root_->sub_element("prefix", "card_bind");
+        root_->sub_element("prefix", "/card_bind/");
         modified_ = true;
         save_to_xml();
     }

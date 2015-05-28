@@ -82,7 +82,7 @@ std::string get_master_key() {
 
 std::string string_to_bitstring(const std::string &input) {
     int in_size = input.size();
-    const char *str = input.c_str();
+    const char *str = input.data();
     std::string result(in_size * 9 - 1, ' '); 
 	for(int i = 0; i < in_size; ++i)
 		for(int j = 0, k = 7; j < 8; ++j, --k) //hard logic
@@ -100,6 +100,7 @@ char int_to_hexchar(const int &val, const StringHexCaseMode mode = UPPERCASE) {
             case LOWERCASE:
                 return 97 + (val - 10);
         }
+    return -1;
 }
 
 int hexchar_to_int(const char &val) {
@@ -109,13 +110,12 @@ int hexchar_to_int(const char &val) {
         return val - 65 + 10;
     else if (val >= 97 && val <= 102)
         return val - 97 + 10;
-    //error
     return -1;
 }
  
 std::string string_to_hexstring(const std::string &input) {
     int in_size = input.size();
-    const char *str = input.c_str();
+    const char *str = input.data();
     std::string result(in_size * 3 - 1, ' '); 
 	for(int i = 0; i < in_size; ++i) {
         result[i * 3]     = int_to_hexchar(str[i] >> 4 & 0xF);
@@ -126,7 +126,7 @@ std::string string_to_hexstring(const std::string &input) {
 
 std::string string_from_hexstring(const std::string &hex_input) {
     int in_size = (hex_input.size() - (hex_input.size() / 3)) / 2;
-    const char *str = hex_input.c_str();
+    const char *str = hex_input.data();
     std::string result(in_size, 0); 
 	for(int i = 0; i < in_size; ++i) {
         result[i] |= hexchar_to_int(str[i * 3]) << 4;
@@ -136,31 +136,31 @@ std::string string_from_hexstring(const std::string &hex_input) {
 }
 
 std::string encode_base64(const std::string &message) {
-	BIO *bio;
-	BIO *b64;
+	BIO *bio, *b64;
 	FILE* stream;
 
-    int length = message.length();
-	int encoded_size = 4 * ceil((double)length / 3);
-	char *buffer = new char[encoded_size + 1]; //memleak?
-    const char *c_message = message.c_str();
+    int size = message.size();
+	int encoded_size = 4 * ceil((double)size / 3);
+    std::string result(encoded_size, 0);
+	char *buffer = &result[0];
+    const char *c_message = message.data();
 
 	stream = fmemopen(buffer, encoded_size + 1, "w");
 	b64 = BIO_new(BIO_f_base64());
 	bio = BIO_new_fp(stream, BIO_NOCLOSE);
 	bio = BIO_push(b64, bio);
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, c_message, length);
+	BIO_write(bio, c_message, size);
 	(void)BIO_flush(bio);
 	BIO_free_all(bio);
 	fclose(stream);
 
-	return std::string(buffer);
+	return result;
 }
 
 int calc_decode_length(const std::string &b64input) {
 	int padding = 0;
-    int length = b64input.length();
+    int length = b64input.size();
 
 	// Check for trailing '=''s as padding
 	if(b64input[length - 1] == '=' && b64input[length - 2] == '=')
@@ -172,13 +172,13 @@ int calc_decode_length(const std::string &b64input) {
 }
 
 std::string decode_base64(const std::string &b64message) {
-	BIO *bio;
-	BIO *b64;
+	BIO *bio, *b64;
 
-    int length = b64message.length();
+    int length = b64message.size();
 	int decoded_length = calc_decode_length(b64message);
-	char *buffer = new char[decoded_length + 1];
-    const char *c_b64message = b64message.c_str();
+    std::string result(decoded_length, 0);
+	char *buffer = &result[0];
+    const char *c_b64message = b64message.data();
 
 	FILE* stream = fmemopen((char*)c_b64message, length, "r");
 
@@ -192,7 +192,7 @@ std::string decode_base64(const std::string &b64message) {
 	BIO_free_all(bio);
 	fclose(stream);
 
-	return std::string(buffer); 
+	return result; 
 }
 
 void convert_bits_to_ascii(unsigned char *input, int len) {
@@ -216,13 +216,16 @@ std::string generate_dek_value(const int length) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1)
         throw std::runtime_error("Can't open /dev/urandom");
-    if (read(fd, &dek, sizeof(dek)) != sizeof(dek)) {
+    if (read(fd, &dek, sizeof(dek)) != static_cast<int>(sizeof(dek))) {
         close(fd);
         throw std::runtime_error("Can't read from /dev/urandom");
     }
     close(fd);
     convert_bits_to_ascii(dek, length);
-    return std::string((char*) dek);
+    std::string result(length, 0);
+    for(int i = 0; i < length; ++i)
+        result[i] = dek[i];
+    return result;
 }
 
 std::string generate_random_number(const int length) {
