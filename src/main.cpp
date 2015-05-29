@@ -75,7 +75,6 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     Domain::Card card;
     card.card_token = generate_random_number(32);
     card.ts = Yb::now();
-    card.pan = params["pan"];/*convert data to string*/
     card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
     card.card_holder = params["card_holder"];
     std::string pan_m1 =  params["pan"].substr(0, 6);
@@ -175,7 +174,7 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
     ElementTree::ElementPtr resp = mk_resp("success");
     AESCrypter aes_crypter;
     std::string master_key = assemble_master_key();
-    aes_crypter.set_master_key(master_key);
+    aes_crypter.set_key(master_key);
     auto data_keys = Yb::query<Domain::DataKey>(session)
             .filter_by(Domain::DataKey::c.counter < 10)
             .all();
@@ -227,15 +226,14 @@ ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         return mk_resp("error");
 
     CardCrypter card_crypter(session);
-    std::string token = card_crypter.get_token(card_data);
+    Card card = card_crypter.get_token(card_data);
 
     ElementTree::ElementPtr cd = resp->sub_element("card_data");
     cd->sub_element("chname",     card_data._chname);
     cd->sub_element("pan",        card_data._pan);
-    cd->sub_element("masked_pan", card_data._masked_pan);
     cd->sub_element("expdate",    card_data._expdate);
     cd->sub_element("cvn",        card_data._cvn);
-    resp->sub_element("token",    token);
+    cd->sub_element("card_token", card.card_token);
     return resp;
 }
 
@@ -250,11 +248,12 @@ ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
 
     CardCrypter card_crypter(session);
     CardData card_data = card_crypter.get_card(token);
-    resp->sub_element("chname",     card_data._chname);
-    resp->sub_element("pan",        card_data._pan);
-    resp->sub_element("masked_pan", card_data._masked_pan);
-    resp->sub_element("expdate",    card_data._expdate);
-    resp->sub_element("cvn",        card_data._cvn);
+    ElementTree::ElementPtr cd = resp->sub_element("card_data");
+    cd->sub_element("chname",     card_data._chname);
+    cd->sub_element("pan",        card_data._pan);
+    cd->sub_element("expdate",    card_data._expdate);
+    cd->sub_element("cvn",        card_data._cvn);
+    cd->sub_element("card_token", token);
     return resp;
 }
 

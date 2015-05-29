@@ -21,7 +21,7 @@ AESCrypter::AESCrypter(const std::string &key)
 	AES_set_decrypt_key(_key, _key_size, &_decrypt_key);
 }
 
-void AESCrypter::set_master_key(const std::string &key) {
+void AESCrypter::set_key(const std::string &key) {
 	auto *_key = reinterpret_cast<const unsigned char *>(key.data());
 	AES_set_encrypt_key(_key, _key_size, &_encrypt_key);
 	AES_set_decrypt_key(_key, _key_size, &_decrypt_key);

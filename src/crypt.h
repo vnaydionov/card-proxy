@@ -10,6 +10,7 @@
 #include "card_data.h"
 #include "domain/DataKey.h"
 #include "domain/Card.h"
+#include "domain/IncomingRequest.h"
 
 struct DEKPoolStatus {
     long total_count;
@@ -31,7 +32,7 @@ public:
     CardCrypter(Yb::Session &session);
     ~CardCrypter();
 
-    std::string get_token(const CardData &card_data);
+    Domain::Card get_token(const CardData &card_data);
     CardData get_card(const std::string &token);
 
     void change_master_key();
@@ -40,8 +41,12 @@ private:
     Yb::Session &session;
     std::string _master_key;
 
-    std::string _get_encoded_pan(AESCrypter &crypter, const std::string &pan);
-    std::string _get_decoded_pan(AESCrypter &crypter, const std::string &pan);
+    Domain::Card _save_card(AESCrypter &master_crypter, const CardData &card_data);
+    Domain::IncomingRequest _save_cvn(AESCrypter &master_crypter, Domain::Card &card, const std::string &cvn);
+    std::string _generate_card_token();
+
+    std::string _get_encoded_str(AESCrypter &crypter, const std::string &str);
+    std::string _get_decoded_str(AESCrypter &crypter, const std::string &str);
     std::string _get_decoded_dek(AESCrypter &crypter, const std::string &dek);
 };
 

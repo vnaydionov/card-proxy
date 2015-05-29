@@ -11,7 +11,8 @@ add_executable (card_proxy
     utils.cpp aes_crypter.cpp crypt.cpp card_data.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp)
+    ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/domain/IncomingRequest.cpp)
 
 set_source_files_properties (
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
