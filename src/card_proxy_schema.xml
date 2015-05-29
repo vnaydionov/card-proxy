@@ -40,13 +40,20 @@
         <column name="DEK_ID" type="longint">
             <foreign-key table="T_DEK" />
         </column>
-        <column name="USER_EID" type="string" size="100" null="false" />
-        <column name="BALANCE" type="decimal" null="false" default="0" />
-        <column name="RESERVED" type="decimal" null="false" default="0" />
+        <column name="CARD_ID" type="longint">
+            <foreign-key table="T_CARD" />
+        </column>
+        <column name="TS" type="datetime"  null="false" />
+        <column name="CVN_CRYPTED" type="string" size="25" />
     </table>
 
     <relation type="one-to-many">
         <one class="DataKey" property="cards" />
         <many class="Card" property="dek" />
+    </relation>
+
+    <relation type="one-to-many">
+        <one class="DataKey" property="cvns" />
+        <many class="IncomingRequest" property="dek" />
     </relation>
 </schema>

@@ -7,7 +7,6 @@
 #include "crypt.h"
 #include "aes_crypter.h"
 #include "card_data.h"
-#include "domain/Card.h"
 
 #include <util/util_config.h>
 #if defined(YBUTIL_WINDOWS)
@@ -22,6 +21,7 @@
 #include <QCoreApplication>
 #endif
 #include <iostream>
+#include <string>
 #include <util/string_utils.h>
 #include <util/element_tree.h>
 
@@ -84,15 +84,14 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
     card.save(session);
     session.commit();
     int card_id = card.id;
-    
-    resp->sub_element("card_id",Yb::to_string(card_id));
-    resp->sub_element("card_holder",card.card_holder);
+
+    resp->sub_element("card_id", Yb::to_string(card_id));
+    resp->sub_element("card_holder", card.card_holder);
     resp->sub_element("pan_masked", card.pan_masked);
-    std::string expire_dtYear =Yb::to_string(params.get_as<string>("expire_year"));/*convert data to string*/
-    std::string expire_dtMonth =Yb::to_string(params.get_as<string>("expire_month"));/*convert data to string*/
-    std::string expire_dtCD = expire_dtMonth +"/"+ expire_dtYear;
-    resp->sub_element("expire.dt",expire_dtCD);
-  
+    std::string expire_dtYear = Yb::to_string(params.get_as<string>("expire_year"));/*convert data to string*/
+    std::string expire_dtMonth = Yb::to_string(params.get_as<string>("expire_month"));/*convert data to string*/
+    std::string expire_dtCD = expire_dtMonth + "/" + expire_dtYear;
+    resp->sub_element("expire.dt", expire_dtCD); 
     return resp;
 }
 
@@ -110,6 +109,7 @@ class CardProxyHttpWrapper
         logger.info("result: " + res_str);
         return res_str;
     }
+
 public:
     CardProxyHttpWrapper(): f_(NULL) {}
     CardProxyHttpWrapper(const string &name, HttpHandler f,
