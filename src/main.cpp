@@ -73,8 +73,7 @@ ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
 {
     ElementTree::ElementPtr resp = mk_resp("success");
     Domain::Card card;
-    Yb::LongInt token = get_random();
-    card.card_token = token;
+    card.card_token = generate_random_number(32);
     card.ts = Yb::now();
     card.pan = params["pan"];/*convert data to string*/
     card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
@@ -154,6 +153,7 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
     DEKPoolStatus dek_status = dek_pool.get_status();
     resp->sub_element("total_count", Yb::to_string(dek_status.total_count));
     resp->sub_element("active_count", Yb::to_string(dek_status.active_count));
+    resp->sub_element("use_count", Yb::to_string(dek_status.use_count));
     return resp;
 }
 
@@ -208,12 +208,53 @@ ElementTree::ElementPtr dek(Session &session, ILogger &logger,
 ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
+    CardData card_data;
+    try {
+        std::string mode = params["mode"];
+        if(mode.compare("auto") == 0) 
+            card_data = generate_random_card_data();
+        else {
+            card_data._chname = params["chname"];
+            card_data._pan = params["pan"];
+            card_data._masked_pan = params["pan"];
+            card_data._expdate = params["expdate"];
+            card_data._cvn = params["cvn"];
+        }
+    } catch(Yb::KeyError &err) {
+    }
+    //make norm check
+    if(card_data._pan.compare("") == 0)
+        return mk_resp("error");
+
+    CardCrypter card_crypter(session);
+    std::string token = card_crypter.get_token(card_data);
+
+    ElementTree::ElementPtr cd = resp->sub_element("card_data");
+    cd->sub_element("chname",     card_data._chname);
+    cd->sub_element("pan",        card_data._pan);
+    cd->sub_element("masked_pan", card_data._masked_pan);
+    cd->sub_element("expdate",    card_data._expdate);
+    cd->sub_element("cvn",        card_data._cvn);
+    resp->sub_element("token",    token);
     return resp;
 }
 
 ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
+    std::string token;
+    try {
+        token = params["token"];
+    } catch(Yb::KeyError &err) {
+    }
+
+    CardCrypter card_crypter(session);
+    CardData card_data = card_crypter.get_card(token);
+    resp->sub_element("chname",     card_data._chname);
+    resp->sub_element("pan",        card_data._pan);
+    resp->sub_element("masked_pan", card_data._masked_pan);
+    resp->sub_element("expdate",    card_data._expdate);
+    resp->sub_element("cvn",        card_data._cvn);
     return resp;
 }
 

@@ -11,4 +11,6 @@ CardData::CardData(const std::string &chname, const std::string &pan,
         , _expdate(expdate), _cvn(cvn) {
 }
 
+CardData::~CardData() {
 
+}

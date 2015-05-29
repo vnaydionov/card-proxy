@@ -23,22 +23,33 @@ std::string CardCrypter::get_token(const CardData &card_data) {
     std::string dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
     AESCrypter data_key_crypter(dek);
     
-    card.card_token = 999999;
+    card.card_token = generate_random_number(32);
     card.ts = Yb::now();
     card.expire_dt = Yb::dt_make(2020, 12, 31); //TODO
     card.card_holder = card_data._chname;
     card.pan_masked = card_data._masked_pan;
+    card.pan = card_data._pan;
     card.pan_crypted = _get_encoded_pan(data_key_crypter, card_data._pan);
-    //card.dek_id = data_key.id;
+    card.dek = DataKey::Holder(data_key);
     card.save(session);
+    data_key.counter = data_key.counter + 1;
     session.commit();
 
-    return std::to_string(card.card_token.value()); 
+    return card.card_token; 
 }
 
 CardData CardCrypter::get_card(const std::string &token) {
-    CardData card;
-    return card;
+    AESCrypter master_crypter(_master_key); 
+    DEKPool dek_pool(session);
+    Card card = Yb::query<Card>(session)
+            .filter_by(Card::c.card_token == token)
+            .one();
+    std::string dek = _get_decoded_dek(master_crypter, card.dek->dek_crypted);
+    AESCrypter data_key_crypter(dek);
+    std::string pan = _get_decoded_pan(data_key_crypter, card.pan_crypted); 
+    CardData card_data(card.card_holder.value(), pan, pan,
+        Yb::to_string(card.expire_dt.value()), "111");
+    return card_data;
 }
 
 std::string CardCrypter::_get_encoded_pan(AESCrypter &crypter, const std::string &pan) {
@@ -56,7 +67,7 @@ std::string CardCrypter::_get_decoded_pan(AESCrypter &crypter, const std::string
     std::string bindec_pan, pure_pan;
     try {
         bindec_pan = crypter.decrypt(decode_base64(pan));
-        pure_pan = BinDecConverter().encode(pan);
+        pure_pan = BinDecConverter().decode(bindec_pan);
     } catch(AESBlockSizeException &exc) {
         std::cout << exc.to_string() << std::endl;
     }
@@ -142,3 +153,13 @@ DataKey DEKPool::_generate_new_data_key() {
     return data_key;
 }
 
+
+CardData generate_random_card_data() {
+    std::string chname = generate_random_string(10) + " " +
+        generate_random_string(10);
+    std::string pan = generate_random_number(16);
+    std::string masked_pan = pan;
+    std::string expdate = "2020-12-31T00:00:00";//Yb::dt_make(2020, 12, 31);
+    std::string cvn = generate_random_number(3);
+    return CardData(chname, pan, masked_pan, expdate, cvn);
+}

@@ -62,10 +62,11 @@ std::string BinDecConverter::encode(const std::string &in) {
 }
 
 std::string BinDecConverter::decode(const std::string &in) {
-	int blocks_cnt = in.size() / 16, result_len = blocks_cnt * 2;
+	int blocks_cnt = in.size() / 16;
+    int result_len = blocks_cnt * 2;
 	std::string result;
 	for (int i = 0; result_len; ++i) {
-		char t_val = in[i / 2];
+		unsigned char t_val = in[i / 2];
 		if (i % 2 == 0)
 			t_val >>= 4;
 		t_val &= 0xF;
@@ -248,3 +249,4 @@ std::string generate_random_string(const int length) {
     }
     return result;
 }
+

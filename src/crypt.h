@@ -24,6 +24,8 @@ std::string assemble_master_key();
 
 std::string generate_token();
 
+CardData generate_random_card_data();
+
 class CardCrypter {
 public:
     CardCrypter(Yb::Session &session);
@@ -31,6 +33,7 @@ public:
 
     std::string get_token(const CardData &card_data);
     CardData get_card(const std::string &token);
+
     void change_master_key();
 
 private:
