@@ -64,23 +64,29 @@ AESCrypter::~AESCrypter() {
 }
 
 AESBlockSizeException::AESBlockSizeException()
-    : block_size(0)
-{
+    : block_size(0) {
 }
 
-AESBlockSizeException::AESBlockSizeException(const int &size ,const std::string &val)
-    : value(val), block_size(size)
-{
+AESBlockSizeException::AESBlockSizeException(const int &size,
+    const std::string &val)
+    : value(val), block_size(size) {
 }
 
 AESBlockSizeException::~AESBlockSizeException() {
 }
 
 std::string AESBlockSizeException::get_string() {
-    return this->value;
+    return value;
 }
 
 int AESBlockSizeException::get_block_size() {
-    return this->block_size;
+    return block_size;
+}
+
+std::string AESBlockSizeException::to_string() {
+    std::string result = "Invalid block size: " + std::to_string(value.size())
+            + ", expected %" + std::to_string(block_size) 
+            + " [" + string_to_hexstring(value) + "]";
+    return result;
 }
 

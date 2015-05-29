@@ -28,6 +28,7 @@ public:
 
     std::string get_string();
     int get_block_size();
+    std::string to_string();
 
 private:
     std::string value;

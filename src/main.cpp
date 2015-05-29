@@ -150,16 +150,18 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
         const StringDict &params)
 {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DEKPoolStatus dek_status = get_dek_pool_status(session);
+    DEKPool dek_pool(session);
+    DEKPoolStatus dek_status = dek_pool.get_status();
     resp->sub_element("total_count", Yb::to_string(dek_status.total_count));
     resp->sub_element("active_count", Yb::to_string(dek_status.active_count));
     return resp;
 }
 
-ElementTree::ElementPtr dek_generate(Session &session, ILogger &logger,
+ElementTree::ElementPtr dek_get(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DataKey data_key = generate_new_data_key(session);
+    DEKPool dek_pool(session);
+    DataKey data_key = dek_pool.get_active_data_key();
     resp->sub_element("ID", Yb::to_string(data_key.id.value()));
     resp->sub_element("DEK", data_key.dek_crypted);
     resp->sub_element("START_TS", Yb::to_string(data_key.start_ts.value()));
@@ -194,11 +196,24 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DataKey dek = get_active_data_key(session);
-    dek.counter = dek.counter + 2;
+    DEKPool dek_pool(session);
+    DataKey dek = dek_pool.get_active_data_key();
+    dek.counter = dek.counter + 1;
     session.commit();
     resp->sub_element("dek", dek.dek_crypted.value());
     resp->sub_element("counter", Yb::to_string(dek.counter.value()));
+    return resp;
+}
+
+ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
+        const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    return resp;
+}
+
+ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
+        const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
     return resp;
 }
 
@@ -215,9 +230,11 @@ int main(int argc, char *argv[])
     CardProxyHttpWrapper handlers[] = {
         WRAP(bind_card),
         WRAP(dek_status),
-        WRAP(dek_generate),
+        WRAP(dek_get),
         WRAP(dek_list),
         WRAP(dek),
+        WRAP(get_token),
+        WRAP(get_card),
     };
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     return run_server_app(log_name, db_name, port,

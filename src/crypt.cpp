@@ -3,8 +3,13 @@
 
 using namespace Domain;
 
+#define DEK_USE_COUNT 10
+#define MAX_DEK_COUNT 500
+#define AUTO_GEN_LIMIT 50
+#define MAN_GEN_LIMIT 100
+
 CardCrypter::CardCrypter(Yb::Session &session) : session(session) {
-    master_key = assemble_master_key();
+    _master_key = assemble_master_key();
 }
 
 CardCrypter::~CardCrypter() {
@@ -12,18 +17,18 @@ CardCrypter::~CardCrypter() {
 
 std::string CardCrypter::get_token(const CardData &card_data) {
     Card card;
-    AESCrypter master_crypter(master_key); 
-    DataKey data_key = get_active_data_key(session);
-    std::string aes_data_key = decode_base64(data_key.dek_crypted);
-    std::string pure_data_key = master_crypter.decrypt(aes_data_key);
-    AESCrypter data_key_crypter(pure_data_key);
+    AESCrypter master_crypter(_master_key); 
+    DEKPool dek_pool(session);
+    DataKey data_key = dek_pool.get_active_data_key();
+    std::string dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
+    AESCrypter data_key_crypter(dek);
     
     card.card_token = 999999;
     card.ts = Yb::now();
     card.expire_dt = Yb::dt_make(2020, 12, 31); //TODO
     card.card_holder = card_data._chname;
     card.pan_masked = card_data._masked_pan;
-    card.pan_crypted = encrypt_pan(data_key_crypter, card_data._pan);
+    card.pan_crypted = _get_encoded_pan(data_key_crypter, card_data._pan);
     //card.dek_id = data_key.id;
     card.save(session);
     session.commit();
@@ -36,11 +41,36 @@ CardData CardCrypter::get_card(const std::string &token) {
     return card;
 }
 
-std::string CardCrypter::encrypt_pan(AESCrypter &crypter, const std::string &pan) {
-   std::string bindec_pan = BinDecConverter().encode(pan);
-   std::string aes_pan = crypter.encrypt(bindec_pan);
-   std::string base64_pan = encode_base64(aes_pan);
-   return base64_pan;
+std::string CardCrypter::_get_encoded_pan(AESCrypter &crypter, const std::string &pan) {
+    std::string bindec_pan, base64_pan;
+    try {
+        bindec_pan = BinDecConverter().encode(pan);
+        base64_pan = encode_base64(crypter.encrypt(bindec_pan));
+    } catch(AESBlockSizeException &exc) {
+        std::cout << exc.to_string() << std::endl;
+    }
+    return base64_pan;
+}
+
+std::string CardCrypter::_get_decoded_pan(AESCrypter &crypter, const std::string &pan) {
+    std::string bindec_pan, pure_pan;
+    try {
+        bindec_pan = crypter.decrypt(decode_base64(pan));
+        pure_pan = BinDecConverter().encode(pan);
+    } catch(AESBlockSizeException &exc) {
+        std::cout << exc.to_string() << std::endl;
+    }
+    return pure_pan;
+}
+
+std::string CardCrypter::_get_decoded_dek(AESCrypter &crypter, const std::string &dek) {
+    std::string pure_dek;
+    try {
+        pure_dek = crypter.decrypt(decode_base64(dek));
+    } catch(AESBlockSizeException &exc) {
+        std::cout << exc.to_string() << std::endl;
+    }
+    return pure_dek;
 }
 
 std::string assemble_master_key() {
@@ -48,54 +78,67 @@ std::string assemble_master_key() {
     return "12345678901234567890123456789012"; // 32 bytes
 }
 
-DEKPoolStatus get_dek_pool_status(Yb::Session &session) {
-    DEKPoolStatus dek_status;
-    int active_use_count = 0;
-    auto total_query = Yb::query<DataKey>(session);
-    auto active_query = total_query.filter_by(DataKey::c.counter < 10);
-    for(auto &date_key : active_query.all())
-        active_use_count += 10 - date_key.counter;
-    dek_status.total_count= total_query.count();
-    dek_status.active_count = active_query.count();
-    dek_status.use_count = active_use_count;
-    return dek_status;
+DEKPool::DEKPool(Yb::Session &session) 
+    : _session(session)
+    , _dek_use_count(DEK_USE_COUNT)
+    , _max_active_dek_count(MAX_DEK_COUNT)
+    , _auto_generation_limit(AUTO_GEN_LIMIT)
+    , _man_generation_limit(MAN_GEN_LIMIT) {
 }
 
-Domain::DataKey generate_new_data_key(Yb::Session &session) {
-    Domain::DataKey data_key;
-    AESCrypter aes_crypter;
+DEKPool::~DEKPool() {
+}
+
+DataKey DEKPool::get_active_data_key() {
+    DEKPoolStatus pool_status = _check_pool();
+
+    auto active_deks = Yb::query<DataKey>(_session)
+            .filter_by(DataKey::c.counter < static_cast<int>(_dek_use_count));
+    int choice = rand() % pool_status.use_count;
+    for(auto &dek : active_deks.all()) {
+        choice -= (_dek_use_count - dek.counter);
+        if(choice <= 0)
+            return dek;
+    }
+    //errrrrr
+}
+
+DEKPoolStatus DEKPool::_check_pool() {
+    DEKPoolStatus pool_status = get_status();
+    while(pool_status.use_count < _auto_generation_limit) {
+        _generate_new_data_key();
+        pool_status = get_status();
+    }
+    return pool_status;
+}
+
+DEKPoolStatus DEKPool::get_status() {
+    int count = 0;
+    auto total_query = Yb::query<DataKey>(_session);
+    auto active_query = total_query
+            .filter_by(DataKey::c.counter < static_cast<int>(_dek_use_count));
+    for(auto &date_key : active_query.all())
+        count += _dek_use_count - date_key.counter;
+    return DEKPoolStatus(total_query.count(), active_query.count(), count);
+}
+
+DataKey DEKPool::_generate_new_data_key() {
+    DataKey data_key;
     std::string master_key = assemble_master_key();
     std::string dek_value = generate_dek_value(32);
+    std::string encoded_dek;
     try {
-        aes_crypter.set_master_key(master_key);
-        std::string crypted_dek = aes_crypter.encrypt(dek_value);
-        std::string encoded_dek = encode_base64(crypted_dek);
-        data_key.dek_crypted = encoded_dek;
-        data_key.start_ts = Yb::now();
-        data_key.finish_ts = Yb::dt_make(2020, 12, 31);
-        data_key.counter = 0;
-        data_key.save(session);
-        session.commit();
+        AESCrypter aes_crypter(master_key);
+        encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
     } catch(AESBlockSizeException &exc) {
-        std::cout << "Invalid block size: " << exc.get_string().length()
-            << ", expected %" << exc.get_block_size() << " ["
-            << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+        std::cout << exc.to_string() << std::endl;
     }
+    data_key.dek_crypted = encoded_dek;
+    data_key.start_ts = Yb::now();
+    data_key.finish_ts = Yb::dt_make(2020, 12, 31);
+    data_key.counter = 0;
+    data_key.save(_session);
+    _session.commit();
     return data_key;
 }
 
-Domain::DataKey get_active_data_key(Yb::Session &session) {
-    DEKPoolStatus dek_status = get_dek_pool_status(session);
-    //lol
-    while(dek_status.active_count < 50) { 
-        generate_new_data_key(session);
-        dek_status = get_dek_pool_status(session);
-    }
-
-    //add here uberlogic
-    DataKey dek = Yb::query<DataKey>(session)
-            .filter_by(DataKey::c.counter < 10)
-            .order_by(DataKey::c.counter)
-            .range(0, 1).one();
-    return dek;
-}
