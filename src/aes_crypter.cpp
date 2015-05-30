@@ -63,10 +63,6 @@ std::string AESCrypter::decrypt(const std::string &input_cipher) {
 AESCrypter::~AESCrypter() {
 }
 
-AESBlockSizeException::AESBlockSizeException()
-    : block_size(0) {
-}
-
 AESBlockSizeException::AESBlockSizeException(const int &size,
     const std::string &val)
     : value(val), block_size(size) {
@@ -90,3 +86,16 @@ std::string AESBlockSizeException::to_string() {
     return result;
 }
 
+std::string AESEncryptBlockSizeException::to_string() {
+    std::string result = "[Encryprt] Invalid block size: " + std::to_string(value.size())
+            + ", expected %" + std::to_string(block_size) 
+            + " [" + string_to_hexstring(value) + "]";
+    return result;
+}
+
+std::string AESDecryptBlockSizeException::to_string() {
+    std::string result = "[Decrypt] Invalid block size: " + std::to_string(value.size())
+            + ", expected %" + std::to_string(block_size) 
+            + " [" + string_to_hexstring(value) + "]";
+    return result;
+}

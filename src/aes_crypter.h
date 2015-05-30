@@ -22,22 +22,25 @@ private:
 
 class AESBlockSizeException {
 public:
-    AESBlockSizeException();
     AESBlockSizeException(const int &size, const std::string &val);
     virtual ~AESBlockSizeException();
 
     std::string get_string();
     int get_block_size();
-    std::string to_string();
+    virtual std::string to_string();
 
-private:
+protected:
     std::string value;
     int block_size;
 };
 
-class AESEncryptBlockSizeException : public AESBlockSizeException {
+class AESEncryptBlockSizeException : AESBlockSizeException {
+    AESEncryptBlockSizeException(const int &size, const std::string &val);
+    virtual std::string to_string();
 };
 
-class AESDecryptBlockSizeException : public AESBlockSizeException {
+class AESDecryptBlockSizeException : AESBlockSizeException {
+    AESDecryptBlockSizeException(const int &size, const std::string &val);
+    virtual std::string to_string();
 };
 #endif /* AESCRYPTER_H_ */

@@ -1,14 +1,22 @@
-#include "helpers.h"
-#include "domain/Card.h"
-#include "domain/IncomingRequest.h"
-#include "domain/DataKey.h"
-#include "domain/Config.h"
-#include "utils.h"
-#include "crypt.h"
+#include <iostream>
+#include <string>
+
 #include "aes_crypter.h"
+#include "card_crypter.h"
 #include "card_data.h"
+#include "dek_pool.h"
+#include "helpers.h"
+#include "utils.h"
+
+#include "domain/Card.h"
+#include "domain/Config.h"
+#include "domain/DataKey.h"
+#include "domain/IncomingRequest.h"
 
 #include <util/util_config.h>
+#include <util/string_utils.h>
+#include <util/element_tree.h>
+
 #if defined(YBUTIL_WINDOWS)
 #include <rpc.h>
 #else
@@ -20,10 +28,6 @@
 #elif defined(YB_USE_QT)
 #include <QCoreApplication>
 #endif
-#include <iostream>
-#include <string>
-#include <util/string_utils.h>
-#include <util/element_tree.h>
 
 using namespace Domain;
 using namespace std;
@@ -255,6 +259,16 @@ ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
     cd->sub_element("cvn",        card_data._cvn);
     cd->sub_element("card_token", token);
     return resp;
+}
+
+ElementTree::ElementPtr remove_card(Session &session, ILogger &logger,
+        const StringDict &params) {
+        return mk_resp("success");
+}
+
+ElementTree::ElementPtr remove_card_data(Session &session, ILogger &logger,
+        const StringDict &params) {
+        return mk_resp("success");
 }
 
 int main(int argc, char *argv[])
