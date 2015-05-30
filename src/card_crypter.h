@@ -25,7 +25,7 @@ public:
     void remove_card(const std::string &token);
     void remove_card_data(const std::string &token);
 
-    void change_master_key();
+    void change_master_key(const std::string &key);
 
 private:
     Yb::Session &session;
@@ -39,6 +39,7 @@ private:
     std::string _get_encoded_str(AESCrypter &crypter, const std::string &str);
     std::string _get_decoded_str(AESCrypter &crypter, const std::string &str);
     std::string _get_decoded_dek(AESCrypter &crypter, const std::string &dek);
+    std::string _get_encoded_dek(AESCrypter &crypter, const std::string &dek);
 };
 
 #endif

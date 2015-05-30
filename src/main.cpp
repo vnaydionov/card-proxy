@@ -196,18 +196,6 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
     return resp;
 }
 
-ElementTree::ElementPtr dek(Session &session, ILogger &logger,
-        const StringDict &params) {
-    ElementTree::ElementPtr resp = mk_resp("success");
-    DEKPool dek_pool(session);
-    DataKey dek = dek_pool.get_active_data_key();
-    dek.counter = dek.counter + 1;
-    session.commit();
-    resp->sub_element("dek", dek.dek_crypted.value());
-    resp->sub_element("counter", Yb::to_string(dek.counter.value()));
-    return resp;
-}
-
 ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
@@ -261,14 +249,27 @@ ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
     return resp;
 }
 
-ElementTree::ElementPtr remove_card(Session &session, ILogger &logger,
-        const StringDict &params) {
+ElementTree::ElementPtr remove_card(Session &session, ILogger &logger, const StringDict &params) {
         return mk_resp("success");
 }
 
-ElementTree::ElementPtr remove_card_data(Session &session, ILogger &logger,
-        const StringDict &params) {
+ElementTree::ElementPtr remove_card_data(Session &session, ILogger &logger, const StringDict &params) {
         return mk_resp("success");
+}
+
+ElementTree::ElementPtr get_master_key(Session &session, ILogger &logger, const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    std::string master_key = assemble_master_key();
+    resp->sub_element("master_key", master_key);
+    return resp;
+}
+
+ElementTree::ElementPtr set_master_key(Session &session, ILogger &logger, const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    CardCrypter card_crypter(session);
+    std::string new_key = params["key"];
+    card_crypter.change_master_key(new_key);
+    return resp;
 }
 
 int main(int argc, char *argv[])
@@ -286,9 +287,12 @@ int main(int argc, char *argv[])
         WRAP(dek_status),
         WRAP(dek_get),
         WRAP(dek_list),
-        WRAP(dek),
         WRAP(get_token),
         WRAP(get_card),
+        WRAP(remove_card),
+        WRAP(remove_card_data),
+        WRAP(set_master_key),
+        WRAP(get_master_key),
     };
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     return run_server_app(log_name, db_name, port,
