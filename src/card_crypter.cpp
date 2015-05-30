@@ -18,7 +18,6 @@ Domain::Card CardCrypter::get_token(const CardData &card_data) {
     Domain::Card card = _save_card(master_crypter, card_data);
     Domain::IncomingRequest incoming_request = _save_cvn(master_crypter,
         card, card_data._cvn);
-
     return card;
 }
 
@@ -26,9 +25,7 @@ CardData CardCrypter::get_card(const std::string &token) {
     AESCrypter master_crypter(_master_key);
     DEKPool dek_pool(session);
     //catch one error
-    Domain::Card card = Yb::query<Domain::Card>(session)
-            .filter_by(Domain::Card::c.card_token == token)
-            .one();
+    Domain::Card card = _find_card_by_token(token);
     Domain::IncomingRequest incoming_request = *card.cvn;
 
     std::string pure_card_dek = _get_decoded_dek(master_crypter, card.dek->dek_crypted);
@@ -43,9 +40,22 @@ CardData CardCrypter::get_card(const std::string &token) {
 }
 
 void CardCrypter::remove_card(const std::string &token) {
+    // reduce dek.counters?
+    Domain::Card card = _find_card_by_token(token);
+    remove_card_data(card);
+    card.delete_object();
 }
 
 void CardCrypter::remove_card_data(const std::string &token) {
+    // reduce dek.counters?
+    Domain::Card card = _find_card_by_token(token);
+    remove_card_data(card);
+}
+
+void CardCrypter::remove_card_data(Domain::Card &card) {
+    // reduce dek.counters?
+    Domain::IncomingRequest incoming_request = *card.cvn;
+    incoming_request.delete_object();
 }
 
 void CardCrypter::change_master_key(const std::string &key) {
@@ -53,7 +63,7 @@ void CardCrypter::change_master_key(const std::string &key) {
     AESCrypter master_crypter(_master_key);
     AESCrypter new_master_crypter(key);
     auto deks = Yb::query<Domain::DataKey>(session).all();
-    for(auto &dek : deks) {
+    for (auto &dek : deks) {
         std::string old_dek = _get_decoded_dek(master_crypter,
                 dek.dek_crypted);
         std::string new_dek = _get_encoded_dek(new_master_crypter,
@@ -62,14 +72,26 @@ void CardCrypter::change_master_key(const std::string &key) {
     }
 }
 
+Domain::Card CardCrypter::_find_card_by_token(const std::string &token) {
+    Domain::Card card;
+    try {
+        card = Yb::query<Domain::Card>(session)
+                .filter_by(Domain::Card::c.card_token == token)
+                .one();
+    } catch(Yb::NoDataFound &err) { }
+    return card;
+}
+
 Domain::Card CardCrypter::_save_card(AESCrypter &master_crypter, const CardData &card_data) {
     Domain::Card card;
     AESCrypter data_crypter;
     DEKPool dek_pool(session);
+    //
     Domain::DataKey data_key = dek_pool.get_active_data_key();
     std::string pure_dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
     data_crypter.set_key(pure_dek);
     std::string crypted_pan = _get_encoded_str(data_crypter, card_data._pan);
+    //
 
     card.card_token = _generate_card_token();
     card.ts = Yb::now();
@@ -79,7 +101,8 @@ Domain::Card CardCrypter::_save_card(AESCrypter &master_crypter, const CardData 
     card.pan_crypted = crypted_pan;
     card.dek = Domain::DataKey::Holder(data_key);
     card.save(session);
-    data_key.counter = data_key.counter + 1; session.commit();
+    data_key.counter = data_key.counter + 1;
+    session.commit();
     return card;
 }
 
@@ -88,10 +111,12 @@ Domain::IncomingRequest CardCrypter::_save_cvn(AESCrypter &master_crypter,
     Domain::IncomingRequest incoming_request;
     AESCrypter data_crypter;
     DEKPool dek_pool(session);
+    //
     Domain::DataKey data_key = dek_pool.get_active_data_key();
     std::string pure_dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
     data_crypter.set_key(pure_dek);
     std::string crypted_cvn = _get_encoded_str(data_crypter, cvn);
+    //
 
     incoming_request.ts = Yb::now();
     incoming_request.cvn_crypted = crypted_cvn;
@@ -115,6 +140,7 @@ std::string CardCrypter::_get_encoded_str(AESCrypter &crypter, const std::string
         base64_str = encode_base64(crypter.encrypt(bindec_str));
     } catch(AESBlockSizeException &exc) {
         std::cout << exc.to_string() << std::endl;
+        return std::string("");
     }
     return base64_str;
 }
@@ -126,6 +152,7 @@ std::string CardCrypter::_get_decoded_str(AESCrypter &crypter, const std::string
         pure_str = BinDecConverter().decode(bindec_str);
     } catch(AESBlockSizeException &exc) {
         std::cout << exc.to_string() << std::endl;
+        return std::string("");
     }
     return pure_str;
 }
@@ -136,6 +163,7 @@ std::string CardCrypter::_get_decoded_dek(AESCrypter &crypter, const std::string
         pure_dek = crypter.decrypt(decode_base64(dek));
     } catch(AESBlockSizeException &exc) {
         std::cout << exc.to_string() << std::endl;
+        return std::string("");
     }
     return pure_dek;
 }
@@ -146,6 +174,7 @@ std::string CardCrypter::_get_encoded_dek(AESCrypter &crypter, const std::string
         crypted_dek = encode_base64(crypter.encrypt(dek));
     } catch(AESBlockSizeException &exc) {
         std::cout << exc.to_string() << std::endl;
+        return std::string("");
     }
     return crypted_dek;
 }

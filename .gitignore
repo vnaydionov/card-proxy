@@ -28,7 +28,9 @@
 *.app
 
 # Domain
-src/domain/*
+src/domain/*.h
+src/domain/*.cpp
+src/domain/*.bak
 
 # Logs
 *.log

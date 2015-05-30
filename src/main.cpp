@@ -250,11 +250,19 @@ ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
 }
 
 ElementTree::ElementPtr remove_card(Session &session, ILogger &logger, const StringDict &params) {
-        return mk_resp("success");
+    ElementTree::ElementPtr resp = mk_resp("success");
+    CardCrypter card_crypter(session);
+    std::string token = params["token"];
+    card_crypter.remove_card(token);
+    return resp;
 }
 
 ElementTree::ElementPtr remove_card_data(Session &session, ILogger &logger, const StringDict &params) {
-        return mk_resp("success");
+    ElementTree::ElementPtr resp = mk_resp("success");
+    CardCrypter card_crypter(session);
+    std::string token = params["token"];
+    card_crypter.remove_card_data(token);
+    return resp;
 }
 
 ElementTree::ElementPtr get_master_key(Session &session, ILogger &logger, const StringDict &params) {

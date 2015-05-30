@@ -2,12 +2,12 @@
 #define CRYPT_H
 #include <string>
 
-
-#include "utils.h"
 #include "aes_crypter.h"
 #include "card_data.h"
-#include "domain/DataKey.h"
+#include "utils.h"
+
 #include "domain/Card.h"
+#include "domain/DataKey.h"
 #include "domain/IncomingRequest.h"
 
 std::string assemble_master_key();
@@ -24,6 +24,7 @@ public:
     CardData get_card(const std::string &token);
     void remove_card(const std::string &token);
     void remove_card_data(const std::string &token);
+    void remove_card_data(Domain::Card &card);
 
     void change_master_key(const std::string &key);
 
@@ -34,6 +35,8 @@ private:
     Domain::Card _save_card(AESCrypter &master_crypter, const CardData &card_data);
     Domain::IncomingRequest _save_cvn(AESCrypter &master_crypter, Domain::Card &card, const std::string &cvn);
 
+    Domain::Card _find_card_by_token(const std::string &token);
+
     std::string _generate_card_token();
 
     std::string _get_encoded_str(AESCrypter &crypter, const std::string &str);
@@ -42,4 +45,11 @@ private:
     std::string _get_encoded_dek(AESCrypter &crypter, const std::string &dek);
 };
 
+class TokenNotFound {
+
+};
+
+class CardNotFound {
+
+};
 #endif
