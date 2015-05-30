@@ -1,252 +1,204 @@
-#include <algorithm>
-#include <iostream>
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <stdexcept>
 
 #include "utils.h"
 
-
-BinDecConverter::BinDecConverter()
-	: _terminator(0xF)
-	, _mode(CYCLE_FORWARD)
+char int_to_hexchar(int digit, int mode)
 {
+    if (digit >= 0 && digit <= 9)
+        return '0' + digit;
+    else if (digit >= 10 && digit <= 15)
+        return (!(mode & HEX_LOWERCASE)? 'A': 'a') + digit - 10;
+    throw std::runtime_error("Invalid digit");
 }
-BinDecConverter::BinDecConverter(const BinDecConverterFillMode mode)
-    : _terminator(0xF)
-	, _mode(mode)
+
+int hexchar_to_int(char symbol)
 {
-}
-
-std::string BinDecConverter::encode(const std::string &in) {
-	int t_len = in.length();
-	// text len + terminator
-	int blocks_cnt = (t_len + 1) % 32 == 0 ? t_len / 32 : t_len / 32 + 1;
-	int result_len = blocks_cnt * 16;
-	std::string result(result_len, 0);
-	for(int i = 0; i < result_len * 2; ++i) {
-		unsigned t_value;
-		if (i < t_len) // check isdigit
-			t_value = (in[i] - 48);
-		else if (i == t_len)
-			t_value = this->_terminator;
-		else {
-			int t_index;
-			switch(this->_mode) {
-				case ZERO:
-					t_value = 0x0;
-					break;
-				case CYCLE_FORWARD:
-					t_index = i - t_len - 1;
-                    if (t_index >= t_len)
-                        t_index = t_index % t_len;
-					t_value = in[t_index];
-					break;
-				case CYCLE_BACKWARD:
-					t_index = t_len - (i - t_len);
-                    if (t_index < 0)
-                        t_index = t_len - 1 - ((t_index + 1) * -1) % t_len;
-					t_value = in[t_index];
-					break;
-				case RANDOM:
-					t_value = rand() % 10;
-					break;
-			}
-		}
-		if (i % 2 == 0)
-			t_value <<= 4;
-        else
-            t_value &= 0xF;
-		result[i / 2] |= t_value;
-	}
-	return result;
-}
-
-std::string BinDecConverter::decode(const std::string &in) {
-	int blocks_cnt = in.size() / 16;
-    int result_len = blocks_cnt * 2;
-	std::string result;
-	for (int i = 0; result_len; ++i) {
-		unsigned char t_val = in[i / 2];
-		if (i % 2 == 0)
-			t_val >>= 4;
-		t_val &= 0xF;
-		if (t_val == this->_terminator)
-			return result;
-		result.push_back(char(48 + t_val));
-	}
-	return result;
-}
-
-std::string get_master_key() {
-    return "12345678901234567890123456789012"; // 32 bytes
-}
-
-std::string string_to_bitstring(const std::string &input) {
-    int in_size = input.size();
-    const char *str = input.data();
-    std::string result(in_size * 9 - 1, ' '); 
-	for(int i = 0; i < in_size; ++i)
-		for(int j = 0, k = 7; j < 8; ++j, --k) //hard logic
-			result[i * 9 + j] = (str[i] >> k & 0x1) + 48;
-    return result;
-}
-
-char int_to_hexchar(const int &val, const StringHexCaseMode mode = UPPERCASE) {
-    if (val < 10)
-        return 48 + val;
-    else
-        switch(mode) {
-            case UPPERCASE:
-                return 65 + (val - 10);
-            case LOWERCASE:
-                return 97 + (val - 10);
-        }
-    return -1;
-}
-
-int hexchar_to_int(const char &val) {
-    if (val >= 48 && val <= 57)
-        return val - 48;
-    else if (val >= 65 && val <= 70)
-        return val - 65 + 10;
-    else if (val >= 97 && val <= 102)
-        return val - 97 + 10;
-    return -1;
+    if (symbol >= '0' && symbol <= '9')
+        return symbol - '0';
+    else if (symbol >= 'A' && symbol <= 'F')
+        return symbol - 'A' + 10;
+    else if (symbol >= 'a' && symbol <= 'f')
+        return symbol - 'a' + 10;
+    throw std::runtime_error("Invalid HEX digit character: " +
+            std::to_string((int)(unsigned char)symbol));
 }
  
-std::string string_to_hexstring(const std::string &input) {
-    int in_size = input.size();
+std::string string_to_hexstring(const std::string &input, int mode)
+{
+    if (!input.size())
+        return std::string();
+    size_t in_size = input.size();
+    bool insert_spaces = !(mode & HEX_NOSPACES);
+    size_t result_len = in_size * 2;
+    if (insert_spaces)
+        result_len = in_size * 3 - 1;
     const char *str = input.data();
-    std::string result(in_size * 3 - 1, ' '); 
-	for(int i = 0; i < in_size; ++i) {
-        result[i * 3]     = int_to_hexchar(str[i] >> 4 & 0xF);
-        result[i * 3 + 1] = int_to_hexchar(str[i] & 0xF);
+    std::string result(result_len, ' ');
+    for (size_t i = 0; i < result_len; ++str) {
+        result[i++] = int_to_hexchar((*str >> 4) & 0xF, mode);
+        result[i++] = int_to_hexchar(*str & 0xF, mode);
+        if (insert_spaces)
+            ++i;
     }
     return result;
 }
 
-std::string string_from_hexstring(const std::string &hex_input) {
-    int in_size = (hex_input.size() - (hex_input.size() / 3)) / 2;
+std::string string_from_hexstring(const std::string &hex_input, int mode)
+{
+    if (!hex_input.size())
+        return std::string();
+    size_t in_size = hex_input.size();
+    bool insert_spaces = !(mode & HEX_NOSPACES);
+    size_t result_len = in_size / 2;
+    if (insert_spaces)
+        result_len = (in_size + 1) / 3;
     const char *str = hex_input.data();
-    std::string result(in_size, 0); 
-	for(int i = 0; i < in_size; ++i) {
-        result[i] |= hexchar_to_int(str[i * 3]) << 4;
-        result[i] |= hexchar_to_int(str[i * 3 + 1]);
+    std::string result(result_len, 0);
+    for (size_t i = 0; i < result_len; ++i) {
+        result[i] |= hexchar_to_int(*str++) << 4;
+        result[i] |= hexchar_to_int(*str++);
+        if (insert_spaces) {
+            if (*str != ' ' && *str)
+                throw std::runtime_error("HEX separator space is expected");
+            ++str;
+        }
     }
     return result;
 }
 
-std::string encode_base64(const std::string &message) {
-	BIO *bio, *b64;
-	FILE* stream;
-
-    int size = message.size();
-	int encoded_size = 4 * ceil((double)size / 3);
+std::string encode_base64(const std::string &message)
+{
+    if (!message.size())
+        return std::string();
+    int encoded_size = ((message.size() + 2) / 3) * 4;
     std::string result(encoded_size, 0);
-	char *buffer = &result[0];
-    const char *c_message = message.data();
-
-	stream = fmemopen(buffer, encoded_size + 1, "w");
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new_fp(stream, BIO_NOCLOSE);
-	bio = BIO_push(b64, bio);
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	BIO_write(bio, c_message, size);
-	(void)BIO_flush(bio);
-	BIO_free_all(bio);
-	fclose(stream);
-
-	return result;
+    FILE *stream = fmemopen(&result[0], encoded_size + 1, "w");
+    BIO *b64 = BIO_new(BIO_f_base64());
+    BIO *bio = BIO_new_fp(stream, BIO_NOCLOSE);
+    bio = BIO_push(b64, bio);
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    BIO_write(bio, message.data(), message.size());
+    BIO_flush(bio);
+    BIO_free_all(bio);
+    fclose(stream);
+    return result;
 }
 
-int calc_decode_length(const std::string &b64input) {
-	int padding = 0;
+static bool valid_b64_char(char c)
+{
+    return ((c >= 'A' && c <= 'Z') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') ||
+            c == '+' || c == '/' || c == '=');
+}
+
+static int b64_decoded_size(const std::string &b64input)
+{
     int length = b64input.size();
-
-	// Check for trailing '=''s as padding
-	if(b64input[length - 1] == '=' && b64input[length - 2] == '=')
-		padding = 2;
-	else if (b64input[length - 1] == '=')
-		padding = 1;
-
-	return (int)length * 0.75 - padding;
+    int padding = 0;
+    if (length > 1) {
+        // Check for trailing '=''s as padding
+        if (b64input[length - 1] == '=' && b64input[length - 2] == '=')
+            padding = 2;
+        else if (b64input[length - 1] == '=')
+            padding = 1;
+    }
+    return (length / 4) * 3 - padding;
 }
 
-std::string decode_base64(const std::string &b64message) {
-	BIO *bio, *b64;
-
-    int length = b64message.size();
-	int decoded_length = calc_decode_length(b64message);
-    std::string result(decoded_length, 0);
-	char *buffer = &result[0];
-    const char *c_b64message = b64message.data();
-
-	FILE* stream = fmemopen((char*)c_b64message, length, "r");
-
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new_fp(stream, BIO_NOCLOSE);
-	bio = BIO_push(b64, bio);
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-	decoded_length = BIO_read(bio, buffer, length);
-	buffer[decoded_length] = '\0';
-
-	BIO_free_all(bio);
-	fclose(stream);
-
-	return result; 
-}
-
-void convert_bits_to_ascii(unsigned char *input, int len) {
-    for(int i = 0; i < len; ++i) {
-        int tmp = input[i] % 64;
-        if (tmp < 10)
-            input[i] = tmp + 48;
-        else if (tmp < 36)
-            input[i] = (tmp - 10) + 65;
-        else if (tmp < 62)
-            input[i] = (tmp - 36) + 97;
-        else if (tmp < 63)
-            input[i] = 43;
-        else
-            input[i] = 47;
+static void check_base64(const std::string &b64message)
+{
+    for (size_t i = 0; i < b64message.size(); ++i) {
+        if (!valid_b64_char(b64message[i]))
+            throw std::runtime_error("Invalid BASE64 character");
+        if (b64message[i] == '=') {
+            if (i < b64message.size() - 2 ||
+                (i == b64message.size() - 2 && b64message[i + 1] != '='))
+            {
+                throw std::runtime_error("BASE64: Misplaced trailing =");
+            }
+        }
     }
 }
 
-std::string generate_dek_value(const int length) {
-    unsigned char dek[length];
+std::string decode_base64(const std::string &b64message)
+{
+    if (!b64message.size())
+        return std::string();
+    check_base64(b64message);
+    int decoded_size = b64_decoded_size(b64message);
+    std::string result(decoded_size, 0);
+    FILE *stream = fmemopen(const_cast<char *>(b64message.data()),
+                            b64message.size(), "r");
+    BIO *b64 = BIO_new(BIO_f_base64());
+    BIO *bio = BIO_new_fp(stream, BIO_NOCLOSE);
+    bio = BIO_push(b64, bio);
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    char *buffer = &result[0];
+    decoded_size = BIO_read(bio, buffer, b64message.size());
+    buffer[decoded_size] = '\0';
+    BIO_free_all(bio);
+    fclose(stream);
+    return result; 
+}
+
+std::string bcd_decode(const std::string &bcd_input)
+{
+    std::string x = string_to_hexstring(bcd_input,
+                                        HEX_LOWERCASE|HEX_NOSPACES);
+    size_t i = 0;
+    for (; i < x.size(); ++i)
+        if (!(x[i] >= '0' && x[i] <= '9'))
+            break;
+    return x.substr(0, i);
+}
+
+std::string bcd_encode(const std::string &ascii_input)
+{
+    std::string x = ascii_input + "f" + ascii_input + "f";
+    return string_from_hexstring(x.substr(0, 32), HEX_NOSPACES);
+}
+
+std::string generate_random_bytes(size_t length)
+{
+    std::string result(length, 0);
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1)
         throw std::runtime_error("Can't open /dev/urandom");
-    if (read(fd, &dek, sizeof(dek)) != static_cast<int>(sizeof(dek))) {
-        close(fd);
-        throw std::runtime_error("Can't read from /dev/urandom");
-    }
+    int n = read(fd, &result[0], result.size());
     close(fd);
-    convert_bits_to_ascii(dek, length);
-    std::string result(length, 0);
-    for(int i = 0; i < length; ++i)
-        result[i] = dek[i];
+    if (static_cast<int>(result.size()) != n)
+        throw std::runtime_error("Can't read from /dev/urandom");
     return result;
 }
 
-std::string generate_random_number(const int length) {
+std::string generate_random_number(size_t length)
+{
     std::string result(length, 0);
-    for(int i = 0; i < length; ++i) 
-        result[i] = rand() % 10 + 48;
+    for (size_t i = 0; i < length; ++i) 
+        result[i] = rand() % 10 + '0';
     return result;
 }
 
-std::string generate_random_string(const int length) {
+std::string generate_random_string(size_t length)
+{
     std::string result(length, 0);
-    for(int i = 0; i < length; ++i) {
-        int tmp = rand() % 62;
-        if (tmp < 26) 
-            result[i] = 65 + tmp;
-        else if (tmp < 52)
-            result[i] = 97 + (tmp - 26);
+    for (size_t i = 0; i < length; ++i) {
+        int x = rand() % (26*2 + 10);
+        if (x < 26)
+            result[i] = 'A' + x;
+        else if (x < 26*2)
+            result[i] = 'a' + (x - 26);
         else
-            result[i] = 48 + (tmp - 52);
+            result[i] = '0' + (x - 26*2);
     }
     return result;
 }
 
+// vim:ts=4:sts=4:sw=4:et:

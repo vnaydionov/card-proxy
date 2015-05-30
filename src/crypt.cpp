@@ -28,11 +28,10 @@ Card CardCrypter::get_token(const CardData &card_data) {
 
 Card CardCrypter::_save_card(AESCrypter &master_crypter, const CardData &card_data) {
     Card card;
-    AESCrypter data_crypter;
     DEKPool dek_pool(session);
     DataKey data_key = dek_pool.get_active_data_key();
     std::string pure_dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
-    data_crypter.set_key(pure_dek);
+    AESCrypter data_crypter(pure_dek);
     std::string crypted_pan = _get_encoded_str(data_crypter, card_data._pan);
 
     card.card_token = _generate_card_token();
@@ -50,11 +49,10 @@ Card CardCrypter::_save_card(AESCrypter &master_crypter, const CardData &card_da
 IncomingRequest CardCrypter::_save_cvn(AESCrypter &master_crypter,
     Card &card, const std::string &cvn) {
     IncomingRequest incoming_request;
-    AESCrypter data_crypter;
     DEKPool dek_pool(session);
     DataKey data_key = dek_pool.get_active_data_key();
     std::string pure_dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
-    data_crypter.set_key(pure_dek);
+    AESCrypter data_crypter(pure_dek);
     std::string crypted_cvn = _get_encoded_str(data_crypter, cvn);
 
     incoming_request.ts = Yb::now();
@@ -87,16 +85,17 @@ CardData CardCrypter::get_card(const std::string &token) {
 }
 
 std::string CardCrypter::_generate_card_token() {
-    return generate_random_number(20);
+    return string_to_hexstring(generate_random_bytes(16),
+                               HEX_LOWERCASE|HEX_NOSPACES);
 }
 
 std::string CardCrypter::_get_encoded_str(AESCrypter &crypter, const std::string &str) {
     std::string bindec_str, base64_str;
     try {
-        bindec_str = BinDecConverter().encode(str);
+        bindec_str = bcd_encode(str);
         base64_str = encode_base64(crypter.encrypt(bindec_str));
     } catch(AESBlockSizeException &exc) {
-        std::cout << exc.to_string() << std::endl;
+        std::cout << exc.what() << std::endl;
     }
     return base64_str;
 }
@@ -105,9 +104,9 @@ std::string CardCrypter::_get_decoded_str(AESCrypter &crypter, const std::string
     std::string bindec_str, pure_str;
     try {
         bindec_str = crypter.decrypt(decode_base64(str));
-        pure_str = BinDecConverter().decode(bindec_str);
+        pure_str = bcd_decode(bindec_str);
     } catch(AESBlockSizeException &exc) {
-        std::cout << exc.to_string() << std::endl;
+        std::cout << exc.what() << std::endl;
     }
     return pure_str;
 }
@@ -117,7 +116,7 @@ std::string CardCrypter::_get_decoded_dek(AESCrypter &crypter, const std::string
     try {
         pure_dek = crypter.decrypt(decode_base64(dek));
     } catch(AESBlockSizeException &exc) {
-        std::cout << exc.to_string() << std::endl;
+        std::cout << exc.what() << std::endl;
     }
     return pure_dek;
 }
@@ -174,13 +173,13 @@ DEKPoolStatus DEKPool::get_status() {
 DataKey DEKPool::_generate_new_data_key() {
     DataKey data_key;
     std::string master_key = assemble_master_key();
-    std::string dek_value = generate_dek_value(32);
+    std::string dek_value = generate_random_bytes(32);
     std::string encoded_dek;
     try {
         AESCrypter aes_crypter(master_key);
         encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
     } catch(AESBlockSizeException &exc) {
-        std::cout << exc.to_string() << std::endl;
+        std::cout << exc.what() << std::endl;
     }
     data_key.dek_crypted = encoded_dek;
     data_key.start_ts = Yb::now();

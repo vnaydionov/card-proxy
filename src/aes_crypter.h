@@ -1,43 +1,32 @@
-#ifndef AESCRYPTER_H_
-#define AESCRYPTER_H_
-#include <openssl/aes.h>
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#ifndef CARD_PROXY__AES_CRYPTER_H
+#define CARD_PROXY__AES_CRYPTER_H
 
-class AESCrypter {
+#include <string>
+#include <stdexcept>
+
+#define AES_CRYPTER_BLOCK_SIZE 128
+#define AES_CRYPTER_BLOCK_SIZE_BYTES (AES_CRYPTER_BLOCK_SIZE / 8)
+#define AES_CRYPTER_KEY_SIZE 256
+#define AES_CRYPTER_KEY_SIZE_BYTES (AES_CRYPTER_KEY_SIZE / 8)
+
+class AESCrypter
+{
 public:
-	AESCrypter();
-	AESCrypter(const std::string &key);
-	virtual ~AESCrypter();
+    AESCrypter(const std::string &key);
 
-	std::string encrypt(const std::string &input_text);
-	std::string decrypt(const std::string &input_cipher);
-    void set_key(const std::string &key);
+    std::string encrypt(const std::string &input_text);
+    std::string decrypt(const std::string &input_cipher);
 
 private:
-	const int _key_size;
-	const int _block_size;
-	const int _block_size_bit;
-	AES_KEY _encrypt_key, _decrypt_key;
-
+    std::string encrypt_key_, decrypt_key_;
 };
 
-class AESBlockSizeException {
+class AESBlockSizeException: public std::runtime_error
+{
 public:
-    AESBlockSizeException();
-    AESBlockSizeException(const int &size, const std::string &val);
-    virtual ~AESBlockSizeException();
-
-    std::string get_string();
-    int get_block_size();
-    std::string to_string();
-
-private:
-    std::string value;
-    int block_size;
+    AESBlockSizeException(int expected_size, const std::string &msg);
 };
 
-class AESEncryptBlockSizeException : public AESBlockSizeException {
-};
-
-class AESDecryptBlockSizeException : public AESBlockSizeException {
-};
-#endif /* AESCRYPTER_H_ */
+#endif // CARD_PROXY__AES_CRYPTER_H
+// vim:ts=4:sts=4:sw=4:et:

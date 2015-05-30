@@ -172,9 +172,8 @@ ElementTree::ElementPtr dek_get(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    AESCrypter aes_crypter;
     std::string master_key = assemble_master_key();
-    aes_crypter.set_key(master_key);
+    AESCrypter aes_crypter(master_key);
     auto data_keys = Yb::query<Domain::DataKey>(session)
             .filter_by(Domain::DataKey::c.counter < 10)
             .all();

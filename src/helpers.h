@@ -1,5 +1,6 @@
-#ifndef _CARD_PROXY__HELPERS_H_
-#define _CARD_PROXY__HELPERS_H_
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#ifndef CARD_PROXY__HELPERS_H
+#define CARD_PROXY__HELPERS_H
 
 #include <iostream>
 #include <sstream>
@@ -80,5 +81,5 @@ int run_server_app(const std::string &log_name, const std::string &db_name,
     return 0;
 }
 
-#endif // _CARD_PROXY__HELPERS_H_
+#endif // CARD_PROXY__HELPERS_H
 // vim:ts=4:sts=4:sw=4:et:

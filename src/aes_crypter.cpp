@@ -1,92 +1,65 @@
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#include <openssl/aes.h>
 #include <iostream>
 
 #include "aes_crypter.h"
 #include "utils.h"
 
-
-AESCrypter::AESCrypter()
-	: _key_size(256)
-	, _block_size(16)
-	, _block_size_bit(128)
-{
-}
+#define TO_AES_KEY(s) reinterpret_cast<AES_KEY *>(&((s)[0]))
+#define TO_CONST_UCHAR(s) reinterpret_cast<const unsigned char *>((s).data())
+#define TO_UCHAR(s) reinterpret_cast<unsigned char *>(&((s)[0]))
 
 AESCrypter::AESCrypter(const std::string &key)
-	: _key_size(256)
-	, _block_size(16)
-	, _block_size_bit(128)
+    : encrypt_key_(sizeof(AES_KEY), 0)
+    , decrypt_key_(sizeof(AES_KEY), 0)
 {
-	auto *_key = reinterpret_cast<const unsigned char *>(key.data());
-	AES_set_encrypt_key(_key, _key_size, &_encrypt_key);
-	AES_set_decrypt_key(_key, _key_size, &_decrypt_key);
+    if (key.size() != AES_CRYPTER_KEY_SIZE_BYTES)
+        throw AESBlockSizeException(AES_CRYPTER_KEY_SIZE_BYTES,
+                "expected AES key block size");
+	AES_set_encrypt_key(TO_CONST_UCHAR(key), AES_CRYPTER_KEY_SIZE,
+            TO_AES_KEY(encrypt_key_));
+	AES_set_decrypt_key(TO_CONST_UCHAR(key), AES_CRYPTER_KEY_SIZE,
+            TO_AES_KEY(decrypt_key_));
 }
 
-void AESCrypter::set_key(const std::string &key) {
-	auto *_key = reinterpret_cast<const unsigned char *>(key.data());
-	AES_set_encrypt_key(_key, _key_size, &_encrypt_key);
-	AES_set_decrypt_key(_key, _key_size, &_decrypt_key);
-}
-
-std::string AESCrypter::encrypt(const std::string &input_text) {
-	if(input_text.size() == 0 || input_text.size() % _block_size != 0) 
-        throw AESBlockSizeException(_block_size, input_text);
-	int blocks = input_text.size() / _block_size;
-	const unsigned char *input_text_char =
-        reinterpret_cast<const unsigned char *>(input_text.data());
-	std::string result(blocks * _block_size, 0);
-    unsigned char *cipher_block =
-        reinterpret_cast<unsigned char *>(&result[0]);
-	for(int i = 0; i < blocks; ++i) {
-		int mas_pos = i * _block_size;
-		AES_encrypt(&input_text_char[mas_pos], &cipher_block[mas_pos], &_encrypt_key);
+std::string AESCrypter::encrypt(const std::string &input_text)
+{
+	if (!input_text.size()
+            || input_text.size() % AES_CRYPTER_BLOCK_SIZE_BYTES != 0)
+    {
+        throw AESBlockSizeException(AES_CRYPTER_BLOCK_SIZE_BYTES,
+                "input text size must be a multiple of AES block size");
+    }
+	std::string result(input_text.size(), 0);
+    for (size_t offs = 0; offs < input_text.size();
+            offs += AES_CRYPTER_BLOCK_SIZE_BYTES)
+    {
+		AES_encrypt(TO_CONST_UCHAR(input_text) + offs,
+                TO_UCHAR(result) + offs, TO_AES_KEY(encrypt_key_));
 	}
 	return result;
 }
 
-std::string AESCrypter::decrypt(const std::string &input_cipher) {
-	if(input_cipher.size() == 0 || input_cipher.size() % _block_size != 0) 
-        throw AESBlockSizeException(_block_size, input_cipher);
-	int blocks = input_cipher.size() / _block_size;
-	const unsigned char *input_cipher_char =
-        reinterpret_cast<const unsigned char *>(input_cipher.data());
-    std::string result(blocks * _block_size, 0);
-    unsigned char *text_block =
-        reinterpret_cast<unsigned char *>(&result[0]);
-	for(int i = 0; i < blocks; ++i) {
-		int mas_pos = i * _block_size;
-		AES_decrypt(&input_cipher_char[mas_pos], &text_block[mas_pos], &_decrypt_key);
+std::string AESCrypter::decrypt(const std::string &input_cipher)
+{
+	if (!input_cipher.size()
+            || input_cipher.size() % AES_CRYPTER_BLOCK_SIZE_BYTES != 0)
+    {
+        throw AESBlockSizeException(AES_CRYPTER_BLOCK_SIZE_BYTES,
+                "input cipher size must be a multiple of AES block size");
+    }
+	std::string result(input_cipher.size(), 0);
+    for (size_t offs = 0; offs < input_cipher.size();
+            offs += AES_CRYPTER_BLOCK_SIZE_BYTES)
+    {
+		AES_decrypt(TO_CONST_UCHAR(input_cipher) + offs,
+                TO_UCHAR(result) + offs, TO_AES_KEY(decrypt_key_));
 	}
 	return result;
 }
 
+AESBlockSizeException::AESBlockSizeException(int expected_size, const std::string &msg)
+    : std::runtime_error(msg + ": " + std::to_string(expected_size))
+{}
 
-AESCrypter::~AESCrypter() {
-}
-
-AESBlockSizeException::AESBlockSizeException()
-    : block_size(0) {
-}
-
-AESBlockSizeException::AESBlockSizeException(const int &size,
-    const std::string &val)
-    : value(val), block_size(size) {
-}
-
-AESBlockSizeException::~AESBlockSizeException() {
-}
-
-std::string AESBlockSizeException::get_string() {
-    return value;
-}
-
-int AESBlockSizeException::get_block_size() {
-    return block_size;
-}
-
-std::string AESBlockSizeException::to_string() {
-    std::string result = "Invalid block size: " + std::to_string(value.size())
-            + ", expected %" + std::to_string(block_size) 
-            + " [" + string_to_hexstring(value) + "]";
-    return result;
-}
-
+// vim:ts=4:sts=4:sw=4:et:

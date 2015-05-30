@@ -1,5 +1,6 @@
 
 add_subdirectory (domain)
+add_subdirectory (tests)
 
 include_directories (
     ${BOOST_INCLUDEDIR}

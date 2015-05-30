@@ -2,8 +2,8 @@
 #include <vector>
 #include <utility>
 
-#include "../utils.h"
-#include "../aes_crypter.h"
+#include "utils.h"
+#include "aes_crypter.h"
 
 
 #define B64_TESTS       50
@@ -11,6 +11,54 @@
 #define AES_TESTS       50
 #define AES_LONG_TESTS  50
 #define FULL_TESTS      50
+
+void test_hex_string()
+{
+    std::cout << "test_hex_string..." << std::endl;
+    std::vector<std::pair<std::string, std::string> > cases;
+    cases.push_back(std::make_pair("", ""));
+    cases.push_back(std::make_pair("A", "41"));
+    cases.push_back(std::make_pair("AB", "41 42"));
+    cases.push_back(std::make_pair("NOX", "4E 4F 58"));
+    for (auto it = cases.begin(); it != cases.end(); ++it) {
+        std::string encoded = string_to_hexstring(it->first);
+        if (encoded != it->second) {
+            std::cout << "Result:    Fail!" << std::endl;
+            std::cout << "Input: " << it->first << " Encoded: " << encoded << std::endl;
+        }
+    }
+    for (auto it = cases.begin(); it != cases.end(); ++it) {
+        std::string decoded = string_from_hexstring(it->second);
+        if (decoded != it->first) {
+            std::cout << "Result:    Fail!" << std::endl;
+            std::cout << "Input: " << it->first << " Decoded: " << decoded << std::endl;
+        }
+    }
+}
+
+void test_hex_string_no_spaces()
+{
+    std::cout << "test_hex_string_no_spaces..." << std::endl;
+    std::vector<std::pair<std::string, std::string> > cases;
+    cases.push_back(std::make_pair("", ""));
+    cases.push_back(std::make_pair("A", "41"));
+    cases.push_back(std::make_pair("AB", "4142"));
+    cases.push_back(std::make_pair("NOX", "4e4f58"));
+    for (auto it = cases.begin(); it != cases.end(); ++it) {
+        std::string encoded = string_to_hexstring(it->first, HEX_LOWERCASE|HEX_NOSPACES);
+        if (encoded != it->second) {
+            std::cout << "Result:    Fail!" << std::endl;
+            std::cout << "Input: " << it->first << " Encoded: " << encoded << std::endl;
+        }
+    }
+    for (auto it = cases.begin(); it != cases.end(); ++it) {
+        std::string decoded = string_from_hexstring(it->second, HEX_NOSPACES);
+        if (decoded != it->first) {
+            std::cout << "Result:    Fail!" << std::endl;
+            std::cout << "Input: " << it->first << " Decoded: " << decoded << std::endl;
+        }
+    }
+}
 
 void test_base64_end_to_end() {
     std::cout << "test_base64_end_to_end..." << std::endl;
@@ -67,7 +115,13 @@ void test_base64_decoding() {
     messages.push_back(std::make_pair("BobbyMoore",     "Qm9iYnlNb29yZQ=="));
     messages.push_back(std::make_pair("MichaelOwen",    "TWljaGFlbE93ZW4="));
     messages.push_back(std::make_pair("AlanShearer",    "QWxhblNoZWFyZXI="));
-    
+    // as well as some more prosy samples
+    //messages.push_back(std::make_pair("", ""));
+    messages.push_back(std::make_pair("A", "QQ=="));
+    messages.push_back(std::make_pair("AB", "QUI="));
+    messages.push_back(std::make_pair("ABC", "QUJD"));
+    messages.push_back(std::make_pair("ABCD", "QUJDRA=="));
+
     for(it = messages.begin(); it != messages.end(); ++it) {
         std::string decode64 = decode_base64(it->second);
         if(it->first.compare(decode64) != 0) {
@@ -77,84 +131,17 @@ void test_base64_decoding() {
     }
 }
 
-void test_bindec_end_to_end_zero() {
-    std::cout << "test_bindec_end_to_end_zero..." << std::endl;
-    std::vector<std::string> messages;
-    BinDecConverter bindec_converter = BinDecConverter(ZERO);
-    for(int i = 0; i < BINDEC_TESTS; i++)
-        messages.push_back(generate_random_number(rand() % 20 + 10)); //[10, 30]
-    for(int i = 0; i < BINDEC_TESTS ; ++i) {
-        std::string encode_bindec = bindec_converter.encode(messages[i]);
-        std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) != 0) { 
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
-        }
-    }
-}
-
-void test_bindec_end_to_end_cycle_forward() {
-    std::cout << "test_bindec_end_to_end_cycle_forward..." << std::endl;
-    std::vector<std::string> messages;
-    BinDecConverter bindec_converter = BinDecConverter(CYCLE_FORWARD);
-    for(int i = 0; i < BINDEC_TESTS; i++)
-        messages.push_back(generate_random_number(rand() % 20 + 10)); //[10, 30]
-    for(int i = 0; i < BINDEC_TESTS ; ++i) {
-        std::string encode_bindec = bindec_converter.encode(messages[i]);
-        std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) != 0) { 
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
-        }
-    }
-}
-
-void test_bindec_end_to_end_cycle_backward() {
-    std::cout << "test_bindec_end_to_end_cycle_backward..." << std::endl;
-    std::vector<std::string> messages;
-    BinDecConverter bindec_converter = BinDecConverter(CYCLE_BACKWARD);
-    for(int i = 0; i < BINDEC_TESTS; i++)
-        messages.push_back(generate_random_number(rand() % 20 + 10)); //[10, 30]
-    for(int i = 0; i < BINDEC_TESTS ; ++i) {
-        std::string encode_bindec = bindec_converter.encode(messages[i]);
-        std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) != 0) { 
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
-        }
-    }
-}
-
-void test_bindec_end_to_end_random() {
-    std::cout << "test_bindec_end_to_end_random..." << std::endl;
-    std::vector<std::string> messages;
-    BinDecConverter bindec_converter = BinDecConverter(RANDOM);
-    for(int i = 0; i < BINDEC_TESTS; i++)
-        messages.push_back(generate_random_number(rand() % 20 + 10)); //[10, 30]
-    for(int i = 0; i < BINDEC_TESTS ; ++i) {
-        std::string encode_bindec = bindec_converter.encode(messages[i]);
-        std::string decode_bindec = bindec_converter.decode(encode_bindec);
-        if(messages[i].compare(decode_bindec) != 0) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << messages[i] << " Decode: " << decode_bindec << std::endl;
-        }
-    }
-}
-
-void test_bindec_encoding_zero() {
-    std::cout << "test_bindec_encoding_zero..." << std::endl;
+void test_bindec_encoding() {
+    std::cout << "test_bindec_encoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
-    BinDecConverter bindec_converter = BinDecConverter(ZERO);
-    messages.push_back(std::make_pair("1234567890",             "12 34 56 78 90 F0 00 00 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("0987654321",             "09 87 65 43 21 F0 00 00 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("123456789012345",        "12 34 56 78 90 12 34 5F 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("567890987654321",        "56 78 90 98 76 54 32 1F 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("87638103692640182746",   "87 63 81 03 69 26 40 18 27 46 F0 00 00 00 00 00"));
-    messages.push_back(std::make_pair("98275192837768916432",   "98 27 51 92 83 77 68 91 64 32 F0 00 00 00 00 00"));
-    
+    messages.push_back(std::make_pair("1234567890123456",
+                "12 34 56 78 90 12 34 56 F1 23 45 67 89 01 23 45"));
+    messages.push_back(std::make_pair("12345678901234567",
+                "12 34 56 78 90 12 34 56 7F 12 34 56 78 90 12 34"));
+
     for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string bindec_encode = string_to_hexstring(bindec_converter.encode(it->first));
+        std::string bindec_encode = string_to_hexstring(bcd_encode(it->first));
         if(it->second.compare(bindec_encode) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
@@ -164,117 +151,31 @@ void test_bindec_encoding_zero() {
     }
 }
 
-void test_bindec_decoding_zero() {
-    std::cout << "test_bindec_decoding_zero..." << std::endl;
+void test_bindec_decoding() {
+    std::cout << "test_bindec_decoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
     std::vector<std::pair<std::string, std::string> >::iterator it;
-    BinDecConverter bindec_converter = BinDecConverter(ZERO);
-    messages.push_back(std::make_pair("1234567890",             "12 34 56 78 90 F0 00 00 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("0987654321",             "09 87 65 43 21 F0 00 00 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("123456789012345",        "12 34 56 78 90 12 34 5F 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("567890987654321",        "56 78 90 98 76 54 32 1F 00 00 00 00 00 00 00 00"));
-    messages.push_back(std::make_pair("87638103692640182746",   "87 63 81 03 69 26 40 18 27 46 F0 00 00 00 00 00"));
-    messages.push_back(std::make_pair("98275192837768916432",   "98 27 51 92 83 77 68 91 64 32 F0 00 00 00 00 00"));
-    
+    messages.push_back(std::make_pair("",
+                "F0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"));
+    messages.push_back(std::make_pair("9",
+                "9F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"));
+    messages.push_back(std::make_pair("87638103692640182746",
+                "87 63 81 03 69 26 40 18 27 46 F0 00 00 00 00 00"));
+    messages.push_back(std::make_pair("982751928377689164327",
+                "98 27 51 92 83 77 68 91 64 32 7F 00 00 00 00 00"));
+    messages.push_back(std::make_pair("1234567890123456123456789012345",
+                "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 5F"));
+    messages.push_back(std::make_pair("12345678901234561234567890123456",
+                "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 56"));
+
     for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string bindec_decode = bindec_converter.decode(string_from_hexstring(it->second));
+        std::string bindec_decode = bcd_decode(string_from_hexstring(it->second));
         if(it->first.compare(bindec_decode) != 0) {
             std::cout << "Result:    Fail!" << std::endl;
             std::cout << "Input:  " << it->first << std::endl; 
             std::cout << "Wait:   " << it->second << std::endl;
-            std::cout << "HexConv:" << string_to_hexstring(string_from_hexstring(it->second)) << std::endl;
-            std::cout << "Encode: " << bindec_decode << std::endl;
-        }
-    }
-}
-
-void test_bindec_encoding_cycle_forward() {
-    std::cout << "test_bindec_encoding_cycle_forward..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > messages;
-    std::vector<std::pair<std::string, std::string> >::iterator it;
-    BinDecConverter bindec_converter = BinDecConverter(CYCLE_FORWARD);
-    messages.push_back(std::make_pair("1234567890",             "12 34 56 78 90 F1 23 45 67 89 01 23 45 67 89 01"));
-    messages.push_back(std::make_pair("0987654321",             "09 87 65 43 21 F0 98 76 54 32 10 98 76 54 32 10"));
-    messages.push_back(std::make_pair("123456789012345",        "12 34 56 78 90 12 34 5F 12 34 56 78 90 12 34 51"));
-    messages.push_back(std::make_pair("567890987654321",        "56 78 90 98 76 54 32 1F 56 78 90 98 76 54 32 15"));
-    messages.push_back(std::make_pair("87638103692640182746",   "87 63 81 03 69 26 40 18 27 46 F8 76 38 10 36 92"));
-    messages.push_back(std::make_pair("98275192837768916432",   "98 27 51 92 83 77 68 91 64 32 F9 82 75 19 28 37"));
-    
-    for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string bindec_encode = string_to_hexstring(bindec_converter.encode(it->first));
-        if(it->second.compare(bindec_encode) != 0) { 
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input:  " << it->first << std::endl; 
-            std::cout << "Wait:   " << it->second << std::endl;
-            std::cout << "Encode: " << bindec_encode << std::endl;
-        }
-    }
-}
-
-void test_bindec_decoding_cycle_forward() {
-    std::cout << "test_bindec_decoding_cycle_forward..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > messages;
-    std::vector<std::pair<std::string, std::string> >::iterator it;
-    BinDecConverter bindec_converter = BinDecConverter(CYCLE_FORWARD);
-    messages.push_back(std::make_pair("1234567890",             "12 34 56 78 90 F1 23 45 67 89 01 23 45 67 89 01"));
-    messages.push_back(std::make_pair("0987654321",             "09 87 65 43 21 F0 98 76 54 32 10 98 76 54 32 10"));
-    messages.push_back(std::make_pair("123456789012345",        "12 34 56 78 90 12 34 5F 12 34 56 78 90 12 34 51"));
-    messages.push_back(std::make_pair("567890987654321",        "56 78 90 98 76 54 32 1F 56 78 90 98 76 54 32 15"));
-    messages.push_back(std::make_pair("87638103692640182746",   "87 63 81 03 69 26 40 18 27 46 F8 76 38 10 36 92"));
-    messages.push_back(std::make_pair("98275192837768916432",   "98 27 51 92 83 77 68 91 64 32 F9 82 75 19 28 37"));
-    
-    for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string bindec_decode = bindec_converter.decode(string_from_hexstring(it->second));
-        if(it->first.compare(bindec_decode) != 0) { 
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input:  " << it->first << std::endl; 
-            std::cout << "Wait:   " << it->second << std::endl;
-            std::cout << "Encode: " << bindec_decode << std::endl;
-        }
-    }
-}
-
-void test_bindec_encoding_cycle_backward() {
-    std::cout << "test_bindec_encoding_cycle_backward..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > messages;
-    std::vector<std::pair<std::string, std::string> >::iterator it;
-    BinDecConverter bindec_converter = BinDecConverter(CYCLE_BACKWARD);
-    messages.push_back(std::make_pair("1234567890",             "12 34 56 78 90 F0 98 76 54 32 10 98 76 54 32 10"));
-    messages.push_back(std::make_pair("0987654321",             "09 87 65 43 21 F1 23 45 67 89 01 23 45 67 89 01"));
-    messages.push_back(std::make_pair("123456789012345",        "12 34 56 78 90 12 34 5F 54 32 10 98 76 54 32 15"));
-    messages.push_back(std::make_pair("567890987654321",        "56 78 90 98 76 54 32 1F 12 34 56 78 90 98 76 51"));
-    messages.push_back(std::make_pair("87638103692640182746",   "87 63 81 03 69 26 40 18 27 46 F6 47 28 10 46 29"));
-    messages.push_back(std::make_pair("98275192837768916432",   "98 27 51 92 83 77 68 91 64 32 F2 34 61 98 67 73"));
-    
-    for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string bindec_encode = string_to_hexstring(bindec_converter.encode(it->first));
-        if(it->second.compare(bindec_encode) != 0) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input:  " << it->first << std::endl; 
-            std::cout << "Wait:   " << it->second << std::endl;
-            std::cout << "Encode: " << bindec_encode << std::endl;
-        }
-    }
-}
-
-void test_bindec_decoding_cycle_backward() {
-    std::cout << "test_bindec_decoding_cycle_backward..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > messages;
-    std::vector<std::pair<std::string, std::string> >::iterator it;
-    BinDecConverter bindec_converter = BinDecConverter(CYCLE_BACKWARD);
-    messages.push_back(std::make_pair("1234567890",             "12 34 56 78 90 F0 98 76 54 32 10 98 76 54 32 10"));
-    messages.push_back(std::make_pair("0987654321",             "09 87 65 43 21 F1 23 45 67 89 01 23 45 67 89 01"));
-    messages.push_back(std::make_pair("123456789012345",        "12 34 56 78 90 12 34 5F 54 32 10 98 76 54 32 15"));
-    messages.push_back(std::make_pair("567890987654321",        "56 78 90 98 76 54 32 1F 12 34 56 78 90 98 76 51"));
-    messages.push_back(std::make_pair("87638103692640182746",   "87 63 81 03 69 26 40 18 27 46 F6 47 28 10 46 29"));
-    messages.push_back(std::make_pair("98275192837768916432",   "98 27 51 92 83 77 68 91 64 32 F2 34 61 98 67 73"));
-    
-    for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string bindec_decode = bindec_converter.decode(string_from_hexstring(it->second));
-        if(it->first.compare(bindec_decode) != 0) { 
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input:  " << it->first << std::endl; 
-            std::cout << "Wait:   " << it->second << std::endl;
+            std::cout << "HexConv:" << string_to_hexstring(
+                    string_from_hexstring(it->second)) << std::endl;
             std::cout << "Encode: " << bindec_decode << std::endl;
         }
     }
@@ -297,9 +198,7 @@ void test_aes_end_to_end() {
                     << " Decode: " << decode_aes << std::endl;
             }
         } catch(AESBlockSizeException &exc) {
-            std::cout << "Invalid block size: " << exc.get_string().length()
-                << ", expected %" << exc.get_block_size() << " ["
-                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+            std::cout << "Invalid block size: " << exc.what() << std::endl;
         }
     }
 }
@@ -324,9 +223,7 @@ void test_aes_encoding() {
                 std::cout << "Encode: " << aes_encode << std::endl;
             }
         } catch(AESBlockSizeException &exc) {
-            std::cout << "Invalid block size: " << exc.get_string().length()
-                << ", expected %" << exc.get_block_size() << " ["
-                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+            std::cout << "Invalid block size: " << exc.what() << std::endl;
         }
     }
 }
@@ -351,9 +248,7 @@ void test_aes_decoding() {
                 std::cout << "Encode: " << aes_decode << std::endl;
             }
         } catch(AESBlockSizeException &exc) {
-            std::cout << "Invalid block size: " << exc.get_string().length()
-                << ", expected %" << exc.get_block_size() << " ["
-                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+            std::cout << "Invalid block size: " << exc.what() << std::endl;
         }
     }
 }
@@ -363,26 +258,23 @@ void test_coding_end_to_end() {
     std::vector<std::string> messages;
     std::string key = "12345678901234567890123456789012";
     AESCrypter aes_crypter(key);
-    BinDecConverter bindec_convert;
     for(int i = 0; i < FULL_TESTS; i++)
         messages.push_back(generate_random_number(rand() % 5 + 16));
 
     for(int i = 0; i < FULL_TESTS; i++) {
         try {
-            std::string encode_bindec = bindec_convert.encode(messages[i]);
+            std::string encode_bindec = bcd_encode(messages[i]);
             std::string encode_aes = aes_crypter.encrypt(encode_bindec);
             std::string encode_b64 = encode_base64(encode_aes);
             std::string decode_b64 = decode_base64(encode_b64);
             std::string decode_aes = aes_crypter.decrypt(decode_b64);
-            std::string decode_bindec = bindec_convert.decode(decode_aes); 
+            std::string decode_bindec = bcd_decode(decode_aes); 
             if (messages[i].compare(decode_bindec) != 0) { 
                 std::cout << "Result:    Fail!" << std::endl;
                 std::cout << "Input: " << messages[i] << " Decode: " << decode_aes << "." << std::endl;
             }
         } catch(AESBlockSizeException &exc) {
-            std::cout << "Invalid block size: " << exc.get_string().length()
-                << ", expected %" << exc.get_block_size() << " ["
-                << string_to_hexstring(exc.get_string()) << "]" << std::endl;
+            std::cout << "Invalid block size: " << exc.what() << std::endl;
         }
     }
 }
@@ -392,25 +284,18 @@ void test_coding_end_to_end() {
 //TODO: unittesting
 //TODO: add predicted tests
 int main() {
+    // hex
+    test_hex_string();
+    test_hex_string_no_spaces();
+
     //base64
     test_base64_encoding();
     test_base64_decoding();
     test_base64_end_to_end();
 
     //bindec
-    test_bindec_encoding_zero();
-    test_bindec_decoding_zero();
-    test_bindec_end_to_end_zero();
-
-    test_bindec_encoding_cycle_forward();
-    test_bindec_decoding_cycle_forward();
-    test_bindec_end_to_end_cycle_forward();
-
-    test_bindec_encoding_cycle_backward();
-    test_bindec_decoding_cycle_backward();
-    test_bindec_end_to_end_cycle_backward();
-
-    test_bindec_end_to_end_random();
+    test_bindec_encoding();
+    test_bindec_decoding();
     
     //aes
     test_aes_end_to_end();
