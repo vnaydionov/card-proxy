@@ -82,32 +82,6 @@ get_random()
 }
 
 
-ElementTree::ElementPtr bind_card(Session &session, ILogger &logger,
-        const StringDict &params)
-{
-    ElementTree::ElementPtr resp = mk_resp("success");
-    Domain::Card card;
-    card.card_token = generate_random_number(32);
-    card.ts = Yb::now();
-    card.expire_dt = Yb::dt_make(params.get_as<int>("expire_year"), params.get_as<int>("expire_month"), 1);/*convert string to date*/
-    card.card_holder = params["card_holder"];
-    std::string pan_m1 =  params["pan"].substr(0, 6);
-    std::string pan_m2 =  params["pan"].substr(params["pan"].size() - 4, 4);
-    card.pan_masked = pan_m1 + "****" + pan_m2;
-    card.save(session);
-    session.commit();
-    int card_id = card.id;
-
-    resp->sub_element("card_id", Yb::to_string(card_id));
-    resp->sub_element("card_holder", card.card_holder);
-    resp->sub_element("pan_masked", card.pan_masked);
-    std::string expire_dtYear = Yb::to_string(params.get_as<string>("expire_year"));/*convert data to string*/
-    std::string expire_dtMonth = Yb::to_string(params.get_as<string>("expire_month"));/*convert data to string*/
-    std::string expire_dtCD = expire_dtMonth + "/" + expire_dtYear;
-    resp->sub_element("expire.dt", expire_dtCD); 
-    return resp;
-}
-
 typedef ElementTree::ElementPtr (*HttpHandler)(
         Session &session, ILogger &logger,
         const StringDict &params);
@@ -291,7 +265,6 @@ int main(int argc, char *argv[])
     string prefix = "/card_bind/";//app_settings.get_prefix(); //"/card_bind/";
     int port = app_settings.get_port();//9119;
     CardProxyHttpWrapper handlers[] = {
-        WRAP(bind_card),
         WRAP(dek_status),
         WRAP(dek_get),
         WRAP(dek_list),

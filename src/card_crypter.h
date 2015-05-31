@@ -69,5 +69,8 @@ class CardNotFound: public std::runtime_error
     {}
 };
 
+Yb::DateTime mk_exipre_dt(int expire_year, int expire_month);
+std::pair<int, int> split_exipre_dt(const Yb::DateTime &expire_dt);
+
 #endif // CARD_PROXY__CARD_CRYPTER_H
 // vim:ts=4:sts=4:sw=4:et:

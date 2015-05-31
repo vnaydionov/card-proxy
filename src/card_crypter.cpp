@@ -8,6 +8,28 @@
 #include "domain/Card.h"
 #include "domain/IncomingRequest.h"
 
+Yb::DateTime mk_exipre_dt(int expire_year, int expire_month)
+{
+    ++expire_month;
+    if (expire_month > 12) {
+        ++expire_year;
+        expire_month = 1;
+    }
+    return Yb::dt_make(expire_year, expire_month, 1);
+}
+
+std::pair<int, int> split_exipre_dt(const Yb::DateTime &expire_dt)
+{
+    int expire_year = Yb::dt_year(expire_dt);
+    int expire_month = Yb::dt_month(expire_dt);
+    --expire_month;
+    if (expire_month < 1) {
+        --expire_year;
+        expire_month = 12;
+    }
+    return std::make_pair(expire_year, expire_month);
+}
+
 static Domain::Card find_card_by_token(Yb::Session &session, const std::string &token)
 {
     Domain::Card card;
@@ -64,9 +86,8 @@ static Domain::Card save_card(CardCrypter &cr, const CardData &card_data)
     // TODO: generate some other token in case of collision
     card.card_token = cr.generate_card_token();
     card.card_holder = card_data["card_holder"];
-    card.expire_dt = Yb::dt_make(boost::lexical_cast<int>(card_data["expire_year"]),
-                                 boost::lexical_cast<int>(card_data["expire_month"]),
-                                 1);
+    card.expire_dt = mk_exipre_dt(card_data.get_as<int>("expire_year"),
+                                  card_data.get_as<int>("expire_month"));
     card.pan_crypted = cr.encode_data(dek, bcd_encode(card_data["pan"]));
     card.pan_masked = mask_pan(card_data["pan"]);
     card.dek = Domain::DataKey::Holder(data_key);
@@ -96,13 +117,34 @@ static Domain::IncomingRequest save_cvn(CardCrypter &cr, const CardData &card_da
 
 CardData CardCrypter::get_token(const CardData &card_data)
 {
-    // TODO: search for an existing card first
-    Domain::Card card = save_card(*this, card_data);
-    if (!card_data.get("cvn", "").empty())
-        save_cvn(*this, card_data, card);
     CardData result = card_data;
     result.pop("pan", "");
     result.pop("cvn", "");
+    std::string pan_masked = mask_pan(card_data["pan"]);
+    Yb::DateTime expire_dt = mk_exipre_dt(card_data.get_as<int>("expire_year"),
+                                          card_data.get_as<int>("expire_month"));
+    Yb::DomainResultSet<Domain::Card> found_card_rs =
+        Yb::query<Domain::Card>(session_)
+            .filter_by(Domain::Card::c.pan_masked == pan_masked)
+            .filter_by(Domain::Card::c.expire_dt >= expire_dt)  // a hack
+            .all();
+    std::vector<Domain::Card> found_cards;
+    std::copy(found_card_rs.begin(), found_card_rs.end(),
+              std::back_inserter(found_cards));
+    for (auto &found_card : found_cards) {
+        std::string dek = decode_dek(found_card.dek->dek_crypted);
+        std::string pan = bcd_decode(decode_data(dek, found_card.pan_crypted));
+        if (card_data["pan"] == pan) {
+            if (!card_data.get("cvn", "").empty())
+                save_cvn(*this, card_data, found_card);
+            result["pan_masked"] = found_card.pan_masked;
+            result["card_token"] = found_card.card_token;
+            return result;
+        }
+    }
+    Domain::Card card = save_card(*this, card_data);
+    if (!card_data.get("cvn", "").empty())
+        save_cvn(*this, card_data, card);
     result["pan_masked"] = card.pan_masked;
     result["card_token"] = card.card_token;
     return result;
@@ -116,8 +158,9 @@ CardData CardCrypter::get_card(const std::string &token)
     std::string dek = decode_dek(card.dek->dek_crypted);
     CardData result;
     result["pan"] = bcd_decode(decode_data(dek, card.pan_crypted));
-    result["expire_year"] = std::to_string(Yb::dt_year(card.expire_dt));
-    result["expire_month"] = std::to_string(Yb::dt_month(card.expire_dt));
+    std::pair<int, int> expire_pair = split_exipre_dt(card.expire_dt);
+    result["expire_year"] = std::to_string(expire_pair.first);
+    result["expire_month"] = std::to_string(expire_pair.second);
     result["card_holder"] = card.card_holder;
     Yb::DomainResultSet<Domain::IncomingRequest> request_rs =
         Yb::query<Domain::IncomingRequest>(session_)
