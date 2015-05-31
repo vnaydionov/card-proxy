@@ -8,7 +8,7 @@
 #include "domain/Card.h"
 #include "domain/IncomingRequest.h"
 
-Yb::DateTime mk_exipre_dt(int expire_year, int expire_month)
+Yb::DateTime mk_expire_dt(int expire_year, int expire_month)
 {
     ++expire_month;
     if (expire_month > 12) {
@@ -18,7 +18,7 @@ Yb::DateTime mk_exipre_dt(int expire_year, int expire_month)
     return Yb::dt_make(expire_year, expire_month, 1);
 }
 
-std::pair<int, int> split_exipre_dt(const Yb::DateTime &expire_dt)
+std::pair<int, int> split_expire_dt(const Yb::DateTime &expire_dt)
 {
     int expire_year = Yb::dt_year(expire_dt);
     int expire_month = Yb::dt_month(expire_dt);
@@ -86,8 +86,8 @@ static Domain::Card save_card(CardCrypter &cr, const CardData &card_data)
     // TODO: generate some other token in case of collision
     card.card_token = cr.generate_card_token();
     card.card_holder = card_data["card_holder"];
-    card.expire_dt = mk_exipre_dt(card_data.get_as<int>("expire_year"),
-                                  card_data.get_as<int>("expire_month"));
+    card.expire_year = card_data.get_as<int>("expire_year");
+    card.expire_month = card_data.get_as<int>("expire_month");
     card.pan_crypted = cr.encode_data(dek, bcd_encode(card_data["pan"]));
     card.pan_masked = mask_pan(card_data["pan"]);
     card.dek = Domain::DataKey::Holder(data_key);
@@ -121,17 +121,15 @@ CardData CardCrypter::get_token(const CardData &card_data)
     result.pop("pan", "");
     result.pop("cvn", "");
     std::string pan_masked = mask_pan(card_data["pan"]);
-    Yb::DateTime expire_dt = mk_exipre_dt(card_data.get_as<int>("expire_year"),
-                                          card_data.get_as<int>("expire_month"));
+    int expire_year = card_data.get_as<int>("expire_year");
+    int expire_month = card_data.get_as<int>("expire_month");
     Yb::DomainResultSet<Domain::Card> found_card_rs =
         Yb::query<Domain::Card>(session_)
             .filter_by(Domain::Card::c.pan_masked == pan_masked)
-            .filter_by(Domain::Card::c.expire_dt >= expire_dt)  // a hack
+            .filter_by(Domain::Card::c.expire_year == expire_year)
+            .filter_by(Domain::Card::c.expire_month == expire_month)
             .all();
-    std::vector<Domain::Card> found_cards;
-    std::copy(found_card_rs.begin(), found_card_rs.end(),
-              std::back_inserter(found_cards));
-    for (auto &found_card : found_cards) {
+    for (auto &found_card : found_card_rs) {
         std::string dek = decode_dek(found_card.dek->dek_crypted);
         std::string pan = bcd_decode(decode_data(dek, found_card.pan_crypted));
         if (card_data["pan"] == pan) {
@@ -158,9 +156,8 @@ CardData CardCrypter::get_card(const std::string &token)
     std::string dek = decode_dek(card.dek->dek_crypted);
     CardData result;
     result["pan"] = bcd_decode(decode_data(dek, card.pan_crypted));
-    std::pair<int, int> expire_pair = split_exipre_dt(card.expire_dt);
-    result["expire_year"] = std::to_string(expire_pair.first);
-    result["expire_month"] = std::to_string(expire_pair.second);
+    result["expire_year"] = std::to_string(card.expire_year.value());
+    result["expire_month"] = std::to_string(card.expire_month.value());
     result["card_holder"] = card.card_holder;
     Yb::DomainResultSet<Domain::IncomingRequest> request_rs =
         Yb::query<Domain::IncomingRequest>(session_)
