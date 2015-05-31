@@ -2,7 +2,7 @@
 #include "dek_pool.h"
 #include "utils.h"
 #include "aes_crypter.h"
-#include "crypt.h"
+#include "card_crypter.h"
 
 #define DEK_USE_COUNT 10
 #define MAX_DEK_COUNT 500

@@ -13,13 +13,16 @@ add_executable (card_proxy
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/domain/IncomingRequest.cpp)
+    ${CMAKE_CURRENT_BINARY_DIR}/domain/IncomingRequest.cpp
+    )
 
 set_source_files_properties (
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp
-    PROPERTIES GENERATED 1)
+    ${CMAKE_CURRENT_BINARY_DIR}/domain/IncomingRequest.cpp
+    PROPERTIES GENERATED 1
+    )
 
 add_dependencies (card_proxy generate_domain)
 

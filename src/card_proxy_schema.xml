@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
 <schema>
-    <table name="T_CONFIG" sequence="S_PRODUCT" class="Config" xml-name="config">
+    <table name="T_CONFIG" class="Config" xml-name="config">
         <column name="CKEY" type="string" size="40" null="false">
             <primary-key />
         </column>
         <column name="CVALUE" type="string" size="100" null="false" />
+        <column name="UPDATE_TS" type="datetime" default="sysdate" />
     </table>
 
     <table name="T_DEK" sequence="S_DEK" class="DataKey" xml-name="data_key">
