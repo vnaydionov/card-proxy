@@ -318,4 +318,12 @@ TEST_CASE( "Testing BASE64 random strings", "[base64_rnd]" ) {
     }
 }
 
+TEST_CASE( "Testing BCD encoder output size", "[bcd_encoded_size]" ) {
+    REQUIRE( 4 == std::string(8, 0).substr(1, 4).size() );
+    REQUIRE( 16 == bcd_encode("1234567890123456").size() );
+    REQUIRE( 16 == bcd_encode("12345678901234567890").size() );
+    REQUIRE( 16 == bcd_encode("1234567890123").size() );
+    REQUIRE( 16 == bcd_encode("123").size() );
+}
+
 // vim:ts=4:sts=4:sw=4:et:

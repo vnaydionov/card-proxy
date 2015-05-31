@@ -171,7 +171,9 @@ std::string bcd_decode(const std::string &bcd_input)
 
 std::string bcd_encode(const std::string &ascii_input)
 {
-    std::string x = ascii_input + "f" + ascii_input + "f";
+    std::string x = ascii_input + "f";
+    while (x.size() < 32)
+        x = x + ascii_input + "f";
     return string_from_hexstring(x.substr(0, 32), HEX_NOSPACES);
 }
 

@@ -196,7 +196,7 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
         ElementTree::ElementPtr dk = resp->sub_element("data_key");
         std::string dek_crypted = data_key.dek_crypted.value();
         std::string dek_decoded = decode_base64(dek_crypted);
-        std::string dek_decrypted = aes_crypter.decrypt(dek_decoded);
+        std::string dek_decrypted = string_to_hexstring(aes_crypter.decrypt(dek_decoded));
         dk->sub_element("id", Yb::to_string(data_key.id.value()));
         dk->sub_element("dek", dek_decrypted);
         dk->sub_element("counter", Yb::to_string(data_key.counter.value()));
@@ -222,21 +222,18 @@ ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
     CardData card_data;
-    try {
-        std::string mode = params["mode"];
-        if(mode.compare("auto") == 0) 
-            card_data = generate_random_card_data();
-        else {
-            std::vector<std::string> keys{
-                "pan", "expire_year", "expire_month", "card_holder", "cvn",
-            };
-            for (const auto &key: keys)
-                card_data[key] = params[key];
-        }
-    } catch(Yb::KeyError &err) {
+    std::string mode = params.get("mode", "");
+    if (mode == "auto")
+        card_data = generate_random_card_data();
+    else {
+        std::vector<std::string> keys{
+            "pan", "expire_year", "expire_month", "card_holder", "cvn",
+        };
+        for (const auto &key: keys)
+            card_data[key] = params.get(key, "");
     }
     //make norm check
-    if(card_data.get("pan", "").empty())
+    if (card_data.get("pan", "").empty())
         return mk_resp("error");
 
     CardCrypter card_crypter(session);
