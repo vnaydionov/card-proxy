@@ -1,9 +1,9 @@
 
-add_executable (card_proxy_tests
-    main_test.cpp ../utils.cpp ../aes_crypter.cpp
+add_executable (core_tests
+    core_tests.cpp ../utils.cpp ../aes_crypter.cpp
     )
 
-target_link_libraries (card_proxy_tests crypto ssl)
+target_link_libraries (core_tests crypto ssl)
 
 include_directories (
     ${BOOST_INCLUDEDIR}

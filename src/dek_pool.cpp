@@ -9,9 +9,8 @@
 #define AUTO_GEN_LIMIT 50
 #define MAN_GEN_LIMIT 100
 
-using namespace Domain;
 
-DEKPool::DEKPool(Yb::Session &session) 
+DEKPool::DEKPool(Yb::Session &session)
     : _session(session)
     , _dek_use_count(DEK_USE_COUNT)
     , _max_active_dek_count(MAX_DEK_COUNT)
@@ -22,11 +21,11 @@ DEKPool::DEKPool(Yb::Session &session)
 DEKPool::~DEKPool() {
 }
 
-DataKey DEKPool::get_active_data_key() {
+Domain::DataKey DEKPool::get_active_data_key() {
     DEKPoolStatus pool_status = _check_pool();
 
-    auto active_deks = Yb::query<DataKey>(_session)
-            .filter_by(DataKey::c.counter < static_cast<int>(_dek_use_count));
+    auto active_deks = Yb::query<Domain::DataKey>(_session)
+            .filter_by(Domain::DataKey::c.counter < static_cast<int>(_dek_use_count));
     int choice = rand() % pool_status.use_count;
     for(auto &dek : active_deks.all()) {
         choice -= (_dek_use_count - dek.counter);
@@ -47,16 +46,16 @@ DEKPoolStatus DEKPool::_check_pool() {
 
 DEKPoolStatus DEKPool::get_status() {
     int count = 0;
-    auto total_query = Yb::query<DataKey>(_session);
+    auto total_query = Yb::query<Domain::DataKey>(_session);
     auto active_query = total_query
-            .filter_by(DataKey::c.counter < static_cast<int>(_dek_use_count));
-    for(auto &date_key : active_query.all())
-        count += _dek_use_count - date_key.counter;
+            .filter_by(Domain::DataKey::c.counter < static_cast<int>(_dek_use_count));
+    for(auto &data_key : active_query.all())
+        count += _dek_use_count - data_key.counter;
     return DEKPoolStatus(total_query.count(), active_query.count(), count);
 }
 
-DataKey DEKPool::_generate_new_data_key() {
-    DataKey data_key;
+Domain::DataKey DEKPool::_generate_new_data_key() {
+    Domain::DataKey data_key;
     std::string master_key = CardCrypter::assemble_master_key(_session);
     std::string dek_value = generate_random_bytes(32);
     std::string encoded_dek;

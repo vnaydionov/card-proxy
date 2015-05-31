@@ -1,6 +1,6 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
-#ifndef CARD_PROXY__CRYPT_H
-#define CARD_PROXY__CRYPT_H
+#ifndef CARD_PROXY__CARD_CRYPTER_H
+#define CARD_PROXY__CARD_CRYPTER_H
 
 #include <string>
 #include <orm/data_object.h>
@@ -29,6 +29,10 @@ public:
     // outgoing request processing
     CardData get_card(const std::string &token);
 
+    void remove_card(const std::string &token);
+    void remove_card_data(const std::string &token);
+    void change_master_key(const std::string &key);
+
     static std::string assemble_master_key(Yb::Session &session);
     static std::string generate_card_token();
     static std::string encode_data(const std::string &dek,
@@ -51,5 +55,19 @@ private:
     std::string master_key_;
 };
 
-#endif // CARD_PROXY__CRYPT_H
+class TokenNotFound: public std::runtime_error
+{
+    TokenNotFound():
+        std::runtime_error("Token not found")
+    {}
+};
+
+class CardNotFound: public std::runtime_error
+{
+    CardNotFound():
+        std::runtime_error("Card not found")
+    {}
+};
+
+#endif // CARD_PROXY__CARD_CRYPTER_H
 // vim:ts=4:sts=4:sw=4:et:

@@ -1,5 +1,5 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
-#include "crypt.h"
+#include "card_crypter.h"
 #include "utils.h"
 #include "aes_crypter.h"
 #include "dek_pool.h"
@@ -7,6 +7,51 @@
 #include "domain/DataKey.h"
 #include "domain/Card.h"
 #include "domain/IncomingRequest.h"
+
+static Domain::Card find_card_by_token(Yb::Session &session, const std::string &token)
+{
+    Domain::Card card;
+    try {
+        card = Yb::query<Domain::Card>(session)
+                .filter_by(Domain::Card::c.card_token == token)
+                .one();
+    }
+    catch (const Yb::NoDataFound &err) {
+    }
+    return card;
+}
+
+static void remove_incoming_request(Domain::Card &card)
+{
+    Domain::IncomingRequest incoming_request = *card.cvn;
+    incoming_request.delete_object();
+}
+
+void CardCrypter::remove_card(const std::string &token)
+{
+    Domain::Card card = find_card_by_token(session_, token);
+    remove_incoming_request(card);
+    card.delete_object();
+}
+
+void CardCrypter::remove_card_data(const std::string &token)
+{
+    Domain::Card card = find_card_by_token(session_, token);
+    remove_incoming_request(card);
+}
+
+void CardCrypter::change_master_key(const std::string &key)
+{
+    //save key
+    auto deks = Yb::query<Domain::DataKey>(session_).all();
+    for (auto &dek : deks) {
+        std::string old_dek = decode_dek(dek.dek_crypted);
+        std::string new_dek = encode_data(key, old_dek);
+        dek.dek_crypted = new_dek;
+    }
+    session_.flush();
+    master_key_ = key;
+}
 
 static Domain::Card save_card(CardCrypter &cr, const CardData &card_data)
 {

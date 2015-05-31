@@ -4,18 +4,9 @@
 
 #include "domain/DataKey.h"
 
-struct DEKPoolStatus
-{
-    long total_count;
-    long active_count;
-    long use_count;
-    DEKPoolStatus() : total_count(0), active_count(0), use_count(0) {}
-    DEKPoolStatus(int total, int active, int use) 
-    : total_count(total), active_count(active), use_count(use) {}
-};
+struct DEKPoolStatus;
 
-class DEKPool
-{
+class DEKPool {
 public:
     DEKPool(Yb::Session &session);
     ~DEKPool();
@@ -43,6 +34,24 @@ private:
     unsigned _auto_generation_limit;
     unsigned _man_generation_limit;
     unsigned _check_timeout;
+};
+
+struct DEKPoolStatus {
+    long total_count;
+    long active_count;
+    long use_count;
+
+    DEKPoolStatus() 
+        : total_count(0)
+        , active_count(0)
+        , use_count(0) {
+    }
+
+    DEKPoolStatus(const int &total, const int &active, const int &use) 
+        : total_count(total)
+        , active_count(active)
+        , use_count(use) {
+    }
 };
 
 #endif // CARD_PROXY__DEK_POOL_H

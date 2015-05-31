@@ -26,3 +26,11 @@
 *.exe
 *.out
 *.app
+
+# Domain
+src/domain/*.h
+src/domain/*.cpp
+src/domain/*.bak
+
+# Logs
+*.log

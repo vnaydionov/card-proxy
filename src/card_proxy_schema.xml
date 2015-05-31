@@ -60,5 +60,4 @@
         <one class="Card" property="cvn" use-list="false"/>
         <many class="IncomingRequest" property="card" />
     </relation>
-
 </schema>

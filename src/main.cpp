@@ -2,15 +2,18 @@
 #include "helpers.h"
 #include "utils.h"
 #include "aes_crypter.h"
-#include "crypt.h"
+#include "card_crypter.h"
 #include "dek_pool.h"
 
 #include "domain/Card.h"
-#include "domain/IncomingRequest.h"
-#include "domain/DataKey.h"
 #include "domain/Config.h"
+#include "domain/DataKey.h"
+#include "domain/IncomingRequest.h"
 
 #include <util/util_config.h>
+#include <util/string_utils.h>
+#include <util/element_tree.h>
+
 #if defined(YBUTIL_WINDOWS)
 #include <rpc.h>
 #else
@@ -22,10 +25,6 @@
 #elif defined(YB_USE_QT)
 #include <QCoreApplication>
 #endif
-#include <iostream>
-#include <string>
-#include <util/string_utils.h>
-#include <util/element_tree.h>
 
 using namespace Domain;
 using namespace std;
@@ -206,18 +205,6 @@ ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
     return resp;
 }
 
-ElementTree::ElementPtr dek(Session &session, ILogger &logger,
-        const StringDict &params) {
-    ElementTree::ElementPtr resp = mk_resp("success");
-    DEKPool dek_pool(session);
-    DataKey dek = dek_pool.get_active_data_key();
-    dek.counter = dek.counter + 1;
-    session.commit();
-    resp->sub_element("dek", dek.dek_crypted.value());
-    resp->sub_element("counter", Yb::to_string(dek.counter.value()));
-    return resp;
-}
-
 ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
@@ -262,6 +249,37 @@ ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
     return resp;
 }
 
+ElementTree::ElementPtr remove_card(Session &session, ILogger &logger, const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    CardCrypter card_crypter(session);
+    std::string token = params["token"];
+    card_crypter.remove_card(token);
+    return resp;
+}
+
+ElementTree::ElementPtr remove_card_data(Session &session, ILogger &logger, const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    CardCrypter card_crypter(session);
+    std::string token = params["token"];
+    card_crypter.remove_card_data(token);
+    return resp;
+}
+
+ElementTree::ElementPtr get_master_key(Session &session, ILogger &logger, const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    std::string master_key = CardCrypter::assemble_master_key(session);
+    resp->sub_element("master_key", master_key);
+    return resp;
+}
+
+ElementTree::ElementPtr set_master_key(Session &session, ILogger &logger, const StringDict &params) {
+    ElementTree::ElementPtr resp = mk_resp("success");
+    CardCrypter card_crypter(session);
+    std::string new_key = params["key"];
+    card_crypter.change_master_key(new_key);
+    return resp;
+}
+
 int main(int argc, char *argv[])
 {
     AppSettings app_settings;
@@ -277,9 +295,12 @@ int main(int argc, char *argv[])
         WRAP(dek_status),
         WRAP(dek_get),
         WRAP(dek_list),
-        WRAP(dek),
         WRAP(get_token),
         WRAP(get_card),
+        WRAP(remove_card),
+        WRAP(remove_card_data),
+        WRAP(set_master_key),
+        WRAP(get_master_key),
     };
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     return run_server_app(log_name, db_name, port,
