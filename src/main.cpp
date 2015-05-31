@@ -1,12 +1,14 @@
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "helpers.h"
+#include "utils.h"
+#include "aes_crypter.h"
+#include "crypt.h"
+#include "dek_pool.h"
+
 #include "domain/Card.h"
 #include "domain/IncomingRequest.h"
 #include "domain/DataKey.h"
 #include "domain/Config.h"
-#include "utils.h"
-#include "crypt.h"
-#include "aes_crypter.h"
-#include "card_data.h"
 
 #include <util/util_config.h>
 #if defined(YBUTIL_WINDOWS)
@@ -28,6 +30,19 @@
 using namespace Domain;
 using namespace std;
 using namespace Yb;
+
+CardData generate_random_card_data()
+{
+    CardData d;
+    d["card_holder"] = generate_random_string(10) + " " +
+                       generate_random_string(10);
+    d["pan"] = generate_random_number(16);  // this will not pass the Luhn algorithm check
+    d["cvn"] = generate_random_number(3);
+    d["pan_masked"] = mask_pan(d["pan"]);
+    d["expire_year"] = std::to_string(2018 + rand() % 5);
+    d["expire_month"] = std::to_string(1 + rand() % 12);
+    return d;
+}
 
 ElementTree::ElementPtr mk_resp(const string &status,
         const string &status_code = "")
@@ -172,7 +187,7 @@ ElementTree::ElementPtr dek_get(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    std::string master_key = assemble_master_key();
+    std::string master_key = CardCrypter::assemble_master_key(session);
     AESCrypter aes_crypter(master_key);
     auto data_keys = Yb::query<Domain::DataKey>(session)
             .filter_by(Domain::DataKey::c.counter < 10)
@@ -212,27 +227,24 @@ ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         if(mode.compare("auto") == 0) 
             card_data = generate_random_card_data();
         else {
-            card_data._chname = params["chname"];
-            card_data._pan = params["pan"];
-            card_data._masked_pan = params["pan"];
-            card_data._expdate = params["expdate"];
-            card_data._cvn = params["cvn"];
+            std::vector<std::string> keys{
+                "pan", "expire_year", "expire_month", "card_holder", "cvn",
+            };
+            for (const auto &key: keys)
+                card_data[key] = params[key];
         }
     } catch(Yb::KeyError &err) {
     }
     //make norm check
-    if(card_data._pan.compare("") == 0)
+    if(card_data.get("pan", "").empty())
         return mk_resp("error");
 
     CardCrypter card_crypter(session);
-    Card card = card_crypter.get_token(card_data);
+    CardData new_card_data = card_crypter.get_token(card_data);
 
     ElementTree::ElementPtr cd = resp->sub_element("card_data");
-    cd->sub_element("chname",     card_data._chname);
-    cd->sub_element("pan",        card_data._pan);
-    cd->sub_element("expdate",    card_data._expdate);
-    cd->sub_element("cvn",        card_data._cvn);
-    cd->sub_element("card_token", card.card_token);
+    for (const auto &p: new_card_data)
+        cd->sub_element(p.first, p.second);
     return resp;
 }
 
@@ -248,11 +260,8 @@ ElementTree::ElementPtr get_card(Session &session, ILogger &logger,
     CardCrypter card_crypter(session);
     CardData card_data = card_crypter.get_card(token);
     ElementTree::ElementPtr cd = resp->sub_element("card_data");
-    cd->sub_element("chname",     card_data._chname);
-    cd->sub_element("pan",        card_data._pan);
-    cd->sub_element("expdate",    card_data._expdate);
-    cd->sub_element("cvn",        card_data._cvn);
-    cd->sub_element("card_token", token);
+    for (const auto &p: card_data)
+        cd->sub_element(p.first, p.second);
     return resp;
 }
 

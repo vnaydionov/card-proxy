@@ -1,202 +1,114 @@
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "crypt.h"
-#include "helpers.h"
+#include "utils.h"
+#include "aes_crypter.h"
+#include "dek_pool.h"
 
-using namespace Domain;
+#include "domain/DataKey.h"
+#include "domain/Card.h"
+#include "domain/IncomingRequest.h"
 
-#define DEK_USE_COUNT 10
-#define MAX_DEK_COUNT 500
-#define AUTO_GEN_LIMIT 50
-#define MAN_GEN_LIMIT 100
-
-CardCrypter::CardCrypter(Yb::Session &session) : session(session) {
-    _master_key = assemble_master_key();
-}
-
-CardCrypter::~CardCrypter() {
-}
-
-Card CardCrypter::get_token(const CardData &card_data) {
-    AESCrypter master_crypter(_master_key);
-
-    //check card in db
-    Card card = _save_card(master_crypter, card_data);
-    IncomingRequest incoming_request = _save_cvn(master_crypter,
-        card, card_data._cvn);
-
-    return card; 
-}
-
-Card CardCrypter::_save_card(AESCrypter &master_crypter, const CardData &card_data) {
-    Card card;
+static Domain::Card save_card(CardCrypter &cr, const CardData &card_data)
+{
+    Yb::Session &session = cr.session();
     DEKPool dek_pool(session);
-    DataKey data_key = dek_pool.get_active_data_key();
-    std::string pure_dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
-    AESCrypter data_crypter(pure_dek);
-    std::string crypted_pan = _get_encoded_str(data_crypter, card_data._pan);
-
-    card.card_token = _generate_card_token();
+    Domain::DataKey data_key = dek_pool.get_active_data_key();
+    std::string dek = cr.decode_dek(data_key.dek_crypted);
+    Domain::Card card;
     card.ts = Yb::now();
-    card.expire_dt = Yb::dt_make(2020, 12, 31); //TODO
-    card.card_holder = card_data._chname;
-    card.pan_masked = card_data._masked_pan;
-    card.pan_crypted = crypted_pan;
-    card.dek = DataKey::Holder(data_key);
+    // TODO: generate some other token in case of collision
+    card.card_token = cr.generate_card_token();
+    card.card_holder = card_data["card_holder"];
+    card.expire_dt = Yb::dt_make(boost::lexical_cast<int>(card_data["expire_year"]),
+                                 boost::lexical_cast<int>(card_data["expire_month"]),
+                                 1);
+    card.pan_crypted = cr.encode_data(dek, bcd_encode(card_data["pan"]));
+    card.pan_masked = mask_pan(card_data["pan"]);
+    card.dek = Domain::DataKey::Holder(data_key);
     card.save(session);
-    data_key.counter = data_key.counter + 1; session.commit();
+    data_key.counter = data_key.counter + 1;
+    session.flush();
     return card;
 }
 
-IncomingRequest CardCrypter::_save_cvn(AESCrypter &master_crypter,
-    Card &card, const std::string &cvn) {
-    IncomingRequest incoming_request;
+static Domain::IncomingRequest save_cvn(CardCrypter &cr, const CardData &card_data,
+                                        Domain::Card &card)
+{
+    Yb::Session &session = cr.session();
     DEKPool dek_pool(session);
-    DataKey data_key = dek_pool.get_active_data_key();
-    std::string pure_dek = _get_decoded_dek(master_crypter, data_key.dek_crypted);
-    AESCrypter data_crypter(pure_dek);
-    std::string crypted_cvn = _get_encoded_str(data_crypter, cvn);
-
+    Domain::DataKey data_key = dek_pool.get_active_data_key();
+    std::string dek = cr.decode_dek(data_key.dek_crypted);
+    Domain::IncomingRequest incoming_request;
     incoming_request.ts = Yb::now();
-    incoming_request.cvn_crypted = crypted_cvn;
-    incoming_request.dek = DataKey::Holder(data_key);
-    incoming_request.card = Card::Holder(card);
+    incoming_request.cvn_crypted = cr.encode_data(dek, bcd_encode(card_data["cvn"]));
+    incoming_request.dek = Domain::DataKey::Holder(data_key);
+    incoming_request.card = Domain::Card::Holder(card);
     incoming_request.save(session);
     data_key.counter = data_key.counter + 1;
-    session.commit();
+    session.flush();
     return incoming_request;
 }
 
-CardData CardCrypter::get_card(const std::string &token) {
-    AESCrypter master_crypter(_master_key); 
-    DEKPool dek_pool(session);
-    Card card = Yb::query<Card>(session)
-            .filter_by(Card::c.card_token == token)
+CardData CardCrypter::get_token(const CardData &card_data)
+{
+    // TODO: search for an existing card first
+    Domain::Card card = save_card(*this, card_data);
+    if (!card_data.get("cvn", "").empty())
+        save_cvn(*this, card_data, card);
+    CardData result = card_data;
+    result.pop("pan", "");
+    result.pop("cvn", "");
+    result["pan_masked"] = card.pan_masked;
+    result["card_token"] = card.card_token;
+    return result;
+}
+
+CardData CardCrypter::get_card(const std::string &token)
+{
+    Domain::Card card = Yb::query<Domain::Card>(session_)
+            .filter_by(Domain::Card::c.card_token == token)
             .one();
-    IncomingRequest incoming_request = *card.cvn;
-
-    std::string pure_card_dek = _get_decoded_dek(master_crypter, card.dek->dek_crypted);
-    std::string pure_cvn_dek = _get_decoded_dek(master_crypter, incoming_request.dek->dek_crypted);
-    AESCrypter card_crypter(pure_card_dek), cvn_crypter(pure_cvn_dek);
-    std::string pure_pan = _get_decoded_str(card_crypter, card.pan_crypted); 
-    std::string pure_cvn = _get_decoded_str(cvn_crypter, incoming_request.cvn_crypted); 
-
-    CardData card_data(card.card_holder.value(), pure_pan, "",
-        Yb::to_string(card.expire_dt.value()), pure_cvn);
-    return card_data;
-}
-
-std::string CardCrypter::_generate_card_token() {
-    return string_to_hexstring(generate_random_bytes(16),
-                               HEX_LOWERCASE|HEX_NOSPACES);
-}
-
-std::string CardCrypter::_get_encoded_str(AESCrypter &crypter, const std::string &str) {
-    std::string bindec_str, base64_str;
-    try {
-        bindec_str = bcd_encode(str);
-        base64_str = encode_base64(crypter.encrypt(bindec_str));
-    } catch(AESBlockSizeException &exc) {
-        std::cout << exc.what() << std::endl;
+    std::string dek = decode_dek(card.dek->dek_crypted);
+    CardData result;
+    result["pan"] = bcd_decode(decode_data(dek, card.pan_crypted));
+    result["expire_year"] = std::to_string(Yb::dt_year(card.expire_dt));
+    result["expire_month"] = std::to_string(Yb::dt_month(card.expire_dt));
+    result["card_holder"] = card.card_holder;
+    Yb::DomainResultSet<Domain::IncomingRequest> request_rs =
+        Yb::query<Domain::IncomingRequest>(session_)
+            .filter_by(Domain::IncomingRequest::c.card_id == card.id)
+            .all();
+    if (request_rs.begin() != request_rs.end()) {
+        Domain::IncomingRequest incoming_request = *request_rs.begin();
+        std::string dek_cvn = decode_dek(incoming_request.dek->dek_crypted);
+        result["cvn"] = bcd_decode(decode_data(dek_cvn,
+                                               incoming_request.cvn_crypted));
     }
-    return base64_str;
+    return result;
 }
 
-std::string CardCrypter::_get_decoded_str(AESCrypter &crypter, const std::string &str) {
-    std::string bindec_str, pure_str;
-    try {
-        bindec_str = crypter.decrypt(decode_base64(str));
-        pure_str = bcd_decode(bindec_str);
-    } catch(AESBlockSizeException &exc) {
-        std::cout << exc.what() << std::endl;
-    }
-    return pure_str;
-}
-
-std::string CardCrypter::_get_decoded_dek(AESCrypter &crypter, const std::string &dek) {
-    std::string pure_dek;
-    try {
-        pure_dek = crypter.decrypt(decode_base64(dek));
-    } catch(AESBlockSizeException &exc) {
-        std::cout << exc.what() << std::endl;
-    }
-    return pure_dek;
-}
-
-std::string assemble_master_key() {
+std::string CardCrypter::assemble_master_key(Yb::Session &session)
+{
     // make there UBER LOGIC FOR COMPOSE MASTER KEY
     return "12345678901234567890123456789012"; // 32 bytes
 }
 
-DEKPool::DEKPool(Yb::Session &session) 
-    : _session(session)
-    , _dek_use_count(DEK_USE_COUNT)
-    , _max_active_dek_count(MAX_DEK_COUNT)
-    , _auto_generation_limit(AUTO_GEN_LIMIT)
-    , _man_generation_limit(MAN_GEN_LIMIT) {
+std::string CardCrypter::generate_card_token()
+{
+    return string_to_hexstring(generate_random_bytes(16),
+                               HEX_LOWERCASE|HEX_NOSPACES);
 }
 
-DEKPool::~DEKPool() {
+std::string CardCrypter::encode_data(const std::string &dek, const std::string &data)
+{
+    AESCrypter data_encrypter(dek);
+    return encode_base64(data_encrypter.encrypt(data));
 }
 
-DataKey DEKPool::get_active_data_key() {
-    DEKPoolStatus pool_status = _check_pool();
-
-    auto active_deks = Yb::query<DataKey>(_session)
-            .filter_by(DataKey::c.counter < static_cast<int>(_dek_use_count));
-    int choice = rand() % pool_status.use_count;
-    for(auto &dek : active_deks.all()) {
-        choice -= (_dek_use_count - dek.counter);
-        if(choice <= 0)
-            return dek;
-    }
-    //errrrrr
+std::string CardCrypter::decode_data(const std::string &dek, const std::string &data_crypted)
+{
+    AESCrypter data_encrypter(dek);
+    return data_encrypter.decrypt(decode_base64(data_crypted));
 }
 
-DEKPoolStatus DEKPool::_check_pool() {
-    DEKPoolStatus pool_status = get_status();
-    while(pool_status.use_count < _auto_generation_limit) {
-        _generate_new_data_key();
-        pool_status = get_status();
-    }
-    return pool_status;
-}
-
-DEKPoolStatus DEKPool::get_status() {
-    int count = 0;
-    auto total_query = Yb::query<DataKey>(_session);
-    auto active_query = total_query
-            .filter_by(DataKey::c.counter < static_cast<int>(_dek_use_count));
-    for(auto &date_key : active_query.all())
-        count += _dek_use_count - date_key.counter;
-    return DEKPoolStatus(total_query.count(), active_query.count(), count);
-}
-
-DataKey DEKPool::_generate_new_data_key() {
-    DataKey data_key;
-    std::string master_key = assemble_master_key();
-    std::string dek_value = generate_random_bytes(32);
-    std::string encoded_dek;
-    try {
-        AESCrypter aes_crypter(master_key);
-        encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
-    } catch(AESBlockSizeException &exc) {
-        std::cout << exc.what() << std::endl;
-    }
-    data_key.dek_crypted = encoded_dek;
-    data_key.start_ts = Yb::now();
-    data_key.finish_ts = Yb::dt_make(2020, 12, 31);
-    data_key.counter = 0;
-    data_key.save(_session);
-    _session.commit();
-    return data_key;
-}
-
-
-CardData generate_random_card_data() {
-    std::string chname = generate_random_string(10) + " " +
-        generate_random_string(10);
-    std::string pan = generate_random_number(16);
-    std::string masked_pan = pan;
-    std::string expdate = "2020-12-31T00:00:00";//Yb::dt_make(2020, 12, 31);
-    std::string cvn = generate_random_number(3);
-    return CardData(chname, pan, masked_pan, expdate, cvn);
-}
+// vim:ts=4:sts=4:sw=4:et:

@@ -201,4 +201,11 @@ std::string generate_random_string(size_t length)
     return result;
 }
 
+std::string mask_pan(const std::string &pan)
+{
+    if (pan.size() < 13 || pan.size() > 20)
+        throw std::runtime_error("Strange PAN length: " + std::to_string(pan.size()));
+    return pan.substr(0, 6) + "**" + pan.substr(pan.size() - 4);
+}
+
 // vim:ts=4:sts=4:sw=4:et:

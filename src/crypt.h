@@ -1,83 +1,55 @@
-#ifndef CRYPT_H
-#define CRYPT_H
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#ifndef CARD_PROXY__CRYPT_H
+#define CARD_PROXY__CRYPT_H
+
 #include <string>
-
 #include <orm/data_object.h>
-#include <orm/domain_object.h>
 
-#include "utils.h"
-#include "aes_crypter.h"
-#include "card_data.h"
-#include "domain/DataKey.h"
-#include "domain/Card.h"
-#include "domain/IncomingRequest.h"
+/* The following fields are recognized:
+ * pan, expire_year, expire_month, card_holder, cvn.
+ *
+ * These are added after tokenization:
+ * pan_masked, card_token
+ */
+typedef Yb::StringDict CardData;
 
-struct DEKPoolStatus {
-    long total_count;
-    long active_count;
-    long use_count;
-    DEKPoolStatus() : total_count(0), active_count(0), use_count(0) {}
-    DEKPoolStatus(const int &total, const int &active, const int &use) 
-    : total_count(total), active_count(active), use_count(use) {}
-};
-
-std::string assemble_master_key();
-
-std::string generate_token();
-
-CardData generate_random_card_data();
-
-class CardCrypter {
+class CardCrypter
+{
 public:
-    CardCrypter(Yb::Session &session);
-    ~CardCrypter();
+    CardCrypter(Yb::Session &session)
+        : session_(session)
+        , master_key_(assemble_master_key(session))
+    {}
 
-    Domain::Card get_token(const CardData &card_data);
+    Yb::Session &session() { return session_; }
+
+    // incoming request processing
+    CardData get_token(const CardData &card_data);
+
+    // outgoing request processing
     CardData get_card(const std::string &token);
 
-    void change_master_key();
+    static std::string assemble_master_key(Yb::Session &session);
+    static std::string generate_card_token();
+    static std::string encode_data(const std::string &dek,
+                                   const std::string &data);
+    static std::string decode_data(const std::string &dek,
+                                   const std::string &dek_crypted);
+
+    std::string encode_dek(const std::string &dek)
+    {
+        return encode_data(master_key_, dek);
+    }
+
+    std::string decode_dek(const std::string &dek_crypted)
+    {
+        return decode_data(master_key_, dek_crypted);
+    }
 
 private:
-    Yb::Session &session;
-    std::string _master_key;
-
-    Domain::Card _save_card(AESCrypter &master_crypter, const CardData &card_data);
-    Domain::IncomingRequest _save_cvn(AESCrypter &master_crypter, Domain::Card &card, const std::string &cvn);
-    std::string _generate_card_token();
-
-    std::string _get_encoded_str(AESCrypter &crypter, const std::string &str);
-    std::string _get_decoded_str(AESCrypter &crypter, const std::string &str);
-    std::string _get_decoded_dek(AESCrypter &crypter, const std::string &dek);
+    Yb::Session &session_;
+    std::string master_key_;
 };
 
-class DEKPool {
-//singleton?
-public:
-    DEKPool(Yb::Session &session);
-    ~DEKPool();
-
-    DEKPoolStatus get_status();
-    Domain::DataKey get_active_data_key();
-    
-    unsigned get_max_active_dek_count();
-    unsigned get_auto_generation_threshold();
-    unsigned get_man_generation_threshold();
-    unsigned get_check_timeout();
-
-    void set_max_active_dek_count(unsigned val);
-    void set_auto_generation_threshold(unsigned val);
-    void set_man_generation_threshold(unsigned val);
-    void set_check_timeout(unsigned val);
-    
-private:
-    Domain::DataKey _generate_new_data_key();
-    DEKPoolStatus _check_pool();
-
-    Yb::Session &_session;
-    unsigned _dek_use_count;
-    unsigned _max_active_dek_count;
-    unsigned _auto_generation_limit;
-    unsigned _man_generation_limit;
-    unsigned _check_timeout;
-};
-#endif
+#endif // CARD_PROXY__CRYPT_H
+// vim:ts=4:sts=4:sw=4:et:

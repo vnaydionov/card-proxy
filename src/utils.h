@@ -24,5 +24,7 @@ std::string generate_random_bytes(size_t length);
 std::string generate_random_number(size_t length);
 std::string generate_random_string(size_t length);
 
+std::string mask_pan(const std::string &pan);
+
 #endif // CARD_PROXY__UTILS_H
 // vim:ts=4:sts=4:sw=4:et:
