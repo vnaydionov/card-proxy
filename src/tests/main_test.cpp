@@ -1,3 +1,4 @@
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include <iostream>
 #include <vector>
 #include <utility>
@@ -6,74 +7,11 @@
 #include "aes_crypter.h"
 
 
-#define B64_TESTS       50
 #define BINDEC_TESTS    50
 #define AES_TESTS       50
 #define AES_LONG_TESTS  50
 #define FULL_TESTS      50
 
-void test_hex_string()
-{
-    std::cout << "test_hex_string..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > cases;
-    cases.push_back(std::make_pair("", ""));
-    cases.push_back(std::make_pair("A", "41"));
-    cases.push_back(std::make_pair("AB", "41 42"));
-    cases.push_back(std::make_pair("NOX", "4E 4F 58"));
-    for (auto it = cases.begin(); it != cases.end(); ++it) {
-        std::string encoded = string_to_hexstring(it->first);
-        if (encoded != it->second) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << it->first << " Encoded: " << encoded << std::endl;
-        }
-    }
-    for (auto it = cases.begin(); it != cases.end(); ++it) {
-        std::string decoded = string_from_hexstring(it->second);
-        if (decoded != it->first) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << it->first << " Decoded: " << decoded << std::endl;
-        }
-    }
-}
-
-void test_hex_string_no_spaces()
-{
-    std::cout << "test_hex_string_no_spaces..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > cases;
-    cases.push_back(std::make_pair("", ""));
-    cases.push_back(std::make_pair("A", "41"));
-    cases.push_back(std::make_pair("AB", "4142"));
-    cases.push_back(std::make_pair("NOX", "4e4f58"));
-    for (auto it = cases.begin(); it != cases.end(); ++it) {
-        std::string encoded = string_to_hexstring(it->first, HEX_LOWERCASE|HEX_NOSPACES);
-        if (encoded != it->second) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << it->first << " Encoded: " << encoded << std::endl;
-        }
-    }
-    for (auto it = cases.begin(); it != cases.end(); ++it) {
-        std::string decoded = string_from_hexstring(it->second, HEX_NOSPACES);
-        if (decoded != it->first) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << it->first << " Decoded: " << decoded << std::endl;
-        }
-    }
-}
-
-void test_base64_end_to_end() {
-    std::cout << "test_base64_end_to_end..." << std::endl;
-    std::vector<std::string> messages;
-    for(int i = 0; i < B64_TESTS; i++)
-        messages.push_back(generate_random_string(rand() % 20 + 10));
-    for (int i = 0; i < B64_TESTS ; ++i) {
-        std::string encode64 = encode_base64(messages[i]);
-        std::string decode64 = decode_base64(encode64);
-        if(messages[i].compare(decode64) != 0) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << messages[i] << " Decode: " << decode64 << std::endl;
-        }
-    }
-}
 
 void test_base64_encoding() {
     std::cout << "test_base64_encoding..." << std::endl;
@@ -283,6 +221,7 @@ void test_coding_end_to_end() {
 //TODO: random data generation
 //TODO: unittesting
 //TODO: add predicted tests
+#if 0
 int main() {
     // hex
     test_hex_string();
@@ -304,3 +243,79 @@ int main() {
 
     test_coding_end_to_end();
 }
+#endif
+
+#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include "catch.hpp"
+
+#define B64_TESTS       50
+
+TEST_CASE( "Testing HEX string operations", "[hex_string]" ) {
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"", ""},
+        {"A", "41"},
+        {"AB", "41 42"},
+        {"NOX", "4E 4F 58"},
+    };
+    SECTION( "testing encoding" ) {
+        for (const auto &p : cases) {
+            std::string encoded = string_to_hexstring(p.first);
+            REQUIRE(p.second == encoded);
+        }
+    }
+    SECTION( "testing decoding" ) {
+        for (const auto &p : cases) {
+            std::string decoded = string_from_hexstring(p.second);
+            REQUIRE(p.first == decoded);
+        }
+    }
+}
+
+TEST_CASE( "Testing HEX string operations, without spaces", "[hex_string_nospc]" ) {
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"", ""},
+        {"A", "41"},
+        {"AB", "4142"},
+        {"NOX", "4e4f58"},
+    };
+    SECTION( "testing encoding" ) {
+        for (const auto &p : cases) {
+            std::string encoded = string_to_hexstring(p.first, HEX_LOWERCASE|HEX_NOSPACES);
+            REQUIRE(p.second == encoded);
+        }
+    }
+    SECTION( "testing decoding" ) {
+        for (const auto &p : cases) {
+            std::string decoded = string_from_hexstring(p.second, HEX_NOSPACES);
+            REQUIRE(p.first == decoded);
+        }
+    }
+}
+
+TEST_CASE( "Testing HEX string error handling", "[hex_string_err]" ) {
+    REQUIRE_THROWS( string_from_hexstring("4") );
+    REQUIRE_THROWS( string_from_hexstring("4", HEX_NOSPACES) );
+    REQUIRE_THROWS( string_from_hexstring("41 ") );
+    REQUIRE_THROWS( string_from_hexstring("41 4") );
+    REQUIRE_THROWS( string_from_hexstring("41_41") );
+    REQUIRE_THROWS( string_from_hexstring("414", HEX_NOSPACES) );
+    REQUIRE_THROWS( string_from_hexstring("4_") );
+    REQUIRE_THROWS( string_from_hexstring("4g") );
+}
+
+TEST_CASE( "Testing BASE64 random strings", "[base64_rnd]" ) {
+    std::vector<std::string> messages;
+    for (int i = 0; i < B64_TESTS; ++i) {
+        int rnd_len = rand() % 20;
+        std::string gen_str = generate_random_string(rnd_len);
+        REQUIRE( rnd_len == gen_str.size() );
+        messages.push_back(gen_str);
+    }
+    for (int i = 0; i < B64_TESTS; ++i) {
+        std::string encode64 = encode_base64(messages[i]);
+        std::string decode64 = decode_base64(encode64);
+        REQUIRE( messages[i] == decode64 );
+    }
+}
+
+// vim:ts=4:sts=4:sw=4:et:

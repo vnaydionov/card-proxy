@@ -55,6 +55,14 @@ std::string string_from_hexstring(const std::string &hex_input, int mode)
         return std::string();
     size_t in_size = hex_input.size();
     bool insert_spaces = !(mode & HEX_NOSPACES);
+    if (insert_spaces) {
+        if (hex_input.size() % 3 != 2)
+            throw std::runtime_error("HEX data of wrong size");
+    }
+    else {
+        if (hex_input.size() % 2)
+            throw std::runtime_error("HEX data of wrong size");
+    }
     size_t result_len = in_size / 2;
     if (insert_spaces)
         result_len = (in_size + 1) / 3;
@@ -114,6 +122,8 @@ static int b64_decoded_size(const std::string &b64input)
 
 static void check_base64(const std::string &b64message)
 {
+    if (b64message.size() % 4)
+        throw std::runtime_error("BASE64 data of wrong size");
     for (size_t i = 0; i < b64message.size(); ++i) {
         if (!valid_b64_char(b64message[i]))
             throw std::runtime_error("Invalid BASE64 character");
