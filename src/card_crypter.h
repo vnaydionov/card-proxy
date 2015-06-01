@@ -38,7 +38,7 @@ public:
     static std::string encode_data(const std::string &dek,
                                    const std::string &data);
     static std::string decode_data(const std::string &dek,
-                                   const std::string &dek_crypted);
+                                   const std::string &data_crypted);
 
     std::string encode_dek(const std::string &dek)
     {

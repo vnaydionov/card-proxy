@@ -160,6 +160,8 @@ std::string decode_base64(const std::string &b64message)
 
 std::string bcd_decode(const std::string &bcd_input)
 {
+    if (!bcd_input.size())
+        return std::string();
     std::string x = string_to_hexstring(bcd_input,
                                         HEX_LOWERCASE|HEX_NOSPACES);
     size_t i = 0;
@@ -171,6 +173,8 @@ std::string bcd_decode(const std::string &bcd_input)
 
 std::string bcd_encode(const std::string &ascii_input)
 {
+    if (!ascii_input.size())
+        return std::string();
     std::string x = ascii_input + "f";
     while (x.size() < 32)
         x = x + ascii_input + "f";

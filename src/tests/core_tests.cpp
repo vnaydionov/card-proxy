@@ -13,62 +13,6 @@
 #define FULL_TESTS      50
 
 
-void test_base64_encoding() {
-    std::cout << "test_base64_encoding..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > messages;
-    std::vector<std::pair<std::string, std::string> >::iterator it;
-    //Argentina 
-    //top100 football players
-    messages.push_back(std::make_pair("GabrielBatistuta",   "R2FicmllbEJhdGlzdHV0YQ=="));
-    messages.push_back(std::make_pair("HernanCrespo",       "SGVybmFuQ3Jlc3Bv"));
-    messages.push_back(std::make_pair("AlfredoDiStefano",   "QWxmcmVkb0RpU3RlZmFubw=="));
-    messages.push_back(std::make_pair("MarioKempes",        "TWFyaW9LZW1wZXM="));
-    messages.push_back(std::make_pair("DiegoMaradona",      "RGllZ29NYXJhZG9uYQ=="));
-    messages.push_back(std::make_pair("DanielPassarella",   "RGFuaWVsUGFzc2FyZWxsYQ=="));
-    messages.push_back(std::make_pair("JavierSaviola",      "SmF2aWVyU2F2aW9sYQ=="));
-    messages.push_back(std::make_pair("OmarSivori",         "T21hclNpdm9yaQ=="));
-    messages.push_back(std::make_pair("JuanSebastianVeron", "SnVhblNlYmFzdGlhblZlcm9u"));
-    messages.push_back(std::make_pair("JavierZanetti",      "SmF2aWVyWmFuZXR0aQ=="));
-    
-    for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string encode64 = encode_base64(it->first);
-        if(it->second.compare(encode64) != 0) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << it->first << " Encode: " << encode64 << std::endl;
-        }
-    }
-}
-
-void test_base64_decoding() {
-    std::cout << "test_base64_decoding..." << std::endl;
-    std::vector<std::pair<std::string, std::string> > messages;
-    std::vector<std::pair<std::string, std::string> >::iterator it;
-    //England 
-    //top100 football players
-    messages.push_back(std::make_pair("GordonBanks",    "R29yZG9uQmFua3M="));
-    messages.push_back(std::make_pair("DavidBeckham",   "RGF2aWRCZWNraGFt"));
-    messages.push_back(std::make_pair("BobbyCharlton",  "Qm9iYnlDaGFybHRvbg=="));
-    messages.push_back(std::make_pair("KevinKeegan",    "S2V2aW5LZWVnYW4="));
-    messages.push_back(std::make_pair("GaryLineker",    "R2FyeUxpbmVrZXI="));
-    messages.push_back(std::make_pair("BobbyMoore",     "Qm9iYnlNb29yZQ=="));
-    messages.push_back(std::make_pair("MichaelOwen",    "TWljaGFlbE93ZW4="));
-    messages.push_back(std::make_pair("AlanShearer",    "QWxhblNoZWFyZXI="));
-    // as well as some more prosy samples
-    //messages.push_back(std::make_pair("", ""));
-    messages.push_back(std::make_pair("A", "QQ=="));
-    messages.push_back(std::make_pair("AB", "QUI="));
-    messages.push_back(std::make_pair("ABC", "QUJD"));
-    messages.push_back(std::make_pair("ABCD", "QUJDRA=="));
-
-    for(it = messages.begin(); it != messages.end(); ++it) {
-        std::string decode64 = decode_base64(it->second);
-        if(it->first.compare(decode64) != 0) {
-            std::cout << "Result:    Fail!" << std::endl;
-            std::cout << "Input: " << it->second << " Decode: " << decode64 << std::endl;
-        }
-    }
-}
-
 void test_bindec_encoding() {
     std::cout << "test_bindec_encoding..." << std::endl;
     std::vector<std::pair<std::string, std::string> > messages;
@@ -217,82 +161,54 @@ void test_coding_end_to_end() {
     }
 }
 
-    
-//TODO: random data generation
-//TODO: unittesting
-//TODO: add predicted tests
-#if 0
-int main() {
-    // hex
-    test_hex_string();
-    test_hex_string_no_spaces();
-
-    //base64
-    test_base64_encoding();
-    test_base64_decoding();
-    test_base64_end_to_end();
-
-    //bindec
-    test_bindec_encoding();
-    test_bindec_decoding();
-    
-    //aes
-    test_aes_end_to_end();
-    test_aes_encoding();
-    test_aes_decoding();
-
-    test_coding_end_to_end();
-}
-#endif
-
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include "catch.hpp"
 
 #define B64_TESTS       50
 
-TEST_CASE( "Testing HEX string operations", "[hex_string]" ) {
+TEST_CASE( "Testing HEX string operations", "[hex][string]" ) {
     std::vector<std::pair<std::string, std::string>> cases{
         {"", ""},
         {"A", "41"},
         {"AB", "41 42"},
         {"NOX", "4E 4F 58"},
     };
-    SECTION( "testing encoding" ) {
-        for (const auto &p : cases) {
+    for (const auto &p : cases) {
+        SECTION( "testing encoding" ) {
             std::string encoded = string_to_hexstring(p.first);
             REQUIRE(p.second == encoded);
         }
     }
-    SECTION( "testing decoding" ) {
-        for (const auto &p : cases) {
+    for (const auto &p : cases) {
+        SECTION( "testing decoding" ) {
             std::string decoded = string_from_hexstring(p.second);
             REQUIRE(p.first == decoded);
         }
     }
 }
 
-TEST_CASE( "Testing HEX string operations, without spaces", "[hex_string_nospc]" ) {
+TEST_CASE( "Testing HEX string operations, without spaces", "[hex][string]" ) {
     std::vector<std::pair<std::string, std::string>> cases{
         {"", ""},
         {"A", "41"},
         {"AB", "4142"},
         {"NOX", "4e4f58"},
     };
-    SECTION( "testing encoding" ) {
-        for (const auto &p : cases) {
+    for (const auto &p : cases) {
+        SECTION( "testing encoding" ) {
             std::string encoded = string_to_hexstring(p.first, HEX_LOWERCASE|HEX_NOSPACES);
             REQUIRE(p.second == encoded);
         }
     }
-    SECTION( "testing decoding" ) {
-        for (const auto &p : cases) {
+    for (const auto &p : cases) {
+        SECTION( "testing decoding" ) {
             std::string decoded = string_from_hexstring(p.second, HEX_NOSPACES);
             REQUIRE(p.first == decoded);
         }
     }
 }
 
-TEST_CASE( "Testing HEX string error handling", "[hex_string_err]" ) {
+TEST_CASE( "Testing HEX string error handling", "[hex][string][error]" ) {
     REQUIRE_THROWS( string_from_hexstring("4") );
     REQUIRE_THROWS( string_from_hexstring("4", HEX_NOSPACES) );
     REQUIRE_THROWS( string_from_hexstring("41 ") );
@@ -303,27 +219,102 @@ TEST_CASE( "Testing HEX string error handling", "[hex_string_err]" ) {
     REQUIRE_THROWS( string_from_hexstring("4g") );
 }
 
-TEST_CASE( "Testing BASE64 random strings", "[base64_rnd]" ) {
-    std::vector<std::string> messages;
+TEST_CASE( "Testing BASE64 random strings", "[base64]" ) {
+    std::vector<std::string> cases;
     for (int i = 0; i < B64_TESTS; ++i) {
         int rnd_len = rand() % 20;
         std::string gen_str = generate_random_string(rnd_len);
         REQUIRE( rnd_len == gen_str.size() );
-        messages.push_back(gen_str);
+        cases.push_back(gen_str);
     }
-    for (int i = 0; i < B64_TESTS; ++i) {
-        std::string encode64 = encode_base64(messages[i]);
-        std::string decode64 = decode_base64(encode64);
-        REQUIRE( messages[i] == decode64 );
+
+    for (const auto &p : cases) {
+        SECTION( "testing coding" ) {
+            std::string encode64 = encode_base64(p);
+            std::string decode64 = decode_base64(encode64);
+            REQUIRE( p == decode64 );
+        }
     }
 }
 
-TEST_CASE( "Testing BCD encoder output size", "[bcd_encoded_size]" ) {
+TEST_CASE( "Testing BASE64 coding", "[base64]" ) {
+    std::vector<std::pair<std::string, std::string> > cases;
+    cases.push_back(std::make_pair("",      ""));
+    cases.push_back(std::make_pair(" ",     "IA=="));
+    cases.push_back(std::make_pair("A",     "QQ=="));
+    cases.push_back(std::make_pair("AB",    "QUI="));
+    cases.push_back(std::make_pair("ABC",   "QUJD"));
+    cases.push_back(std::make_pair("ABCD",  "QUJDRA=="));
+
+    //for (int i = 0; i < 50; ++i) {
+    //    int rnd_len = rand() % 50 + 1;
+    //    std::string gen_str = generate_random_string(rnd_len);
+    //    REQUIRE( rnd_len == gen_str.size() );
+    //    cases.push_back(gen_str);
+    //}
+    
+    for (const auto &p : cases) {
+        SECTION( "testing encoding" ) {
+            std::string encode64 = encode_base64(p.first);
+            REQUIRE( p.second == encode64 );
+        }
+    }
+
+    for(const auto &p : cases) {
+        SECTION( "testing decoding" ) {
+            std::string decode64 = decode_base64(p.second);
+            REQUIRE( p.first == decode64 );
+        }
+    }
+
+    for(const auto &p : cases) {
+        SECTION( "testing coding" ) {
+            std::string encode64 = encode_base64(p.first);
+            std::string decode64 = decode_base64(encode64);
+            REQUIRE( p.first == decode64 );
+        }
+    }
+}
+
+TEST_CASE( "Testing BCD encoder output size", "[bcd]" ) {
     REQUIRE( 4 == std::string(8, 0).substr(1, 4).size() );
     REQUIRE( 16 == bcd_encode("1234567890123456").size() );
     REQUIRE( 16 == bcd_encode("12345678901234567890").size() );
     REQUIRE( 16 == bcd_encode("1234567890123").size() );
     REQUIRE( 16 == bcd_encode("123").size() );
+}
+
+TEST_CASE( "Testing BCD coding", "[bcd]" ) {
+    std::vector<std::pair<std::string, std::string> > cases;
+    cases.push_back(std::make_pair("", ""));
+    cases.push_back(std::make_pair("1",
+                "1F 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11"));
+    cases.push_back(std::make_pair("12",
+                "12 F1 21 21 21 21 21 21 21 21 21 21 21 21 21 21"));
+    cases.push_back(std::make_pair("87638103692640182746",
+                "87 63 81 03 69 26 40 18 27 46 F0 00 00 00 00 00"));
+    cases.push_back(std::make_pair("982751928377689164327",
+                "98 27 51 92 83 77 68 91 64 32 7F 00 00 00 00 00"));
+    cases.push_back(std::make_pair("1234567890123456123456789012345",
+                "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 5F"));
+    cases.push_back(std::make_pair("12345678901234561234567890123456",
+                "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 56"));
+
+    //add random cases
+
+    for(const auto &p: cases) {
+        SECTION( "testing encoding" ) { 
+            std::string encode_bcd = bcd_encode(p.first);
+            REQUIRE( p.second == encode_bcd);
+        }
+    }
+
+    for(const auto &p: cases) {
+        SECTION( "testing decoding" ) { 
+            std::string decode_bcd = bcd_decode(p.second);
+            REQUIRE( p.first == decode_bcd);
+        }
+    }
 }
 
 // vim:ts=4:sts=4:sw=4:et:
