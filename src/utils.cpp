@@ -162,6 +162,8 @@ std::string bcd_decode(const std::string &bcd_input)
 {
     if (!bcd_input.size())
         return std::string();
+    if (bcd_input.size() > 32)
+        throw std::runtime_error("BCD decode data of wrong size");
     std::string x = string_to_hexstring(bcd_input,
                                         HEX_LOWERCASE|HEX_NOSPACES);
     size_t i = 0;
@@ -173,8 +175,11 @@ std::string bcd_decode(const std::string &bcd_input)
 
 std::string bcd_encode(const std::string &ascii_input)
 {
+
     if (!ascii_input.size())
         return std::string();
+    if (ascii_input.size() > 31)
+        throw std::runtime_error("BCD encode data of wrong size");
     std::string x = ascii_input + "f";
     while (x.size() < 32)
         x = x + ascii_input + "f";
@@ -213,6 +218,19 @@ std::string generate_random_string(size_t length)
             result[i] = 'a' + (x - 26);
         else
             result[i] = '0' + (x - 26*2);
+    }
+    return result;
+}
+
+std::string generate_random_hex_string(size_t length)
+{
+    std::string result(length, 0);
+    for (size_t i = 0; i < length; ++i) {
+        int x = rand() % 16;
+        if (x < 10)
+            result[i] = '0' + x;
+        else
+            result[i] = 'A' + (x - 10);
     }
     return result;
 }
