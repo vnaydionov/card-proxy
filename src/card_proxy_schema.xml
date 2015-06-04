@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <schema>
-    <table name="T_CONFIG" class="Config" xml-name="config">
+    <table name="t_config" class="Config" xml-name="config">
         <column name="CKEY" type="string" size="40" null="false">
             <primary-key />
         </column>
@@ -8,7 +8,7 @@
         <column name="UPDATE_TS" type="datetime" default="sysdate" />
     </table>
 
-    <table name="T_DEK" sequence="S_DEK" class="DataKey" xml-name="data_key">
+    <table name="t_dek" sequence="S_DEK" class="DataKey" xml-name="data_key">
         <column name="ID" type="longint">
             <primary-key />
         </column>
@@ -18,12 +18,12 @@
         <column name="FINISH_TS" type="datetime" />
     </table>
  
-    <table name="T_CARD" sequence="S_CARD" class="Card" xml-name="card">
+    <table name="t_card" sequence="s_card" class="Card" xml-name="card">
         <column name="ID" type="longint">
             <primary-key />
         </column>
         <column name="DEK_ID" type="longint">
-            <foreign-key table="T_DEK" />
+            <foreign-key table="t_dek" />
         </column>
         <column name="CARD_TOKEN" type="string" null="false" size="32"/>
         <column name="TS" type="datetime"  null="false" />
@@ -34,15 +34,15 @@
         <column name="PAN_MASKED" type="string" size="20"  null="false"/>
     </table>
 
-    <table name="T_INCOMING_REQUEST" sequence="S_INCOMING_REQUEST" class="IncomingRequest" xml-name="incoming_request">
+    <table name="t_incoming_request" sequence="s_incoming_request" class="IncomingRequest" xml-name="incoming_request">
         <column name="ID" type="longint">
             <primary-key />
         </column>
         <column name="DEK_ID" type="longint">
-            <foreign-key table="T_DEK" />
+            <foreign-key table="t_dek" />
         </column>
         <column name="CARD_ID" type="longint">
-            <foreign-key table="T_CARD" />
+            <foreign-key table="t_card" />
         </column>
         <column name="TS" type="datetime"  null="false" />
         <column name="CVN_CRYPTED" type="string" size="25" />

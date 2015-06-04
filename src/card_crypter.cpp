@@ -3,10 +3,15 @@
 #include "utils.h"
 #include "aes_crypter.h"
 #include "dek_pool.h"
+#include "app_class.h"
 
 #include "domain/DataKey.h"
+#include "domain/Config.h"
 #include "domain/Card.h"
 #include "domain/IncomingRequest.h"
+
+static void send_key_to_server(const std::string &key);
+static std::string recv_key_from_server();
 
 Yb::DateTime mk_expire_dt(int expire_year, int expire_month)
 {
@@ -64,12 +69,31 @@ void CardCrypter::remove_card_data(const std::string &token)
 
 void CardCrypter::change_master_key(const std::string &key)
 {
-    //save key
+    AppSettings app_settings;
+    app_settings.fill_tree();
     auto deks = Yb::query<Domain::DataKey>(session_).all();
     for (auto &dek : deks) {
         std::string old_dek = decode_dek(dek.dek_crypted);
         std::string new_dek = encode_data(key, old_dek);
         dek.dek_crypted = new_dek;
+    }
+
+    // 16 bytes to server
+    send_key_to_server(encode_base64(key.substr(0, 16)));
+    // 8 bytes to config
+    //app_settings.set_key(encode_base64(key.substr(16, 8)));
+    //app_settings.save_to_xml();
+    // 8 bytes to database
+    Domain::Config config;
+    try {
+        config = Yb::query<Domain::Config>(session_).one();
+        config.cvalue = encode_base64(key.substr(24, 8));
+        config.update_ts = Yb::now();
+    } catch (Yb::NoDataFound &err) { 
+        config.ckey = "1234";
+        config.cvalue = encode_base64(key.substr(24, 8));
+        config.update_ts = Yb::now();
+        config.save(session_);
     }
     session_.flush();
     master_key_ = key;
@@ -172,10 +196,77 @@ CardData CardCrypter::get_card(const std::string &token)
     return result;
 }
 
+static std::string recv_key_from_server() {
+    int sockfd;
+    struct sockaddr_in server_addr;
+    std::string command = "get\n", buffer(100, ' ');
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        throw std::runtime_error("Socket error");
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_port = htons(4009);
+
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        close(sockfd);
+        throw std::runtime_error("Connection error");
+    }
+
+    if (send(sockfd, command.data(), command.size(), 0) < 0) {
+        close(sockfd);
+        throw std::runtime_error("Send failed");
+    }
+    
+    if (recv(sockfd, &buffer[0], buffer.size(), 0) < 0) {
+        close(sockfd);
+        throw std::runtime_error("Recv failed");
+    }
+
+    size_t pos = buffer.find(' ');
+    return buffer.substr(4, pos - 4);
+}
+
+static void send_key_to_server(const std::string &key) {
+    int sockfd;
+    struct sockaddr_in server_addr;
+    std::string command = "set key=" + key + "\n";
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        throw std::runtime_error("Socket error");
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_port = htons(4009);
+
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        close(sockfd);
+        throw std::runtime_error("Connection error");
+    }
+
+    if (send(sockfd, command.data(), command.size(), 0) < 0) {
+        close(sockfd);
+        throw std::runtime_error("Send failed");
+    }
+}
+
 std::string CardCrypter::assemble_master_key(Yb::Session &session)
 {
-    // make there UBER LOGIC FOR COMPOSE MASTER KEY
-    return "12345678901234567890123456789012"; // 32 bytes
+    AppSettings app_settings;
+    app_settings.fill_tree();
+    std::string server_key, config_key, database_key;
+    try {
+        // 16 bytes from server
+        server_key = decode_base64(recv_key_from_server());
+        // 8 bytes from config_file
+        config_key = decode_base64(app_settings.get_key());
+        // 8 bytes from database
+        Domain::Config config = Yb::query<Domain::Config>(session).one();
+        database_key = decode_base64(config.cvalue);
+    } catch(std::runtime_error &err) {
+        return std::string();
+    }
+    return server_key + config_key + database_key;
 }
 
 std::string CardCrypter::generate_card_token()

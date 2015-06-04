@@ -7,17 +7,19 @@
 struct DEKPoolStatus;
 
 class DEKPool {
+//Singleton?
 public:
     DEKPool(Yb::Session &session);
     ~DEKPool();
 
-    DEKPoolStatus get_status();
+    const DEKPoolStatus get_status();
+    const DEKPoolStatus check_pool();
     Domain::DataKey get_active_data_key();
     
-    unsigned get_max_active_dek_count();
-    unsigned get_auto_generation_threshold();
-    unsigned get_man_generation_threshold();
-    unsigned get_check_timeout();
+    int get_max_active_dek_count();
+    int get_auto_generation_threshold();
+    int get_man_generation_threshold();
+    int get_check_timeout();
 
     void set_max_active_dek_count(unsigned val);
     void set_auto_generation_threshold(unsigned val);
@@ -25,15 +27,14 @@ public:
     void set_check_timeout(unsigned val);
     
 private:
-    Domain::DataKey _generate_new_data_key();
-    DEKPoolStatus _check_pool();
+    Domain::DataKey generate_new_data_key();
 
     Yb::Session &_session;
-    unsigned _dek_use_count;
-    unsigned _max_active_dek_count;
-    unsigned _auto_generation_limit;
-    unsigned _man_generation_limit;
-    unsigned _check_timeout;
+    int dek_use_count_;
+    int max_active_dek_count_;
+    int auto_generation_limit_;
+    int man_generation_limit_;
+    int check_timeout_;
 };
 
 struct DEKPoolStatus {

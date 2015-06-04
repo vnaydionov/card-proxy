@@ -3,7 +3,10 @@
 #define CARD_PROXY__CARD_CRYPTER_H
 
 #include <string>
+#include <sys/socket.h>
 #include <orm/data_object.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 /* The following fields are recognized:
  * pan, expire_year, expire_month, card_holder, cvn.

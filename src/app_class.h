@@ -24,11 +24,16 @@ public:
     void save_to_xml();
     const std::string to_string() const;
 
-    void set_port(int port);
-    void set_prefix(std::string prefix);
+    const int get_card_proxy_port();
+    const std::string get_card_proxy_prefix();
 
-    int get_port();
-    std::string get_prefix();
+    const std::string get_key_keeper_server();
+    const std::string get_key_keeper_port();
+    const std::string get_key();
+    
+    const int get_dek_use_count();
+    const int get_dek_bot_limit();
+    const int get_dek_top_limit();
 };
 
 

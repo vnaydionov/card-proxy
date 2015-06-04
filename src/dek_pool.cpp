@@ -9,52 +9,51 @@
 #define AUTO_GEN_LIMIT 50
 #define MAN_GEN_LIMIT 100
 
-
 DEKPool::DEKPool(Yb::Session &session)
     : _session(session)
-    , _dek_use_count(DEK_USE_COUNT)
-    , _max_active_dek_count(MAX_DEK_COUNT)
-    , _auto_generation_limit(AUTO_GEN_LIMIT)
-    , _man_generation_limit(MAN_GEN_LIMIT) {
+    , dek_use_count_(DEK_USE_COUNT)
+    , max_active_dek_count_(MAX_DEK_COUNT)
+    , auto_generation_limit_(AUTO_GEN_LIMIT)
+    , man_generation_limit_(MAN_GEN_LIMIT) {
 }
 
 DEKPool::~DEKPool() {
 }
 
 Domain::DataKey DEKPool::get_active_data_key() {
-    DEKPoolStatus pool_status = _check_pool();
-
+    DEKPoolStatus pool_status = check_pool();
     auto active_deks = Yb::query<Domain::DataKey>(_session)
-            .filter_by(Domain::DataKey::c.counter < static_cast<int>(_dek_use_count));
-    int choice = rand() % pool_status.use_count;
+            .filter_by(Domain::DataKey::c.counter < dek_use_count_);
+    int choice = rand() % pool_status.active_count;
     for(auto &dek : active_deks.all()) {
-        choice -= (_dek_use_count - dek.counter);
-        if(choice <= 0)
+        choice -= (dek_use_count_ - dek.counter);
+        if (choice == 0)
             return dek;
     }
     //errrrrr
 }
 
-DEKPoolStatus DEKPool::_check_pool() {
+const DEKPoolStatus DEKPool::check_pool() {
     DEKPoolStatus pool_status = get_status();
-    while(pool_status.use_count < _auto_generation_limit) {
-        _generate_new_data_key();
+    while(pool_status.use_count < auto_generation_limit_) {
+        generate_new_data_key();
         pool_status = get_status();
     }
     return pool_status;
 }
 
-DEKPoolStatus DEKPool::get_status() {
+const DEKPoolStatus DEKPool::get_status() {
     int count = 0;
+    int use_count = static_cast<int>(dek_use_count_);
     auto total_query = Yb::query<Domain::DataKey>(_session);
     auto active_query = total_query
-            .filter_by(Domain::DataKey::c.counter < static_cast<int>(_dek_use_count));
+            .filter_by(Domain::DataKey::c.counter < use_count);
     for(auto &data_key : active_query.all())
-        count += _dek_use_count - data_key.counter;
+        count += dek_use_count_ - data_key.counter;
     return DEKPoolStatus(total_query.count(), active_query.count(), count);
 }
 
-Domain::DataKey DEKPool::_generate_new_data_key() {
+Domain::DataKey DEKPool::generate_new_data_key() {
     Domain::DataKey data_key;
     std::string master_key = CardCrypter::assemble_master_key(_session);
     std::string dek_value = generate_random_bytes(32);

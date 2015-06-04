@@ -262,8 +262,8 @@ int main(int argc, char *argv[])
     string db_name = "card_proxy_db";
     string error_content_type = "text/xml";
     string error_body = mk_resp("internal_error")->serialize();
-    string prefix = "/card_bind/";//app_settings.get_prefix(); //"/card_bind/";
-    int port = app_settings.get_port();//9119;
+    string prefix = app_settings.get_card_proxy_prefix();
+    int port = app_settings.get_card_proxy_port();//9119;
     CardProxyHttpWrapper handlers[] = {
         WRAP(dek_status),
         WRAP(dek_get),

@@ -43,12 +43,36 @@ const std::string AppSettings::to_string() const {
         root_->serialize();
 }
 
-std::string AppSettings::get_prefix() {
-    return root_->find_first("prefix")->get_text();
+const int AppSettings::get_card_proxy_port() {
+    return std::stoi(root_->find_first("card_proxy_port")->get_text());
 }
 
-int AppSettings::get_port() {
-    return std::stoi(root_->find_first("port")->get_text());
+const std::string AppSettings::get_card_proxy_prefix() {
+    return root_->find_first("card_proxy_prefix")->get_text();
+}
+
+const std::string AppSettings::get_key_keeper_server() {
+    return root_->find_first("key_keeper_server")->get_text();
+}
+
+const std::string AppSettings::get_key_keeper_port() {
+    return root_->find_first("key_keeper_port")->get_text();
+}
+
+const std::string AppSettings::get_key() {
+    return root_->find_first("key")->get_text();
+}
+
+const int AppSettings::get_dek_use_count() {
+    return std::stoi(root_->find_first("dek_use_count")->get_text());
+}
+
+const int AppSettings::get_dek_bot_limit() {
+    return std::stoi(root_->find_first("dek_bot_limit")->get_text());
+}
+
+const int AppSettings::get_dek_top_limit() {
+    return std::stoi(root_->find_first("dek_top_limit")->get_text());
 }
 
 void App::init_log(const string &log_name)
