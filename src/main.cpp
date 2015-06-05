@@ -136,8 +136,9 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
         const StringDict &params)
 {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DEKPool *dek_pool = DEKPool::get_instance();
-    DEKPoolStatus dek_status = dek_pool->get_status();
+    //DEKPool *dek_pool = DEKPool::get_instance();
+    DEKPool dek_pool(session);
+    DEKPoolStatus dek_status = dek_pool.get_status();
     resp->sub_element("total_count", Yb::to_string(dek_status.total_count));
     resp->sub_element("active_count", Yb::to_string(dek_status.active_count));
     resp->sub_element("use_count", Yb::to_string(dek_status.use_count));
@@ -147,8 +148,9 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
 ElementTree::ElementPtr dek_get(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
-    DEKPool *dek_pool = DEKPool::get_instance();
-    DataKey data_key = dek_pool->get_active_data_key();
+    //DEKPool *dek_pool = DEKPool::get_instance();
+    DEKPool dek_pool(session);
+    DataKey data_key = dek_pool.get_active_data_key();
     resp->sub_element("ID", Yb::to_string(data_key.id.value()));
     resp->sub_element("DEK", data_key.dek_crypted);
     resp->sub_element("START_TS", Yb::to_string(data_key.start_ts.value()));

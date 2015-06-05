@@ -70,17 +70,17 @@ const std::string AppSettings::get_key() {
 
 const int AppSettings::get_dek_use_count() {
     Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
-    return std::stoi(dek->find_first("dek_use_count")->get_text());
+    return std::stoi(dek->find_first("use_count")->get_text());
 }
 
-const int AppSettings::get_dek_bot_limit() {
+const int AppSettings::get_dek_max_limit() {
     Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
-    return std::stoi(dek->find_first("dek_bot_limit")->get_text());
+    return std::stoi(dek->find_first("max_limit")->get_text());
 }
 
-const int AppSettings::get_dek_top_limit() {
+const int AppSettings::get_dek_min_limit() {
     Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
-    return std::stoi(dek->find_first("dek_top_limit")->get_text());
+    return std::stoi(dek->find_first("min_limit")->get_text());
 }
 
 void App::init_log(const string &log_name)
@@ -126,16 +126,16 @@ void App::init_engine(const string &db_name)
     }
 }
 
-void App::init_dek_pool() {
-    session_ = new_session();
-    DEKPool::get_instance(*session_);
-}
+//void App::init_dek_pool() {
+//    session_ = new_session();
+//    DEKPool::get_instance(*session_);
+//}
 
 void App::init(const string &log_name, const string &db_name)
 {
     init_log(log_name);
     init_engine(db_name);
-    init_dek_pool();
+    //init_dek_pool();
 }
 
 App::~App()

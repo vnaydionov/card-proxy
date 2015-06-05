@@ -32,8 +32,8 @@ public:
     const std::string get_key();
     
     const int get_dek_use_count();
-    const int get_dek_bot_limit();
-    const int get_dek_top_limit();
+    const int get_dek_max_limit();
+    const int get_dek_min_limit();
 };
 
 

@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Settings xmlns:xi="http://www.w3.org/2001/XInclude">
     
+    <!--
     <xi:include href="key_settings.xml" />
+    -->
+    <KeySettings>
+        <KeyKeeper>
+            <server>127.0.0.1</server>
+            <port>4009</port>
+        </KeyKeeper>
+
+        <Key>NzY3NzcxMTE=</Key>
+    </KeySettings>
     
     <CardProxy>
         <port>9119</port>
@@ -10,8 +20,8 @@
 
     <DEK>
         <use_count>10</use_count>
-        <bot_limit>100</bot_limit>
-        <top_limit>500</top_limit>
+        <min_limit>100</min_limit>
+        <max_limit>500</max_limit>
     </DEK>
 
 </Settings>

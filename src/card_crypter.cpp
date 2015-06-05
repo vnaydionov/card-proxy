@@ -109,8 +109,9 @@ void CardCrypter::change_master_key(const std::string &key)
 static Domain::Card save_card(CardCrypter &cr, const CardData &card_data)
 {
     Yb::Session &session = cr.session();
-    DEKPool *dek_pool = DEKPool::get_instance();
-    Domain::DataKey data_key = dek_pool->get_active_data_key();
+    //DEKPool *dek_pool = DEKPool::get_instance();
+    DEKPool dek_pool(session);
+    Domain::DataKey data_key = dek_pool.get_active_data_key();
     std::string dek = cr.decode_dek(data_key.dek_crypted);
     Domain::Card card;
     card.ts = Yb::now();
@@ -132,8 +133,9 @@ static Domain::IncomingRequest save_cvn(CardCrypter &cr, const CardData &card_da
                                         Domain::Card &card)
 {
     Yb::Session &session = cr.session();
-    DEKPool *dek_pool = DEKPool::get_instance();
-    Domain::DataKey data_key = dek_pool->get_active_data_key();
+    //DEKPool *dek_pool = DEKPool::get_instance();
+    DEKPool dek_pool(session);
+    Domain::DataKey data_key = dek_pool.get_active_data_key();
     std::string dek = cr.decode_dek(data_key.dek_crypted);
     Domain::IncomingRequest incoming_request;
     incoming_request.ts = Yb::now();
