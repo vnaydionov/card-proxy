@@ -4,8 +4,8 @@
     <xi:include href="key_settings.xml" />
     
     <CardProxy>
-        <card_proxy_port>9119</card_proxy_port>
-        <card_proxy_prefix>/card_bind/</card_proxy_prefix>
+        <port>9119</port>
+        <prefix>/card_bind/</prefix>
     </CardProxy>
 
     <DEK>

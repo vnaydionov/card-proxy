@@ -1,4 +1,5 @@
 #include "app_class.h"
+#include "dek_pool.h"
 #include <stdexcept>
 #include <orm/domain_object.h>
 
@@ -15,21 +16,18 @@ AppSettings::~AppSettings() {
 }
 
 void AppSettings::fill_tree() {
-    std::ifstream file(file_name_.c_str());
+    std::ifstream file(file_name_.data());
     if(file.good()) {
         root_ = Yb::ElementTree::parse(file);
         modified_ = false;
     } else {
-        root_ = Yb::ElementTree::new_element("Settings");
-        root_->sub_element("port", "9119");
-        root_->sub_element("prefix", "/card_bind/");
-        modified_ = true;
-        save_to_xml();
+        throw std::runtime_error("Cannot open config file: " + file_name_);
+        //save_to_xml();
     }
 }
 
 void AppSettings::save_to_xml() {
-    std::ofstream file(file_name_.c_str());
+    std::ofstream file(file_name_.data());
     if (file.good()) {
         file << to_string() << std::endl;
         file.close();
@@ -44,41 +42,51 @@ const std::string AppSettings::to_string() const {
 }
 
 const int AppSettings::get_card_proxy_port() {
-    return std::stoi(root_->find_first("card_proxy_port")->get_text());
+    Yb::ElementTree::ElementPtr card_proxy = root_->find_first("CardProxy");
+    return std::stoi(card_proxy->find_first("port")->get_text());
 }
 
 const std::string AppSettings::get_card_proxy_prefix() {
-    return root_->find_first("card_proxy_prefix")->get_text();
+    Yb::ElementTree::ElementPtr card_proxy = root_->find_first("CardProxy");
+    return card_proxy->find_first("prefix")->get_text();
 }
 
 const std::string AppSettings::get_key_keeper_server() {
-    return root_->find_first("key_keeper_server")->get_text();
+    Yb::ElementTree::ElementPtr key_settings = root_->find_first("KeySettings");
+    Yb::ElementTree::ElementPtr key_keeper = key_settings->find_first("KeyKeeper");
+    return key_keeper->find_first("server")->get_text();
 }
 
 const std::string AppSettings::get_key_keeper_port() {
-    return root_->find_first("key_keeper_port")->get_text();
+    Yb::ElementTree::ElementPtr key_settings = root_->find_first("KeySettings");
+    Yb::ElementTree::ElementPtr key_keeper = key_settings->find_first("KeyKeeper");
+    return key_keeper->find_first("port")->get_text();
 }
 
 const std::string AppSettings::get_key() {
-    return root_->find_first("key")->get_text();
+    Yb::ElementTree::ElementPtr key_settings = root_->find_first("KeySettings");
+    return key_settings->find_first("Key")->get_text();
 }
 
 const int AppSettings::get_dek_use_count() {
-    return std::stoi(root_->find_first("dek_use_count")->get_text());
+    Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
+    return std::stoi(dek->find_first("dek_use_count")->get_text());
 }
 
 const int AppSettings::get_dek_bot_limit() {
-    return std::stoi(root_->find_first("dek_bot_limit")->get_text());
+    Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
+    return std::stoi(dek->find_first("dek_bot_limit")->get_text());
 }
 
 const int AppSettings::get_dek_top_limit() {
-    return std::stoi(root_->find_first("dek_top_limit")->get_text());
+    Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
+    return std::stoi(dek->find_first("dek_top_limit")->get_text());
 }
 
 void App::init_log(const string &log_name)
 {
     if (!log_.get()) {
-        file_stream_.reset(new ofstream(log_name.c_str(), ios::app));
+        file_stream_.reset(new ofstream(log_name.data(), ios::app));
         if (file_stream_->fail())
             throw runtime_error("can't open logfile: " + log_name);
         appender_.reset(new Yb::LogAppender(*file_stream_));
@@ -118,10 +126,16 @@ void App::init_engine(const string &db_name)
     }
 }
 
+void App::init_dek_pool() {
+    session_ = new_session();
+    DEKPool::get_instance(*session_);
+}
+
 void App::init(const string &log_name, const string &db_name)
 {
     init_log(log_name);
     init_engine(db_name);
+    init_dek_pool();
 }
 
 App::~App()

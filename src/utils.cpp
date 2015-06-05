@@ -84,7 +84,7 @@ std::string encode_base64(const std::string &message)
 {
     if (!message.size())
         return std::string();
-    int encoded_size = ((message.size() + 2) / 3) * 4;
+    size_t encoded_size = ((message.size() + 2) / 3) * 4;
     std::string result(encoded_size, 0);
     FILE *stream = fmemopen(&result[0], encoded_size + 1, "w");
     BIO *b64 = BIO_new(BIO_f_base64());
@@ -108,8 +108,8 @@ static bool valid_b64_char(char c)
 
 static int b64_decoded_size(const std::string &b64input)
 {
-    int length = b64input.size();
-    int padding = 0;
+    size_t length = b64input.size();
+    size_t padding = 0;
     if (length > 1) {
         // Check for trailing '=''s as padding
         if (b64input[length - 1] == '=' && b64input[length - 2] == '=')
@@ -142,7 +142,7 @@ std::string decode_base64(const std::string &b64message)
     if (!b64message.size())
         return std::string();
     check_base64(b64message);
-    int decoded_size = b64_decoded_size(b64message);
+    size_t decoded_size = b64_decoded_size(b64message);
     std::string result(decoded_size, 0);
     FILE *stream = fmemopen(const_cast<char *>(b64message.data()),
                             b64message.size(), "r");
@@ -161,7 +161,7 @@ std::string decode_base64(const std::string &b64message)
 std::string bcd_decode(const std::string &bcd_input)
 {
     if (!bcd_input.size())
-        return std::string();
+        return std::string(); // TODO analyze this case
     if (bcd_input.size() > 32)
         throw std::runtime_error("BCD decode data of wrong size");
     std::string x = string_to_hexstring(bcd_input,

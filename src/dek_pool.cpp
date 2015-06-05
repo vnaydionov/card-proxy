@@ -9,6 +9,8 @@
 #define AUTO_GEN_LIMIT 50
 #define MAN_GEN_LIMIT 100
 
+DEKPool *DEKPool::instance_ = 0;
+
 DEKPool::DEKPool(Yb::Session &session)
     : _session(session)
     , dek_use_count_(DEK_USE_COUNT)
@@ -17,11 +19,22 @@ DEKPool::DEKPool(Yb::Session &session)
     , man_generation_limit_(MAN_GEN_LIMIT) {
 }
 
-DEKPool::~DEKPool() {
+DEKPool* DEKPool::get_instance() {
+    if (!instance_)
+        throw std::runtime_error("Instance require Yb::Session object");
+    return instance_;
+}
+
+DEKPool* DEKPool::get_instance(Yb::Session &session) {
+    if (!instance_)
+        instance_= new DEKPool(session);
+    return instance_;
 }
 
 Domain::DataKey DEKPool::get_active_data_key() {
     DEKPoolStatus pool_status = check_pool();
+    if (!pool_status.active_count)
+        throw std::runtime_error("DEK pool is exhausted");
     auto active_deks = Yb::query<Domain::DataKey>(_session)
             .filter_by(Domain::DataKey::c.counter < dek_use_count_);
     int choice = rand() % pool_status.active_count;
@@ -30,7 +43,7 @@ Domain::DataKey DEKPool::get_active_data_key() {
         if (choice == 0)
             return dek;
     }
-    //errrrrr
+    throw std::runtime_error("Cannot obtain active DEK");
 }
 
 const DEKPoolStatus DEKPool::check_pool() {
@@ -69,7 +82,7 @@ Domain::DataKey DEKPool::generate_new_data_key() {
     data_key.finish_ts = Yb::dt_make(2020, 12, 31);
     data_key.counter = 0;
     data_key.save(_session);
-    _session.commit();
+    _session.flush();
     return data_key;
 }
 

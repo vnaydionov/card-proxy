@@ -43,9 +43,11 @@ class App: public Yb::ILogger
     std::auto_ptr<Yb::LogAppender> appender_;
     Yb::ILogger::Ptr log_;
     std::auto_ptr<Yb::Engine> engine_;
+    std::auto_ptr<Yb::Session> session_;
 
     void init_log(const std::string &log_name);
     void init_engine(const std::string &db_name);
+    void init_dek_pool();
 public:
     App() {}
     void init(const std::string &log_name = "log.txt",

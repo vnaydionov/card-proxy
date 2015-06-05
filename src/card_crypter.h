@@ -36,19 +36,19 @@ public:
     void remove_card_data(const std::string &token);
     void change_master_key(const std::string &key);
 
-    static std::string assemble_master_key(Yb::Session &session);
-    static std::string generate_card_token();
-    static std::string encode_data(const std::string &dek,
-                                   const std::string &data);
-    static std::string decode_data(const std::string &dek,
-                                   const std::string &data_crypted);
+    static const std::string assemble_master_key(Yb::Session &session);
+    static const std::string generate_card_token();
+    static const std::string encode_data(const std::string &dek,
+                                         const std::string &data);
+    static const std::string decode_data(const std::string &dek,
+                                         const std::string &data_crypted);
 
-    std::string encode_dek(const std::string &dek)
+    const std::string encode_dek(const std::string &dek)
     {
         return encode_data(master_key_, dek);
     }
 
-    std::string decode_dek(const std::string &dek_crypted)
+    const std::string decode_dek(const std::string &dek_crypted)
     {
         return decode_data(master_key_, dek_crypted);
     }

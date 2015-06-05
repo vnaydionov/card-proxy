@@ -7,10 +7,10 @@
 struct DEKPoolStatus;
 
 class DEKPool {
-//Singleton?
 public:
-    DEKPool(Yb::Session &session);
-    ~DEKPool();
+    static DEKPool* get_instance();
+    static DEKPool* get_instance(Yb::Session &session);
+    static bool delete_instance();
 
     const DEKPoolStatus get_status();
     const DEKPoolStatus check_pool();
@@ -27,6 +27,12 @@ public:
     void set_check_timeout(unsigned val);
     
 private:
+    static DEKPool * instance_;
+
+    DEKPool(Yb::Session &session);
+    DEKPool(const DEKPool &);
+    DEKPool& operator=(DEKPool&);
+
     Domain::DataKey generate_new_data_key();
 
     Yb::Session &_session;
