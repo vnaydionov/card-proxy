@@ -14,6 +14,9 @@
 #include <util/string_utils.h>
 #include <util/element_tree.h>
 
+#include <pplx/pplx.h>
+#include <cpprest/http_client.h>
+
 #if defined(YBUTIL_WINDOWS)
 #include <rpc.h>
 #else
@@ -258,6 +261,8 @@ ElementTree::ElementPtr set_master_key(Session &session, ILogger &logger, const 
 
 int main(int argc, char *argv[])
 {
+    web::http::client::http_client client("http://localhost/myfile.json");  // check linking libcpprest
+
     AppSettings app_settings;
     app_settings.fill_tree();
 

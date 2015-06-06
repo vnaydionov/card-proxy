@@ -5,6 +5,7 @@ add_subdirectory (tests)
 include_directories (
     ${BOOST_INCLUDEDIR}
     ${YBORM_INCLUDES}
+    ${CPPREST_INCLUDES}
     ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library (cardkeeper STATIC
@@ -29,7 +30,11 @@ set_source_files_properties (
 
 add_dependencies (cardkeeper generate_domain)
 
-target_link_libraries (card_proxy cardkeeper crypto ssl ${YBORM_LIB} ${YBUTIL_LIB} ${YB_BOOST_LIBS})
+target_link_libraries (
+    card_proxy cardkeeper crypto ssl
+    ${YBORM_LIB} ${YBUTIL_LIB} ${YB_BOOST_LIBS}
+    ${CPPREST_LIB}
+)
 
 install (TARGETS card_proxy DESTINATION bin)
 install (FILES card_proxy_schema.xml DESTINATION shared)
