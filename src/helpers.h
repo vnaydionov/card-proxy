@@ -48,16 +48,13 @@ public:
 };
 
 template <class HttpHandler>
-int run_server_app(const std::string &log_name, const std::string &db_name,
-        int port, HttpHandler *handlers_array, int n_handlers,
-        const std::string &error_content_type,
-        const std::string &error_body,
-        const std::string &prefix = "")
+int run_server_app(const std::string &config_name,
+        HttpHandler *handlers_array, int n_handlers)
 {
     randomize();
     Yb::ILogger::Ptr log;
     try {
-        theApp::instance().init(log_name, db_name);
+        theApp::instance().init(IConfig::Ptr(new XmlConfig(config_name)));
         log.reset(theApp::instance().new_logger("main").release());
     }
     catch (const std::exception &ex) {
@@ -67,11 +64,13 @@ int run_server_app(const std::string &log_name, const std::string &db_name,
     try {
         typedef HttpServer<HttpHandler> MyHttpServer;
         typename MyHttpServer::HandlerMap handlers;
+        std::string prefix = theApp::instance().cfg()->get_value("card_proxy/prefix");
         for (int i = 0; i < n_handlers; ++i)
             handlers[prefix + handlers_array[i].name()] = handlers_array[i];
         MyHttpServer server(
-                port, handlers, &theApp::instance(),
-                error_content_type, error_body);
+                theApp::instance().cfg()->get_value_as_int("card_proxy/port"),
+                handlers, &theApp::instance(),
+                "application/json", "{ \"error\": \"unknown_error\" }");
         server.serve();
     }
     catch (const std::exception &ex) {

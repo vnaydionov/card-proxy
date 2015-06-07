@@ -3,7 +3,6 @@
 #include "utils.h"
 #include "aes_crypter.h"
 #include "dek_pool.h"
-#include "app_class.h"
 
 #include "domain/DataKey.h"
 #include "domain/Config.h"
@@ -11,7 +10,7 @@
 #include "domain/IncomingRequest.h"
 
 static void send_key_to_server(const std::string &key);
-static std::string recv_key_from_server();
+static std::string recv_key_from_server(const std::string &host, int port);
 
 Yb::DateTime mk_expire_dt(int expire_year, int expire_month)
 {
@@ -76,8 +75,7 @@ void CardCrypter::remove_card_data(const std::string &token)
 
 void CardCrypter::change_master_key(const std::string &key)
 {
-    AppSettings app_settings;
-    app_settings.fill_tree();
+    config_->reload();
     auto deks = Yb::query<Domain::DataKey>(session_).all();
     for (auto &dek : deks) {
         std::string old_dek = decode_dek(dek.dek_crypted);
@@ -110,7 +108,7 @@ static Domain::Card save_card(CardCrypter &cr, const CardData &card_data)
 {
     Yb::Session &session = cr.session();
     //DEKPool *dek_pool = DEKPool::get_instance();
-    DEKPool dek_pool(session);
+    DEKPool dek_pool(cr.config(), session);
     Domain::DataKey data_key = dek_pool.get_active_data_key();
     std::string dek = cr.decode_dek(data_key.dek_crypted);
     Domain::Card card;
@@ -134,7 +132,7 @@ static Domain::IncomingRequest save_cvn(CardCrypter &cr, const CardData &card_da
 {
     Yb::Session &session = cr.session();
     //DEKPool *dek_pool = DEKPool::get_instance();
-    DEKPool dek_pool(session);
+    DEKPool dek_pool(cr.config(), session);
     Domain::DataKey data_key = dek_pool.get_active_data_key();
     std::string dek = cr.decode_dek(data_key.dek_crypted);
     Domain::IncomingRequest incoming_request;
@@ -210,7 +208,8 @@ CardData CardCrypter::get_card(const std::string &token)
     return card_data;
 }
 
-static std::string recv_key_from_server() {
+static std::string recv_key_from_server(const std::string &host, int port)
+{
     int sockfd;
     struct sockaddr_in server_addr;
     std::string command = "get\n", buffer(100, ' ');
@@ -219,8 +218,8 @@ static std::string recv_key_from_server() {
         throw std::runtime_error("Socket error");
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    server_addr.sin_port = htons(4009);
+    server_addr.sin_addr.s_addr = inet_addr(host.c_str());
+    server_addr.sin_port = htons(port);
 
     if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         close(sockfd);
@@ -264,20 +263,23 @@ static void send_key_to_server(const std::string &key) {
     }
 }
 
-const std::string CardCrypter::assemble_master_key(Yb::Session &session)
+const std::string CardCrypter::assemble_master_key(IConfig *config, Yb::Session &session)
 {
-    AppSettings app_settings;
-    app_settings.fill_tree();
+    config->reload();
     std::string server_key, config_key, database_key;
     try {
         // 16 bytes from server
-        server_key = decode_base64(recv_key_from_server());
+        std::string key_keeper_host = config->get_value("key_keeper/host");
+        int key_keeper_port = config->get_value_as_int("key_keeper/port");
+        server_key = decode_base64(recv_key_from_server(key_keeper_host, key_keeper_port));
         // 8 bytes from config_file
-        config_key = decode_base64(app_settings.get_key());
+        config_key = decode_base64(config->get_value("key_settings/kek2"));
         // 8 bytes from database
-        Domain::Config config = Yb::query<Domain::Config>(session).one();
+        Domain::Config config = Yb::query<Domain::Config>(session)
+            .filter_by(Domain::Config::c.ckey == "KEK3").one();
         database_key = decode_base64(config.cvalue);
-    } catch(std::runtime_error &err) {
+    } catch (std::runtime_error &err) {
+        // TODO: proper logging
         return std::string();
     }
     return server_key + config_key + database_key;

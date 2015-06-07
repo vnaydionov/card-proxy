@@ -9,7 +9,7 @@ include_directories (
     ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library (cardkeeper STATIC
-    utils.cpp aes_crypter.cpp card_crypter.cpp dek_pool.cpp
+    utils.cpp aes_crypter.cpp card_crypter.cpp dek_pool.cpp conf_reader.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp
