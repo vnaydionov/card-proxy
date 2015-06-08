@@ -35,5 +35,6 @@
         <kek2>eFfoBw3x0DY=</kek2>
     </key_settings>
 
+    <bind_card_url>http://localhost/myfile.json</bind_card_url>
 </settings>
 

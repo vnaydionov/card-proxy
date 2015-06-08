@@ -289,13 +289,41 @@ ElementTree::ElementPtr set_master_key(Session &session, ILogger &logger, const 
 }
 
 
+#define CFG_VALUE(x) theApp::instance().cfg()->get_value(x)
+
 const HttpHeaders bind_card(ILogger &logger, const HttpHeaders &request)
 {
-    web::http::client::http_client client("http://localhost/myfile.json");  // check linking libcpprest
-
-    HttpHeaders response(10, 200, "OK");
-    response.set_response_body("{\"preved\": 111}", "application/json");
-    return response;
+    const auto bind_card_url = CFG_VALUE("bind_card_url");
+    web::http::client::http_client client(bind_card_url);
+    web::http::http_request nested_request(web::http::methods::GET);
+    for (const auto &p: request.get_headers())
+    {
+        nested_request.headers().add(p.first, p.second);
+    }
+    // TODO: process parameters
+    nested_request.set_body(request.get_body(), request.get_header("Content-Type", "application/json"));
+    auto task = client.request(nested_request).then(
+        [](web::http::http_response nested_response) -> pplx::task<HttpHeaders>
+        {
+            HttpHeaders response(10, nested_response.status_code(),
+                                 nested_response.reason_phrase());
+            for (const auto &q: nested_response.headers())
+            {
+                response.set_header(q.first, q.second);
+            }
+            auto body_task = nested_response.extract_vector();
+            if (body_task.wait() != pplx::completed)
+                throw std::runtime_error("pplx: body_task.wait() failed");
+            std::vector<unsigned char> body_vec = body_task.get();
+            std::string body;
+            std::copy(body_vec.begin(), body_vec.end(), std::back_inserter(body));
+            response.set_response_body(body, response.get_header("Content-Type", "application/json"));
+            return pplx::task_from_result(response);
+        }
+    );
+    if (task.wait() != pplx::completed)
+        throw std::runtime_error("pplx: task.wait() failed");
+    return task.get();
 }
 
 const HttpHeaders start_payment(ILogger &logger, const HttpHeaders &request)

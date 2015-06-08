@@ -18,6 +18,12 @@ public: HttpParserError(const std::string &ctx, const std::string &msg)
 class HttpHeaders
 {
 public:
+    HttpHeaders()
+        : is_a_request_(true)
+        , proto_ver_(10)
+        , resp_code_(0)
+    {}
+
     HttpHeaders(const Yb::String &method, const Yb::String &uri, int proto_ver)
         : is_a_request_(true)
         , method_(Yb::StrUtils::str_to_upper(method))
@@ -102,6 +108,15 @@ public:
         if (headers_.end() == it)
             throw HttpParserError("get_header", "Header not found: " +
                                   NARROW(header));
+        return it->second;
+    }
+
+    const Yb::String get_header(const Yb::String &header, const Yb::String &default_value) const
+    {
+        Yb::StringDict::const_iterator it = headers_.find(
+            normalize_header_name(header));
+        if (headers_.end() == it)
+            return default_value;
         return it->second;
     }
 
