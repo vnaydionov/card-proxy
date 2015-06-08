@@ -25,6 +25,12 @@
     <!--
     <xi:include href="key_settings.xml" />
     -->
+    <!-- For testing purposes:
+         kek: 5QVnB96InrkD5vH4z61BvHhX6AcN8dA29y4zGkdWiJ8=
+         kek1: 5QVnB96InrkD5vH4z61BvA== (key_keeper)
+         kek2: eFfoBw3x0DY= (config)
+         kek3: 9y4zGkdWiJ8= (database)
+    -->
     <key_settings>
         <kek2>eFfoBw3x0DY=</kek2>
     </key_settings>
