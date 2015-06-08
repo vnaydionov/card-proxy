@@ -16,6 +16,7 @@
 
 #include <pplx/pplx.h>
 #include <cpprest/http_client.h>
+#include <cpprest/json.h>
 
 #if defined(YBUTIL_WINDOWS)
 #include <rpc.h>
@@ -300,8 +301,44 @@ const HttpHeaders bind_card(ILogger &logger, const HttpHeaders &request)
     {
         nested_request.headers().add(p.first, p.second);
     }
+    const auto &input_body = request.get_body();
+    istringstream inp(input_body);
+    web::json::value input_json;
+    inp >> input_json;
+    web::json::value &params = input_json.as_object().at("params");
+    CardData card_data;
+    card_data["pan"] = params.at("card_number").as_string();
+    card_data["expire_month"] = params.at("expiration_month").as_string();
+    card_data["expire_year"] = params.at("expiration_year").as_string();
+    card_data["card_holder"] = params.at("cardholder").as_string();
+    if (params.as_object().find("cvn") != params.as_object().end()) {
+        card_data["cvn"] = params.at("cvn").as_string();
+    }
+    auto_ptr<Session> session(theApp::instance().new_session());
+    CardCrypter card_crypter(theApp::instance().cfg(), *session);
+    CardData new_card_data = card_crypter.get_token(card_data);
+    session.reset(NULL);
+    web::json::value input_json_fixed;
+    web::json::value params_fixed;
+    params_fixed["token"] = params["token"];
+    params_fixed["expiration_month"] = params["expiration_month"];
+    params_fixed["expiration_year"] = params["expiration_year"];
+    params_fixed["cardholder"] = params["cardholder"];
+    if (params.as_object().find("region_id") != params.as_object().end())
+        params_fixed["region_id"] = params["region_id"];
+    params_fixed["card_number_masked"] = web::json::value(new_card_data["pan_masked"]);
+    params_fixed["card_token"] = web::json::value(new_card_data["card_token"]);
+    input_json_fixed["params"] = params_fixed;
+    std::string input_body_fixed = input_json_fixed.serialize();
+    std::cerr << "fixed=" << input_body_fixed << "\n";
+    
+    ///
+//"token":"e842f0aef01040c08d725230bac1f64b", 
+//"card_number": "5555555555554444", "expiration_month": "07", "expiration_year": "14", "cvn": "300", "cardholder": "TEST", "region_id": 225
+    
+    
     // TODO: process parameters
-    nested_request.set_body(request.get_body(), request.get_header("Content-Type", "application/json"));
+    nested_request.set_body(input_body_fixed, request.get_header("Content-Type", "application/json"));
     auto task = client.request(nested_request).then(
         [](web::http::http_response nested_response) -> pplx::task<HttpHeaders>
         {
