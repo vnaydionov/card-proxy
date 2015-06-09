@@ -1,10 +1,39 @@
-# card-proxy
-Сервер для хранения в зашифрованном виде данных платежных карт. Принимает на вход структуру с нормализованными платежными данными и возвращает некий токен, представляющий эти карточные данные во внутренних модулях. При исходящих запросах происходит обратная замена токена на карточные данные.
 
-![](http://cs4.pikabu.ru/images/big_size_comm/2014-12_1/14176735103578.jpeg)
+ABOUT
 
-Важные данные платежных карт (pan, cvn) хранятся в зашифрованном виде. Для шифрования применяется криптоалгоритм AES с 256 битным ключем для шифрования. Ключи для шифрования карточных данных хранятся в таблице и имеют определенный лимит на их использование для зашифровки новых данных. Ключи также находятся в зашифрованном состоянии. Мастер-ключ для расшифровки ключей хранится в нескольких местах и по запросу производится его "сборка". 
+This is a HTTP proxy-server that stores securely the payment card data
+sent by a user from a WEB-form or a mobile application.
+On receiving of the card data the proxy passes to the upstream only an opaque
+token parameter.
 
-#Запуск
-export YBORM_URL=mysql+odbc://test_usr:test_pwd@test_dsn 
-./card-proxy
+Then the proxy can be used by a payment application backend to address some
+external payment gateway.  In this case the outgoing authorization request
+containing a token but no payment card data would expand to contain
+full card data.
+
+The point is to take out payment card data handling out of payment application
+backend to minimize the scope of applicable PCI/DSS restrictions.
+
+
+CRYPTOGRAPHY DETAILS
+
+Sensitive card data is stored encrypted using AES algorithm with a 256 bit key
+(DEK=Data Encryption Key).  A DEK can be used for encryption only few times.
+For this reason new DEKs are generated as needed.
+Each of DEKs is encrypted using AES algorithm with a 256 bit key (KEK=
+Key Encryption Key).
+The important thing about KEK is that it is not stored as a whole in single
+place, but rather it is reconstructed on each request from three
+different places:
+  1) in memory of special daemon process (key keeper)
+  2) in servant configuration file
+  3) in servant database table
+
+
+SOFTWARE REQUIREMENTS
+
+Linux: Ubuntu Trusty 14.04 with GNU g++ 4.8
+C++ REST SDK: ver2.0
+YB.ORM: 0.4.7
+
+
