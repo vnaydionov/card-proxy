@@ -1,4 +1,5 @@
 from multiprocessing import Process, Queue, Event
+from pprint import pprint
 import os
 import re
 import time
@@ -67,12 +68,13 @@ def get_token():
     return resp.read()
 
 @timer
-def get_card():
+def get_card(token):
     params = {
-        'token': '',
+        'token': token,
     }
     url_params = urllib.urlencode(params)
     resp = urllib.urlopen(SERVER_URL + '/get_card', url_params)
+    return resp.read()
     
 
 class Worker(Process):
@@ -99,9 +101,17 @@ class Worker(Process):
             #if random.randint(0, 1) == 0:
             exec_time, resp = get_token()
             result = ''.join(re.search("<status>(\w*)<\/status>", resp).groups()[:1])
-            self.call_stat["get_token"]["calls"] = self.call_stat["get_token"].get("calls", 0) + 1
-            self.call_stat["get_token"]["time"] = self.call_stat["get_token"].get("time", 0.0) + exec_time
             self.logger.debug('get_token() time: %s, result: %s' % (str(exec_time), result))
+            self.call_stat["get_token"]["calls"] = self.call_stat["get_token"].get("calls", 0) + 1
+            if result == 'success':
+                self.call_stat["get_token"]["success_calls"] = self.call_stat["get_token"].get("success_calls", 0) + 1
+                self.call_stat["get_token"]["time"] = self.call_stat["get_token"].get("time", 0.0) + exec_time
+                token = re.search("<card_token>(\w+)<\/card_token>", resp).groups()[0]
+                if token:
+                    exec_time, resp = get_card(token)
+                    self.call_stat["get_card"]["calls"] = self.call_stat["get_card"].get("calls", 0) + 1
+                    self.call_stat["get_card"]["time"] = self.call_stat["get_card"].get("time", 0.0) + exec_time
+                    self.logger.debug('get_card() time: %s, result: %s' % (str(exec_time), result))
             #else:
             #    self.logger.debug('time for get_card(): %s' % str(get_card()))
         self.queue.put(self.call_stat, block=False)
@@ -136,23 +146,27 @@ class WorkingPool:
     
     def get_result(self):
         log.debug("Collect results")
-        result = {'get_token': {'calls': 0, 'time': 0.0},
+        result = {'get_token': {'success_calls': 0, 'calls': 0, 'time': 0.0},
                   'get_card': {'calls': 0, 'time': 0.0}}
         while not self.queue.empty():
             call_stat = self.queue.get()
             result['get_token']['calls'] += call_stat['get_token']['calls']
             result['get_token']['time'] += call_stat['get_token']['time']
+            result['get_token']['success_calls'] += call_stat['get_token']['success_calls']
+            result['get_card']['calls'] += call_stat['get_card']['calls']
+            result['get_card']['time'] += call_stat['get_card']['time']
 
         result['get_token']['avg'] = result['get_token']['time'] / result['get_token']['calls']
+        result['get_card']['avg'] = result['get_card']['time'] / result['get_card']['calls']
         return result
 
 log = create_logger("Main")
 
 if __name__ == "__main__": 
-    pool = WorkingPool(10)
+    pool = WorkingPool(5)
     pool.run()
-    time.sleep(200)
+    time.sleep(30)
     pool.stop()
-    print pool.get_result()
+    pprint(pool.get_result())
     
 
