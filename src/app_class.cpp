@@ -2,86 +2,9 @@
 #include "dek_pool.h"
 #include <stdexcept>
 #include <orm/domain_object.h>
+#include <util/string_utils.h>
 
 using namespace std;
-
-AppSettings::AppSettings(const std::string &file_name)
-    : file_name_(file_name)
-    , modified_(false) {
-}
-
-AppSettings::~AppSettings() {
-    if(modified_)
-        save_to_xml();
-}
-
-void AppSettings::fill_tree() {
-    std::ifstream file(file_name_.data());
-    if(file.good()) {
-        root_ = Yb::ElementTree::parse(file);
-        modified_ = false;
-    } else {
-        throw std::runtime_error("Cannot open config file: " + file_name_);
-        //save_to_xml();
-    }
-}
-
-void AppSettings::save_to_xml() {
-    std::ofstream file(file_name_.data());
-    if (file.good()) {
-        file << to_string() << std::endl;
-        file.close();
-        modified_ = false;
-    } else 
-        std::cerr << "Couldn't open'" << file_name_ << "' for writing" << std::endl;
-}
-
-const std::string AppSettings::to_string() const {
-    return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + 
-        root_->serialize();
-}
-
-const int AppSettings::get_card_proxy_port() {
-    Yb::ElementTree::ElementPtr card_proxy = root_->find_first("CardProxy");
-    return std::stoi(card_proxy->find_first("port")->get_text());
-}
-
-const std::string AppSettings::get_card_proxy_prefix() {
-    Yb::ElementTree::ElementPtr card_proxy = root_->find_first("CardProxy");
-    return card_proxy->find_first("prefix")->get_text();
-}
-
-const std::string AppSettings::get_key_keeper_server() {
-    Yb::ElementTree::ElementPtr key_settings = root_->find_first("KeySettings");
-    Yb::ElementTree::ElementPtr key_keeper = key_settings->find_first("KeyKeeper");
-    return key_keeper->find_first("server")->get_text();
-}
-
-const std::string AppSettings::get_key_keeper_port() {
-    Yb::ElementTree::ElementPtr key_settings = root_->find_first("KeySettings");
-    Yb::ElementTree::ElementPtr key_keeper = key_settings->find_first("KeyKeeper");
-    return key_keeper->find_first("port")->get_text();
-}
-
-const std::string AppSettings::get_key() {
-    Yb::ElementTree::ElementPtr key_settings = root_->find_first("KeySettings");
-    return key_settings->find_first("Key")->get_text();
-}
-
-const int AppSettings::get_dek_use_count() {
-    Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
-    return std::stoi(dek->find_first("use_count")->get_text());
-}
-
-const int AppSettings::get_dek_max_limit() {
-    Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
-    return std::stoi(dek->find_first("max_limit")->get_text());
-}
-
-const int AppSettings::get_dek_min_limit() {
-    Yb::ElementTree::ElementPtr dek = root_->find_first("DEK");
-    return std::stoi(dek->find_first("min_limit")->get_text());
-}
 
 void App::init_log(const string &log_name)
 {
@@ -103,7 +26,8 @@ void App::init_engine(const string &db_name)
         auto_ptr<Yb::SqlPool> pool(
                 new Yb::SqlPool(YB_POOL_MAX_SIZE, YB_POOL_IDLE_TIME,
                     YB_POOL_MONITOR_SLEEP, yb_logger.get()));
-        Yb::SqlSource src(Yb::Engine::sql_source_from_env(WIDEN(db_name)));
+        Yb::SqlSource src(cfg()->get_value("db_url"));
+        src[_T("&id")] = cfg()->get_value("db_name");
         pool->add_source(src);
         engine_.reset(new Yb::Engine(Yb::Engine::READ_WRITE, pool, WIDEN(db_name)));
         engine_->set_echo(true);
@@ -131,11 +55,17 @@ void App::init_engine(const string &db_name)
 //    DEKPool::get_instance(*session_);
 //}
 
-void App::init(const string &log_name, const string &db_name)
+void App::init(IConfig::Ptr config)
 {
-    init_log(log_name);
-    init_engine(db_name);
+    config_.reset(config.release());
+    init_log(cfg()->get_value("log_name"));
+    init_engine(cfg()->get_value("db_name"));
     //init_dek_pool();
+}
+
+IConfig *App::cfg()
+{
+    return config_.get();
 }
 
 App::~App()

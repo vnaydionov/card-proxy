@@ -1,6 +1,5 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "aes_crypter.h"
-#include "app_class.h"
 #include "card_crypter.h"
 #include "dek_pool.h"
 #include "utils.h"
@@ -8,13 +7,14 @@
 
 //DEKPool *DEKPool::instance_ = 0;
 
-DEKPool::DEKPool(Yb::Session &session)
-    : session_(session) {
-    AppSettings app_settings;
-    app_settings.fill_tree();
-    dek_use_count_ = app_settings.get_dek_use_count();
-    max_active_dek_count_ = app_settings.get_dek_max_limit();
-    min_active_dek_count_ = app_settings.get_dek_min_limit();
+DEKPool::DEKPool(IConfig *config, Yb::Session &session)
+    : config_(config)
+    , session_(session)
+{
+    config->reload();
+    dek_use_count_ = config->get_value_as_int("dek/use_count");
+    max_active_dek_count_ = config->get_value_as_int("dek/max_limit");
+    min_active_dek_count_ = config->get_value_as_int("dek/min_limit");
 }
 
 //DEKPool* DEKPool::get_instance() {
@@ -65,7 +65,7 @@ const DEKPoolStatus DEKPool::get_status() {
 
 Domain::DataKey DEKPool::generate_new_data_key() {
     Domain::DataKey data_key;
-    std::string master_key = CardCrypter::assemble_master_key(session_);
+    std::string master_key = CardCrypter::assemble_master_key(config_, session_);
     std::string dek_value = generate_random_bytes(32);
     std::string encoded_dek;
     try {

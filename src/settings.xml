@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings xmlns:xi="http://www.w3.org/2001/XInclude">
+
+    <log_name>card_proxy.log</log_name>
+
+    <db_name>card_proxy_db</db_name>
+    <db_url>sqlite+sqlite:///home/vagrant/card_db.sqlite</db_url>
+
+    <card_proxy>
+        <port>9119</port>
+        <prefix>/card_bind/</prefix>
+    </card_proxy>
+
+    <dek>
+        <use_count>10</use_count>
+        <min_limit>100</min_limit>
+        <max_limit>500</max_limit>
+    </dek>
+
+    <key_keeper>
+        <host>127.0.0.1</host>
+        <port>4009</port>
+    </key_keeper>
+
+    <!--
+    <xi:include href="key_settings.xml" />
+    -->
+    <!-- For testing purposes:
+         kek: 5QVnB96InrkD5vH4z61BvHhX6AcN8dA29y4zGkdWiJ8=
+         kek1: 5QVnB96InrkD5vH4z61BvA== (key_keeper)
+         kek2: eFfoBw3x0DY= (config)
+         kek3: 9y4zGkdWiJ8= (database)
+    -->
+    <key_settings>
+        <kek2>eFfoBw3x0DY=</kek2>
+    </key_settings>
+
+    <bind_card_url>http://localhost/myfile.json</bind_card_url>
+</settings>
+

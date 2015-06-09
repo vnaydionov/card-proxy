@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 2.8)
 project (card_proxy)
 
 option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
+option (CPPREST_ROOT "Path where C++ REST SDK is installed" /usr/local)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     SET(ENABLE_CXX11 "-std=c++11")
@@ -12,7 +13,7 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         SET(ENABLE_CXX11 "-std=c++0x")
     endif()
 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -Wall -Wno-deprecated-declarations")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -Wall -Wno-deprecated-declarations -Wno-unused-local-typedefs")
 endif()
 
 find_path (BOOST_INCLUDEDIR boost/lexical_cast.hpp /usr/include)
@@ -56,6 +57,26 @@ endif ()
 
 if ((NOT YBORM_INCLUDES) OR (NOT YBUTIL_LIB) OR (NOT YBORM_LIB))
     message(SEND_ERROR "YB.ORM not found!!")
+endif ()
+
+function (check_cpprest_root CPPREST_ROOT)
+    if (EXISTS ${CPPREST_ROOT})
+        find_path (CPPREST_INCLUDES cpprest/http_client.h ${CPPREST_ROOT}/include)
+        find_library (CPPREST_LIB cpprest ${CPPREST_ROOT}/lib ${CPPREST_ROOT}/build.release/Binaries)
+        if (CPPREST_INCLUDES AND CPPREST_LIB)
+            message (STATUS "C++ REST SDK found: ${CPPREST_ROOT}")
+        endif ()
+    endif ()
+endfunction ()
+
+if (CPPREST_ROOT)
+    check_cpprest_root (${CPPREST_ROOT})
+else ()
+    check_cpprest_root (/usr/local)
+endif ()
+
+if ((NOT CPPREST_INCLUDES) OR (NOT CPPREST_LIB))
+    message(SEND_ERROR "C++ REST SDK not found!!")
 endif ()
 
 add_subdirectory (src)

@@ -1,44 +1,18 @@
-#ifndef _CARD_PROXY__APP_H_
-#define _CARD_PROXY__APP_H_
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#ifndef CARD_PROXY__APP_CLASS_H
+#define CARD_PROXY__APP_CLASS_H
 
 #include <memory>
 #include <string>
 #include <fstream>
 #include <util/nlogger.h>
-#include <util/element_tree.h>
 #include <util/singleton.h>
 #include <orm/data_object.h>
-
-#define SETTINGS_FILE "settings.xml"
-
-class AppSettings {
-    Yb::ElementTree::ElementPtr root_;
-    std::string file_name_;
-    bool modified_;
-
-public:
-    AppSettings(const std::string &file_name = SETTINGS_FILE);
-    ~AppSettings();
-
-    void fill_tree();
-    void save_to_xml();
-    const std::string to_string() const;
-
-    const int get_card_proxy_port();
-    const std::string get_card_proxy_prefix();
-
-    const std::string get_key_keeper_server();
-    const std::string get_key_keeper_port();
-    const std::string get_key();
-    
-    const int get_dek_use_count();
-    const int get_dek_max_limit();
-    const int get_dek_min_limit();
-};
-
+#include "conf_reader.h"
 
 class App: public Yb::ILogger
 {
+    IConfig::Ptr config_;
     std::auto_ptr<std::ofstream> file_stream_;
     std::auto_ptr<Yb::LogAppender> appender_;
     Yb::ILogger::Ptr log_;
@@ -50,9 +24,9 @@ class App: public Yb::ILogger
     void init_dek_pool();
 public:
     App() {}
-    void init(const std::string &log_name = "log.txt",
-            const std::string &db_name = "db");
+    void init(IConfig::Ptr config);
     virtual ~App();
+    IConfig *cfg();
     Yb::Engine *get_engine();
     std::auto_ptr<Yb::Session> new_session();
     Yb::ILogger::Ptr new_logger(const std::string &name);
@@ -62,5 +36,5 @@ public:
 
 typedef Yb::SingletonHolder<App> theApp;
 
-#endif // _CARD_PROXY__APP_H_
+#endif // CARD_PROXY__APP_CLASS_H
 // vim:ts=4:sts=4:sw=4:et:

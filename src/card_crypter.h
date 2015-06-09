@@ -7,6 +7,7 @@
 #include <orm/data_object.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "conf_reader.h"
 
 /* The following fields are recognized:
  * pan, expire_year, expire_month, card_holder, cvn.
@@ -19,11 +20,13 @@ typedef Yb::StringDict CardData;
 class CardCrypter
 {
 public:
-    CardCrypter(Yb::Session &session)
-        : session_(session)
-        , master_key_(assemble_master_key(session))
+    CardCrypter(IConfig *config, Yb::Session &session)
+        : config_(config)
+        , session_(session)
+        , master_key_(assemble_master_key(config, session))
     {}
 
+    IConfig *config() { return config_; }
     Yb::Session &session() { return session_; }
 
     // incoming request processing
@@ -36,7 +39,7 @@ public:
     void remove_card_data(const std::string &token);
     void change_master_key(const std::string &key);
 
-    static const std::string assemble_master_key(Yb::Session &session);
+    static const std::string assemble_master_key(IConfig *config, Yb::Session &session);
     static const std::string generate_card_token();
     static const std::string encode_data(const std::string &dek,
                                          const std::string &data);
@@ -54,6 +57,7 @@ public:
     }
 
 private:
+    IConfig *config_;
     Yb::Session &session_;
     std::string master_key_;
 };
