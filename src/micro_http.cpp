@@ -255,6 +255,42 @@ HttpHeaders::parse_params(const String &msg)
     return params;
 }
 
+const Yb::String my_url_encode(const string &s, bool path_mode=false)
+{
+    Yb::String result;
+    const char *replace;
+    if (path_mode)
+        replace = "!*'();@&=+$,?%#[]";
+    else
+        replace = "!*'();:@&=+$,/?%#[]{}\"";
+    char buf[20];
+    for (size_t i = 0; i < s.size(); ++i) {
+        unsigned char c = s[i];
+        if (c <= 32 || c >= 127 || strchr(replace, c)) {
+            sprintf(buf, "%%%02X", c);
+            result += WIDEN(buf);
+        }
+        else
+            result += Yb::Char(c);
+    }
+    return result;
+}
+
+Yb::String
+HttpHeaders::serialize_params(const Yb::StringDict &d)
+{
+    String result;
+    Yb::StringDict::const_iterator it = d.begin(), end = d.end();
+    for (; it != end; ++it) {
+        if (str_length(result))
+            result += _T("&");
+        result += my_url_encode(it->first);
+        result += _T("=");
+        result += my_url_encode(it->second);
+    }
+    return result;
+}
+
 const String
 HttpHeaders::normalize_header_name(const String &name)
 {
