@@ -127,22 +127,19 @@ public:
                          + ", params: " + dict2str(params));
             if (f_)
             {
-                logger->info("started path: " + request.get_path()
-                             + ", params: " + dict2str(params));
-                //int version = params.get_as<int>("version");
-                //YB_ASSERT(version >= 2);
                 auto_ptr<Session> session(
                         theApp::instance().new_session());
                 ElementTree::ElementPtr res = f_(*session, *logger, params);
                 session->commit();
-                t.set_ok();
                 HttpHeaders response(10, 200, "OK");
                 response.set_response_body(dump_result(*logger, res), "text/xml");
+                t.set_ok();
                 return response;
             }
             else
             {
                 HttpHeaders response = g_(*logger, request);
+                t.set_ok();
                 return response;
             }
         }
@@ -154,7 +151,13 @@ public:
         }
         catch (const exception &ex) {
             logger->error(string("exception: ") + ex.what());
-            HttpHeaders response(10, 200, "OK");
+            HttpHeaders response(10, 500, "Internal error");
+            response.set_response_body(dump_result(*logger, mk_resp(default_status_)), "text/xml");
+            return response;
+        }
+        catch (...) {
+            logger->error("unknown exception");
+            HttpHeaders response(10, 500, "Internal error");
             response.set_response_body(dump_result(*logger, mk_resp(default_status_)), "text/xml");
             return response;
         }
@@ -330,7 +333,7 @@ const HttpHeaders bind_card(ILogger &logger, const HttpHeaders &request)
     params_fixed["card_token"] = web::json::value(new_card_data["card_token"]);
     input_json_fixed["params"] = params_fixed;
     std::string input_body_fixed = input_json_fixed.serialize();
-    std::cerr << "fixed=" << input_body_fixed << "\n";
+    logger.debug("fixed incoming: " + input_body_fixed);
     
     ///
 //"token":"e842f0aef01040c08d725230bac1f64b", 
@@ -363,6 +366,55 @@ const HttpHeaders bind_card(ILogger &logger, const HttpHeaders &request)
     return task.get();
 }
 
+const HttpHeaders authorize(ILogger &logger, const HttpHeaders &request)
+{
+    const auto authorize_url = CFG_VALUE("authorize_url");
+    StringDict params = request.get_params();
+    const string card_token = params.pop("card_token");
+    auto_ptr<Session> session(theApp::instance().new_session());
+    CardCrypter card_crypter(theApp::instance().cfg(), *session);
+    CardData new_card_data = card_crypter.get_card(card_token);
+    params["card_number"] = new_card_data["pan"];
+    params["cardholder"] = new_card_data["card_holder"];
+    params["expiration_year"] = new_card_data["expire_year"];
+    params["expiration_month"] = new_card_data["expire_month"];
+    if (new_card_data.has("cvn"))
+        params["cvn"] = new_card_data["cvn"];
+    session.reset(NULL);
+    web::http::client::http_client client(authorize_url);
+    web::http::http_request nested_request(web::http::methods::GET);
+    string authorize_url_fixed = authorize_url + "?" + 
+        HttpHeaders::serialize_params(params);
+    logger.debug("fixed outgoing: " + authorize_url_fixed);
+    nested_request.set_request_uri(authorize_url_fixed);
+    for (const auto &p: request.get_headers())
+    {
+        nested_request.headers().add(p.first, p.second);
+    }
+    auto task = client.request(nested_request).then(
+        [](web::http::http_response nested_response) -> pplx::task<HttpHeaders>
+        {
+            HttpHeaders response(10, nested_response.status_code(),
+                                 nested_response.reason_phrase());
+            for (const auto &q: nested_response.headers())
+            {
+                response.set_header(q.first, q.second);
+            }
+            auto body_task = nested_response.extract_vector();
+            if (body_task.wait() != pplx::completed)
+                throw std::runtime_error("pplx: body_task.wait() failed");
+            std::vector<unsigned char> body_vec = body_task.get();
+            std::string body;
+            std::copy(body_vec.begin(), body_vec.end(), std::back_inserter(body));
+            response.set_response_body(body, response.get_header("Content-Type", "text/xml"));
+            return pplx::task_from_result(response);
+        }
+    );
+    if (task.wait() != pplx::completed)
+        throw std::runtime_error("pplx: task.wait() failed");
+    return task.get();
+}
+
 const HttpHeaders start_payment(ILogger &logger, const HttpHeaders &request)
 {
     HttpHeaders response(10, 302, "Redirect");
@@ -385,6 +437,7 @@ int main(int argc, char *argv[])
         WRAP(get_master_key),
         // proxy methods
         WRAP(bind_card),
+        WRAP(authorize),
         WRAP(start_payment),
     };
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);

@@ -174,6 +174,7 @@ public:
     }
 
     static Yb::StringDict parse_params(const Yb::String &s);
+    static Yb::String serialize_params(const Yb::StringDict &d);
 
     static const Yb::String normalize_header_name(const Yb::String &name);
 private:
