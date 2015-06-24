@@ -278,6 +278,8 @@ const std::string CardCrypter::assemble_master_key(IConfig *config, Yb::Session 
         Domain::Config config = Yb::query<Domain::Config>(session)
             .filter_by(Domain::Config::c.ckey == "KEK3").one();
         database_key = decode_base64(config.cvalue);
+    } catch (const Yb::NoDataFound &err) {
+        return std::string();
     } catch (std::runtime_error &err) {
         // TODO: proper logging
         return std::string();

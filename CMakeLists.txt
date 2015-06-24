@@ -13,11 +13,11 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         SET(ENABLE_CXX11 "-std=c++0x")
     endif()
 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -Wall -Wno-deprecated-declarations -Wno-unused-local-typedefs")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -g -Wall -Wno-deprecated-declarations -Wno-unused-local-typedefs")
 endif()
 
 find_path (BOOST_INCLUDEDIR boost/lexical_cast.hpp /usr/include)
-set (BOOST_LIBRARYDIR /usr/lib)
+set (BOOST_LIBRARYDIR /usr/lib/x86_64-linux-gnu/)
 set (Boost_USE_STATIC_LIBS OFF)
 set (Boost_USE_MULTITHREADED ON)
 set (Boost_NO_SYSTEM_PATHS ON)

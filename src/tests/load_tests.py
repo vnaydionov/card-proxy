@@ -8,8 +8,7 @@ import random
 import string
 import logging
 
-SERVER_URL = 'http://localhost:9119/card_bind'
-
+SERVER_URL = 'http://localhost:9120/card_bind'
 LOG_PATH = './logs/'
 
 
@@ -65,7 +64,9 @@ def get_token():
     }
     url_params = urllib.urlencode(params)
     resp = urllib.urlopen(SERVER_URL + '/get_token', url_params)
-    return resp.read()
+    result = resp.read()
+    resp.close()
+    return result
 
 @timer
 def get_card(token):
@@ -74,8 +75,20 @@ def get_card(token):
     }
     url_params = urllib.urlencode(params)
     resp = urllib.urlopen(SERVER_URL + '/get_card', url_params)
-    return resp.read()
-    
+    result = resp.read()
+    resp.close()
+    return result
+
+@timer
+def remove_card_data(token):
+    params = {
+        'token': token,
+    }
+    url_params = urllib.urlencode(params)
+    resp = urllib.urlopen(SERVER_URL + '/remove_card_data', url_params)
+    result = resp.read()
+    resp.close()
+    return result
 
 class Worker(Process):
     def __init__(self, name, min_delay, max_delay, queue):
@@ -88,6 +101,7 @@ class Worker(Process):
         self.max_delay = max_delay
         self.queue = queue
         self.call_stat = {"get_token": {},
+                          "remove_card_data": {},
                           "get_card": {}}
 
     def turn_off(self):
@@ -98,7 +112,6 @@ class Worker(Process):
             sleep_time = random.randint(self.min_delay, self.max_delay) 
             self.logger.debug('sleep for %s' % str(sleep_time))
             time.sleep(sleep_time)
-            #if random.randint(0, 1) == 0:
             exec_time, resp = get_token()
             result = ''.join(re.search("<status>(\w*)<\/status>", resp).groups()[:1])
             self.logger.debug('get_token() time: %s, result: %s' % (str(exec_time), result))
@@ -110,10 +123,19 @@ class Worker(Process):
                 if token:
                     exec_time, resp = get_card(token)
                     self.call_stat["get_card"]["calls"] = self.call_stat["get_card"].get("calls", 0) + 1
-                    self.call_stat["get_card"]["time"] = self.call_stat["get_card"].get("time", 0.0) + exec_time
                     self.logger.debug('get_card() time: %s, result: %s' % (str(exec_time), result))
-            #else:
-            #    self.logger.debug('time for get_card(): %s' % str(get_card()))
+                    result = ''.join(re.search("<status>(\w*)<\/status>", resp).groups()[:1])
+                    if result == 'success':
+                        self.call_stat["get_card"]["success_calls"] = self.call_stat["get_card"].get("success_calls", 0) + 1
+                        self.call_stat["get_card"]["time"] = self.call_stat["get_card"].get("time", 0.0) + exec_time
+                        exec_time, resp = remove_card_data(token)
+                        self.call_stat["remove_card_data"]["calls"] = self.call_stat["remove_card_data"].get("calls", 0) + 1
+                        result = ''.join(re.search("<status>(\w*)<\/status>", resp).groups()[:1])
+                        if result == 'success':
+                            self.call_stat["remove_card_data"]["success_calls"] = self.call_stat["remove_card_data"].get("success_calls", 0) + 1
+                            self.call_stat["remove_card_data"]["time"] = self.call_stat["remove_card_data"].get("time", 0.0) + exec_time
+                            self.logger.debug('remove_card_data() time: %s, result: %s' % (str(exec_time), result))
+
         self.queue.put(self.call_stat, block=False)
 
 class WorkingPool:
@@ -147,7 +169,8 @@ class WorkingPool:
     def get_result(self):
         log.debug("Collect results")
         result = {'get_token': {'success_calls': 0, 'calls': 0, 'time': 0.0},
-                  'get_card': {'calls': 0, 'time': 0.0}}
+                  'get_card': {'success_calls': 0, 'calls': 0, 'time': 0.0},
+                  'remove_card_data': {'success_calls': 0, 'calls': 0, 'time': 0.0}}
         while not self.queue.empty():
             call_stat = self.queue.get()
             result['get_token']['calls'] += call_stat['get_token']['calls']
@@ -155,17 +178,25 @@ class WorkingPool:
             result['get_token']['success_calls'] += call_stat['get_token']['success_calls']
             result['get_card']['calls'] += call_stat['get_card']['calls']
             result['get_card']['time'] += call_stat['get_card']['time']
+            result['get_card']['success_calls'] += call_stat['get_card']['success_calls']
+            result['remove_card_data']['calls'] += call_stat['remove_card_data']['calls']
+            result['remove_card_data']['time'] += call_stat['remove_card_data']['time']
+            result['remove_card_data']['success_calls'] += call_stat['remove_card_data']['success_calls']
 
-        result['get_token']['avg'] = result['get_token']['time'] / result['get_token']['calls']
-        result['get_card']['avg'] = result['get_card']['time'] / result['get_card']['calls']
+        if result['get_token']['calls'] > 0:
+            result['get_token']['avg'] = result['get_token']['time'] / result['get_token']['calls']
+        if result['get_card']['calls'] > 0:
+            result['get_card']['avg'] = result['get_card']['time'] / result['get_card']['calls']
+        if result['remove_card_data']['calls'] > 0:
+            result['remove_card_data']['avg'] = result['remove_card_data']['time'] / result['remove_card_data']['calls']
         return result
 
 log = create_logger("Main")
 
 if __name__ == "__main__": 
-    pool = WorkingPool(5)
+    pool = WorkingPool(15)
     pool.run()
-    time.sleep(30)
+    time.sleep(300)
     pool.stop()
     pprint(pool.get_result())
     

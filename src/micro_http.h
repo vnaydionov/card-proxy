@@ -43,7 +43,8 @@ public:
         if (uri_parts.size() < 1)
             throw HttpParserError("HttpHeaders", "uri_parts.size() < 1");
         path_ = uri_parts[0];
-        params_ = parse_params(uri_parts[1]);
+        if (uri_parts.size() > 1)
+            params_ = parse_params(uri_parts[1]);
     }
 
     HttpHeaders(int proto_ver, int resp_code, const Yb::String &resp_desc)
