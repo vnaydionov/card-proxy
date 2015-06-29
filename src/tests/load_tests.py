@@ -196,7 +196,7 @@ log = create_logger("Main")
 if __name__ == "__main__": 
     pool = WorkingPool(15)
     pool.run()
-    time.sleep(15000)
+    time.sleep(1000)
     pool.stop()
     pprint(pool.get_result())
     

@@ -16,6 +16,7 @@ public:
     DEKPool(const DEKPool &);
     DEKPool& operator=(DEKPool&);
 
+    const int get_active_dek_use_count();
     const DEKPoolStatus get_status();
     const DEKPoolStatus check_pool();
     Domain::DataKey get_active_data_key();
@@ -25,7 +26,7 @@ public:
     int get_man_generation_threshold();
     int get_check_timeout();
 
-    void set_max_active_dek_count(unsigned val);
+    void set_max_active_dek_use_count(unsigned val);
     void set_auto_generation_threshold(unsigned val);
     void set_man_generation_threshold(unsigned val);
     void set_check_timeout(unsigned val);

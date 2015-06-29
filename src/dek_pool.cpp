@@ -37,7 +37,6 @@ Domain::DataKey DEKPool::get_active_data_key() {
             .filter_by(Domain::DataKey::c.counter < dek_use_count_);
     int choice = rand() % pool_status.active_count;
     for(auto &dek : active_deks.all()) {
-        //choice -= (dek_use_count_ - dek.counter);
         if (--choice <= 0)
             return dek;
     }
@@ -46,11 +45,26 @@ Domain::DataKey DEKPool::get_active_data_key() {
 
 const DEKPoolStatus DEKPool::check_pool() {
     DEKPoolStatus pool_status = get_status();
+    // TODO: make exit from loop when error occurs
     while(pool_status.use_count < min_active_dek_count_) {
         generate_new_data_key();
         pool_status = get_status();
     }
     return pool_status;
+}
+
+const int DEKPool::get_active_dek_use_count() {
+    int use_count;
+    try {
+        auto active_deks = Yb::query<Domain::DataKey>(session_)
+            .filter_by(Domain::DataKey::c.counter < use_count)
+            .all();
+        for(auto &data_key : active_deks)
+            use_count += dek_use_count_ - data_key.counter;
+    } catch (const Yb::NoDataFound &err) {
+        use_count = -1;
+    }
+    return use_count;
 }
 
 const DEKPoolStatus DEKPool::get_status() {
@@ -65,14 +79,21 @@ const DEKPoolStatus DEKPool::get_status() {
 
 Domain::DataKey DEKPool::generate_new_data_key() {
     Domain::DataKey data_key;
-    std::string master_key = CardCrypter::assemble_master_key(config_, session_);
-    std::string dek_value = generate_random_bytes(32);
     std::string encoded_dek;
-    try {
-        AESCrypter aes_crypter(master_key);
-        encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
-    } catch(AESBlockSizeException &exc) {
-        std::cout << exc.what() << std::endl;
+    std::string master_key = CardCrypter::assemble_master_key(config_, session_);
+    AESCrypter aes_crypter(master_key);
+    while (true) {
+        std::string dek_value = generate_random_bytes(32);
+        try {
+            encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
+            auto count = Yb::query<Domain::DataKey>(session_)
+                    .filter_by(Domain::DataKey::c.dek_crypted == encoded_dek)
+                    .count();
+            if (!count)
+                break;
+        } catch(AESBlockSizeException &exc) {
+            std::cout << exc.what() << std::endl;
+        }
     }
     data_key.dek_crypted = encoded_dek;
     data_key.start_ts = Yb::now();

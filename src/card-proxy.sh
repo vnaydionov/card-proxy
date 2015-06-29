@@ -1,3 +1,3 @@
 clear
 make -j4
-valgrind ./card_proxy
+valgrind --tool=callgrind ./card_proxy
