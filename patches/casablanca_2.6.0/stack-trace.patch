@@ -1,0 +1,1022 @@
+Description: Attach stacktrace to exception message for all exceptions thrown
+On every exception thrown from casablanca code there is now a text formatted
+ stack trace, which can help to track the problem.
+ The feature is implemented for Linux only.
+
+Author: Vaclav Naydionov (linux rulez) <vaclav@yandex.ru>
+
+--- casablanca-2.6.0.orig/Release/include/cpprest/astreambuf.h
++++ casablanca-2.6.0/Release/include/cpprest/astreambuf.h
+@@ -646,7 +646,7 @@ namespace streams
+         _CharType* alloc(size_t count)
+         {
+             if (m_alloced)
+-                throw std::logic_error("The buffer is already allocated, this maybe caused by overlap of stream read or write");
++                throw std::logic_error("The buffer is already allocated, this maybe caused by overlap of stream read or write" + print_stacktrace());
+ 
+             _CharType* alloc_result = _alloc(count);
+ 
+@@ -664,7 +664,7 @@ namespace streams
+         void commit(size_t count)
+         {
+             if (!m_alloced)
+-                throw std::logic_error("The buffer needs to allocate first");
++                throw std::logic_error("The buffer needs to allocate first" + print_stacktrace());
+ 
+             _commit(count);
+             m_alloced = false;
+@@ -849,7 +849,7 @@ namespace streams
+         /// <returns><c>basic_istream</c>.</returns>
+         concurrency::streams::basic_istream<_CharType> create_istream() const
+         {
+-            if (!can_read()) throw std::runtime_error("stream buffer not set up for input of data");
++            if (!can_read()) throw std::runtime_error("stream buffer not set up for input of data" + print_stacktrace());
+             return concurrency::streams::basic_istream<_CharType>(*this);
+         }
+ 
+@@ -859,7 +859,7 @@ namespace streams
+         /// <returns>basic_ostream</returns>
+         concurrency::streams::basic_ostream<_CharType> create_ostream() const
+         {
+-            if (!can_write()) throw std::runtime_error("stream buffer not set up for output of data");
++            if (!can_write()) throw std::runtime_error("stream buffer not set up for output of data" + print_stacktrace());
+             return concurrency::streams::basic_ostream<_CharType>(*this);
+         }
+ 
+@@ -877,7 +877,7 @@ namespace streams
+         {
+             if (!m_buffer)
+             {
+-                throw std::invalid_argument("Invalid streambuf object");
++                throw std::invalid_argument("Invalid streambuf object" + print_stacktrace());
+             }
+ 
+             return m_buffer;
+--- casablanca-2.6.0.orig/Release/include/cpprest/base_uri.h
++++ casablanca-2.6.0/Release/include/cpprest/base_uri.h
+@@ -33,6 +33,7 @@
+ 
+ #include "cpprest/asyncrt_utils.h"
+ #include "cpprest/details/basic_types.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web {
+     namespace details
+@@ -110,8 +111,7 @@ namespace web {
+     class uri_exception : public std::exception
+     {
+     public:
+-
+-        uri_exception(std::string msg) : m_msg(std::move(msg)) {}
++        uri_exception(const std::string &msg) : m_msg(msg + print_stacktrace()) {}
+ 
+         ~uri_exception() CPPREST_NOEXCEPT {}
+ 
+--- casablanca-2.6.0.orig/Release/include/cpprest/containerstream.h
++++ casablanca-2.6.0/Release/include/cpprest/containerstream.h
+@@ -400,7 +400,7 @@ namespace Concurrency { namespace stream
+         {
+             // Disallow simultaneous use of the stream buffer for writing and reading.
+             if ((mode & std::ios_base::in) && (mode & std::ios_base::out))
+-                throw std::invalid_argument("this combination of modes on container stream not supported");
++                throw std::invalid_argument("this combination of modes on container stream not supported" + print_stacktrace());
+         }
+ 
+         /// <summary>
+--- casablanca-2.6.0.orig/Release/include/cpprest/details/cpprest_compat.h
++++ casablanca-2.6.0/Release/include/cpprest/details/cpprest_compat.h
+@@ -41,6 +41,7 @@
+ #else // End settings specific to Windows
+ 
+ // Settings common to all but Windows
++#include "cpprest/details/stack_trace.h"
+ 
+ #define __declspec(x) __attribute__ ((x))
+ #define dllimport
+@@ -50,7 +51,7 @@
+ #define CPPREST_NOEXCEPT noexcept
+ 
+ #include <assert.h>
+-#define _ASSERTE(x) assert(x)
++#define _ASSERTE(x) do{ if (!(x)) { std::cerr << "Stack trace before failed assert: "; print_stacktrace(std::cerr); } assert(x); } while (false)
+ 
+ // No SAL on non Windows platforms
+ #include "cpprest/details/nosal.h"
+--- casablanca-2.6.0.orig/Release/include/cpprest/details/http_client_impl.h
++++ casablanca-2.6.0/Release/include/cpprest/details/http_client_impl.h
+@@ -405,12 +405,12 @@ void verify_uri(const uri &uri)
+     // We only need to check certain things specific to HTTP.
+     if (uri.scheme() != _XPLATSTR("http") && uri.scheme() != _XPLATSTR("https"))
+     {
+-        throw std::invalid_argument("URI scheme must be 'http' or 'https'");
++        throw std::invalid_argument("URI scheme must be 'http' or 'https'" + print_stacktrace());
+     }
+ 
+     if(uri.host().empty())
+     {
+-        throw std::invalid_argument("URI must contain a hostname.");
++        throw std::invalid_argument("URI must contain a hostname." + print_stacktrace());
+     }
+ }
+ 
+--- /dev/null
++++ casablanca-2.6.0/Release/include/cpprest/details/stack_trace.h
+@@ -0,0 +1,115 @@
++#ifndef UTIL__STACKTRACE__INCLUDED
++#define UTIL__STACKTRACE__INCLUDED
++
++// Based on:
++// stacktrace.h (c) 2008, Timo Bingmann from http://idlebox.net/
++// published under the WTFPL v2.0
++
++#include <iostream>
++#include <sstream>
++#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
++// TODO: implement
++#else
++#include <execinfo.h>
++#include <cxxabi.h>
++#include <stdlib.h>
++#endif
++
++#define ST_MAX_FRAMES 100
++#define ST_IGNORE_FRAMES 1
++#define ST_NOT_IMPL "<stack trace not implemented>\n"
++
++/** Print a demangled stack backtrace of the caller function to a stream. */
++inline void print_stacktrace(std::ostream &out)
++{
++#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
++    out << ST_NOT_IMPL;
++#else
++    // storage array for stack trace address data
++    void *addrlist[ST_MAX_FRAMES + ST_IGNORE_FRAMES];
++
++    // retrieve current stack addresses
++    int addrlen = backtrace(addrlist, (int)(sizeof(addrlist) / sizeof(void *)));
++
++    if (addrlen == 0) {
++        out << "<empty, possibly corrupt>\n";
++        return;
++    }
++
++    // resolve addresses into strings containing "filename(function+address)",
++    // this array must be free()-ed
++    char **symbollist = backtrace_symbols(addrlist, addrlen);
++
++    // allocate string which will be filled with the demangled function name
++    size_t funcnamesize = 256;
++    char *funcname = (char *)malloc(funcnamesize);
++
++    // iterate over the returned symbol lines. may skip the first ones,
++    // e.g. the first may be the address of this function.
++    for (int i = ST_IGNORE_FRAMES; i < addrlen; i++)
++    {
++        char *begin_name = 0, *begin_offset = 0, *end_offset = 0;
++
++        // find parentheses and +address offset surrounding the mangled name:
++        // ./module(function+0x15c) [0x8048a6d]
++        for (char *p = symbollist[i]; *p; ++p)
++        {
++            if (*p == '(')
++                begin_name = p;
++            else if (*p == '+')
++                begin_offset = p;
++            else if (*p == ')' && begin_offset) {
++                end_offset = p;
++                break;
++            }
++        }
++
++        if (begin_name && begin_offset && end_offset
++            && begin_name < begin_offset)
++        {
++            *begin_name++ = '\0';
++            *begin_offset++ = '\0';
++            *end_offset = '\0';
++
++            // mangled name is now in [begin_name, begin_offset) and caller
++            // offset in [begin_offset, end_offset). now apply
++            // __cxa_demangle():
++
++            int status;
++            char* ret = abi::__cxa_demangle(begin_name,
++                                            funcname, &funcnamesize, &status);
++            if (status == 0) {
++                funcname = ret; // use possibly realloc()-ed string
++                out << "  " << symbollist[i] << " : " << funcname
++		    << "+" << begin_offset << "\n";
++            }
++            else {
++                // demangling failed. Output function name as a C function with
++                // no arguments.
++		out << "  " << symbollist[i] << " : " << begin_name
++		    << begin_name << "()+" << begin_offset << "\n";
++            }
++        }
++        else
++        {
++            // couldn't parse the line? print the whole line.
++            out << "  " << symbollist[i] << "\n";
++        }
++    }
++
++    free(funcname);
++    free(symbollist);
++#endif
++}
++
++/** Print a demangled stack backtrace of the caller function to a string. */
++inline const std::string print_stacktrace()
++{
++    std::ostringstream out;
++    print_stacktrace(out);
++    if (out.str() != ST_NOT_IMPL)
++        return "\nStack trace:\n" + out.str();
++    return std::string();
++}
++
++#endif // UTIL__STACKTRACE__INCLUDED
+--- casablanca-2.6.0.orig/Release/include/cpprest/details/web_utilities.h
++++ casablanca-2.6.0/Release/include/cpprest/details/web_utilities.h
+@@ -210,7 +210,7 @@ public:
+     void set_credentials(web::credentials cred) {
+         if( m_mode == disabled_ )
+         {
+-            throw std::invalid_argument("Cannot attach credentials to a disabled proxy");
++            throw std::invalid_argument("Cannot attach credentials to a disabled proxy" + print_stacktrace());
+         }
+         m_credentials = std::move(cred);
+     }
+--- casablanca-2.6.0.orig/Release/include/cpprest/http_msg.h
++++ casablanca-2.6.0/Release/include/cpprest/http_msg.h
+@@ -38,6 +38,7 @@
+ #include "cpprest/asyncrt_utils.h"
+ #include "cpprest/streams.h"
+ #include "cpprest/containerstream.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web
+ {
+@@ -136,15 +137,7 @@ public:
+     /// </summary>
+     /// <param name="whatArg">Error message string.</param>
+     http_exception(const utility::string_t &whatArg)
+-        : m_msg(utility::conversions::to_utf8string(whatArg)) {}
+-
+-#ifdef _WIN32
+-    /// <summary>
+-    /// Creates an <c>http_exception</c> with just a string message and no error code.
+-    /// </summary>
+-    /// <param name="whatArg">Error message string.</param>
+-    http_exception(std::string whatArg) : m_msg(std::move(whatArg)) {}
+-#endif
++        : m_msg(utility::conversions::to_utf8string(whatArg) + print_stacktrace()) {}
+ 
+     /// <summary>
+     /// Creates an <c>http_exception</c> with from a error code using the current platform error category.
+@@ -154,7 +147,7 @@ public:
+     http_exception(int errorCode)
+         : m_errorCode(utility::details::create_error_code(errorCode))
+     {
+-        m_msg = m_errorCode.message();
++        m_msg = m_errorCode.message() + print_stacktrace();
+     }
+ 
+     /// <summary>
+@@ -164,20 +157,8 @@ public:
+     /// <param name="whatArg">Message to use in what() string.</param>
+     http_exception(int errorCode, const utility::string_t &whatArg)
+         : m_errorCode(utility::details::create_error_code(errorCode)),
+-          m_msg(utility::conversions::to_utf8string(whatArg))
+-    {}
+-
+-#ifdef _WIN32
+-    /// <summary>
+-    /// Creates an <c>http_exception</c> with from a error code using the current platform error category.
+-    /// </summary>
+-    /// <param name="errorCode">Error code value.</param>
+-    /// <param name="whatArg">Message to use in what() string.</param>
+-    http_exception(int errorCode, std::string whatArg) :
+-        m_errorCode(utility::details::create_error_code(errorCode)),
+-        m_msg(std::move(whatArg))
++          m_msg(utility::conversions::to_utf8string(whatArg) + print_stacktrace())
+     {}
+-#endif
+ 
+     /// <summary>
+     /// Creates an <c>http_exception</c> with from a error code and category. The message of the error code will be used
+@@ -554,7 +535,7 @@ public:
+     {
+         if (content_type.find(::utility::conversions::to_utf16string("charset=")) != content_type.npos)
+         {
+-            throw std::invalid_argument("content_type can't contain a 'charset'.");
++            throw std::invalid_argument("content_type can't contain a 'charset'." + print_stacktrace());
+         }
+ 
+         auto utf8body = utility::conversions::utf16_to_utf8(body_text);
+@@ -952,7 +933,7 @@ public:
+     {
+         if(content_type.find(::utility::conversions::to_utf16string("charset=")) != content_type.npos)
+         {
+-            throw std::invalid_argument("content_type can't contain a 'charset'.");
++            throw std::invalid_argument("content_type can't contain a 'charset'." + print_stacktrace());
+         }
+ 
+         auto utf8body = utility::conversions::utf16_to_utf8(body_text);
+--- casablanca-2.6.0.orig/Release/include/cpprest/json.h
++++ casablanca-2.6.0/Release/include/cpprest/json.h
+@@ -35,6 +35,7 @@
+ #include <cstdint>
+ #include "cpprest/details/basic_types.h"
+ #include "cpprest/asyncrt_utils.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web
+ {
+@@ -677,7 +678,7 @@ public:
+     private:
+         std::string _message;
+     public:
+-        json_exception(const utility::char_t * const &message) : _message(utility::conversions::to_utf8string(message)) { }
++        json_exception(const utility::char_t * const &message) : _message(utility::conversions::to_utf8string(message) + print_stacktrace()) { }
+ 
+         // Must be narrow string because it derives from std::exception
+         const char* what() const CPPREST_NOEXCEPT
+--- casablanca-2.6.0.orig/Release/include/cpprest/oauth1.h
++++ casablanca-2.6.0/Release/include/cpprest/oauth1.h
+@@ -28,6 +28,7 @@
+ #define _CASA_OAUTH1_H
+ 
+ #include "cpprest/http_msg.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web
+ {
+@@ -120,7 +121,7 @@ public:
+ class oauth1_exception : public std::exception
+ {
+ public:
+-    oauth1_exception(utility::string_t msg) : m_msg(utility::conversions::to_utf8string(std::move(msg))) {}
++    oauth1_exception(const utility::string_t &msg) : m_msg(utility::conversions::to_utf8string(msg) + print_stacktrace()) {}
+     ~oauth1_exception() CPPREST_NOEXCEPT {}
+     const char* what() const CPPREST_NOEXCEPT { return m_msg.c_str(); }
+ 
+--- casablanca-2.6.0.orig/Release/include/cpprest/oauth2.h
++++ casablanca-2.6.0/Release/include/cpprest/oauth2.h
+@@ -28,6 +28,7 @@
+ #define _CASA_OAUTH2_H
+ 
+ #include "cpprest/http_msg.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web
+ {
+@@ -71,7 +72,7 @@ namespace experimental
+ class oauth2_exception : public std::exception
+ {
+ public:
+-    oauth2_exception(utility::string_t msg) : m_msg(utility::conversions::to_utf8string(std::move(msg))) {}
++    oauth2_exception(const utility::string_t &msg) : m_msg(utility::conversions::to_utf8string(msg) + print_stacktrace()) {}
+     ~oauth2_exception() CPPREST_NOEXCEPT {}
+     const char* what() const CPPREST_NOEXCEPT { return m_msg.c_str(); }
+ 
+--- casablanca-2.6.0.orig/Release/include/cpprest/rawptrstream.h
++++ casablanca-2.6.0/Release/include/cpprest/rawptrstream.h
+@@ -442,7 +442,7 @@ namespace Concurrency { namespace stream
+         {
+             // Disallow simultaneous use of the stream buffer for writing and reading.
+             if ((mode & std::ios_base::in) && (mode & std::ios_base::out))
+-                throw std::invalid_argument("this combination of modes on raw pointer stream not supported");
++                throw std::invalid_argument("this combination of modes on raw pointer stream not supported" + print_stacktrace());
+         }
+ 
+         /// <summary>
+@@ -509,7 +509,7 @@ namespace Concurrency { namespace stream
+             msl::safeint3::SafeInt<size_t> newSize = msl::safeint3::SafeInt<size_t>(count) +m_current_position;
+ 
+             if ( newSize > m_size )
+-                throw std::runtime_error("Writing past the end of the buffer");
++                throw std::runtime_error("Writing past the end of the buffer" + print_stacktrace());
+ 
+             // Copy the data
+ #ifdef _WIN32
+--- casablanca-2.6.0.orig/Release/include/cpprest/streams.h
++++ casablanca-2.6.0/Release/include/cpprest/streams.h
+@@ -432,13 +432,13 @@ namespace Concurrency { namespace stream
+             if ( !(buffer.exception() == nullptr) )
+                 std::rethrow_exception(buffer.exception());
+             if ( !buffer.can_write() )
+-                throw std::runtime_error(msg);
++                throw std::runtime_error(msg + print_stacktrace());
+         }
+ 
+         std::shared_ptr<details::basic_ostream_helper<CharType>> helper() const
+         {
+             if ( !m_helper )
+-                throw std::logic_error("uninitialized stream object");
++                throw std::logic_error("uninitialized stream object" + print_stacktrace());
+             return m_helper;
+         }
+ 
+@@ -530,7 +530,7 @@ namespace Concurrency { namespace stream
+ #ifdef _WIN32
+             static_assert(false, "type is not supported for extraction from a stream");
+ #else
+-            throw std::runtime_error("type is not supported for extraction from a stream");
++            throw std::runtime_error("type is not supported for extraction from a stream" + print_stacktrace());
+ #endif
+         }
+ 
+@@ -543,7 +543,7 @@ namespace Concurrency { namespace stream
+                     if ( val <= _type_parser_integral_traits<T>::_max && val >= _type_parser_integral_traits<T>::_min )
+                         return (T)val;
+                     else
+-                        throw std::range_error("input out of range for target type");
++                        throw std::range_error("input out of range for target type" + print_stacktrace());
+                 });
+         }
+ 
+@@ -556,7 +556,7 @@ namespace Concurrency { namespace stream
+                     if ( val <= _type_parser_integral_traits<T>::_max )
+                         return (T)val;
+                     else
+-                        throw std::range_error("input out of range for target type");
++                        throw std::range_error("input out of range for target type" + print_stacktrace());
+                 });
+         }
+     };
+@@ -978,7 +978,7 @@ namespace Concurrency { namespace stream
+ 
+                         if (rd != wr)
+                             // Number of bytes written is less than number of bytes received.
+-                            throw std::runtime_error("failed to write all bytes");
++                            throw std::runtime_error("failed to write all bytes" + print_stacktrace());
+ 
+                         return target.sync().then([]() { return true; });
+                     });
+@@ -1100,13 +1100,13 @@ namespace Concurrency { namespace stream
+             if ( !(buffer.exception() == nullptr) )
+                 std::rethrow_exception(buffer.exception());
+             if ( !buffer.can_read() )
+-                throw std::runtime_error(msg);
++                throw std::runtime_error(msg + print_stacktrace());
+         }
+ 
+         std::shared_ptr<details::basic_istream_helper<CharType>> helper() const
+         {
+             if ( !m_helper )
+-                throw std::logic_error("uninitialized stream object");
++                throw std::logic_error("uninitialized stream object" + print_stacktrace());
+             return m_helper;
+         }
+ 
+@@ -1327,7 +1327,7 @@ private:
+     static pplx::task<int64_t> _extract_result(std::shared_ptr<_int64_state> state)
+     {
+         if (!state->correct)
+-            throw std::range_error("integer value is too large to fit in 64 bits");
++            throw std::range_error("integer value is too large to fit in 64 bits" + print_stacktrace());
+ 
+         int64_t result = (state->minus == 2) ? -state->result : state->result;
+         return pplx::task_from_result<int64_t>(result);
+@@ -1462,10 +1462,10 @@ template <typename FloatingPoint>
+ static pplx::task<FloatingPoint> _extract_result(std::shared_ptr<_double_state<FloatingPoint>> state)
+ {
+     if (state->p_exception_string.length() > 0)
+-        throw std::runtime_error(state->p_exception_string.c_str());
++        throw std::runtime_error(state->p_exception_string + print_stacktrace());
+ 
+     if (!state->complete && state->exponent)
+-        throw std::runtime_error("Incomplete exponent");
++        throw std::runtime_error("Incomplete exponent" + print_stacktrace());
+ 
+     FloatingPoint result = static_cast<FloatingPoint>((state->minus == 2) ? -state->result : state->result);
+     if (state->exponent_minus == 2)
+@@ -1482,7 +1482,7 @@ static pplx::task<FloatingPoint> _extrac
+         #undef max
+ 
+         if (result > std::numeric_limits<FloatingPoint>::max() || result < -std::numeric_limits<FloatingPoint>::max())
+-            throw std::overflow_error("The value is too big");
++            throw std::overflow_error("The value is too big" + print_stacktrace());
+         #pragma pop_macro ("max")
+     }
+     else
+@@ -1494,7 +1494,7 @@ static pplx::task<FloatingPoint> _extrac
+         if (!is_zero &&
+             result > -std::numeric_limits<FloatingPoint>::denorm_min() &&
+             result < std::numeric_limits<FloatingPoint>::denorm_min())
+-            throw std::underflow_error("The value is too small");
++            throw std::underflow_error("The value is too small" + print_stacktrace());
+     }
+ 
+     return pplx::task_from_result<FloatingPoint>(result);
+@@ -1560,7 +1560,7 @@ private:
+     static pplx::task<uint64_t> _extract_result(std::shared_ptr<_uint64_state> state)
+     {
+         if (!state->correct)
+-            throw std::range_error("integer value is too large to fit in 64 bits");
++            throw std::range_error("integer value is too large to fit in 64 bits" + print_stacktrace());
+         return pplx::task_from_result(state->result);
+     }
+ };
+@@ -1662,7 +1662,7 @@ private:
+             {
+                 int_type val = op.get();
+                 if (val == concurrency::streams::char_traits<CharType>::eof())
+-                    throw std::runtime_error("reached end-of-stream while constructing a value");
++                    throw std::runtime_error("reached end-of-stream while constructing a value" + print_stacktrace());
+                 return static_cast<signed char>(val);
+             });
+     }
+@@ -1691,7 +1691,7 @@ private:
+             {
+                 int_type val = op.get();
+                 if (val == concurrency::streams::char_traits<CharType>::eof())
+-                    throw std::runtime_error("reached end-of-stream while constructing a value");
++                    throw std::runtime_error("reached end-of-stream while constructing a value" + print_stacktrace());
+                 return static_cast<unsigned char>(val);
+             });
+     }
+@@ -1720,7 +1720,7 @@ private:
+             {
+                 int_type val = op.get();
+                 if (val == concurrency::streams::char_traits<CharType>::eof())
+-                    throw std::runtime_error("reached end-of-stream while constructing a value");
++                    throw std::runtime_error("reached end-of-stream while constructing a value" + print_stacktrace());
+                 return char(val);
+             });
+     }
+--- casablanca-2.6.0.orig/Release/include/cpprest/uri_builder.h
++++ casablanca-2.6.0/Release/include/cpprest/uri_builder.h
+@@ -30,6 +30,7 @@
+ #include <vector>
+ 
+ #include "cpprest/base_uri.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web
+ {
+@@ -152,7 +153,8 @@ namespace web
+             portStream >> port_tmp;
+             if(portStream.fail() || portStream.bad())
+             {
+-                throw std::invalid_argument("invalid port argument, must be non empty string containing integer value");
++                throw std::invalid_argument("invalid port argument, must be non empty string containing integer value"
++                        + print_stacktrace());
+             }
+             m_uri.m_port = port_tmp;
+             return *this;
+--- casablanca-2.6.0.orig/Release/include/cpprest/ws_client.h
++++ casablanca-2.6.0/Release/include/cpprest/ws_client.h
+@@ -40,6 +40,7 @@
+ #include "cpprest/http_headers.h"
+ #include "cpprest/asyncrt_utils.h"
+ #include "cpprest/ws_msg.h"
++#include "cpprest/details/stack_trace.h"
+ 
+ namespace web
+ {
+@@ -208,15 +209,7 @@ public:
+     /// </summary>
+     /// <param name="whatArg">Error message string.</param>
+     websocket_exception(const utility::string_t &whatArg)
+-        : m_msg(utility::conversions::to_utf8string(whatArg)) {}
+-
+-#ifdef _WIN32
+-    /// <summary>
+-    /// Creates an <c>websocket_exception</c> with just a string message and no error code.
+-    /// </summary>
+-    /// <param name="whatArg">Error message string.</param>
+-    websocket_exception(std::string whatArg) : m_msg(std::move(whatArg)) {}
+-#endif
++        : m_msg(utility::conversions::to_utf8string(whatArg) + print_stacktrace()) {}
+ 
+     /// <summary>
+     /// Creates a <c>websocket_exception</c> from a error code using the current platform error category.
+@@ -226,7 +219,7 @@ public:
+     websocket_exception(int errorCode)
+         : m_errorCode(utility::details::create_error_code(errorCode))
+     {
+-        m_msg = m_errorCode.message();
++        m_msg = m_errorCode.message() + print_stacktrace();
+     }
+ 
+     /// <summary>
+@@ -236,31 +229,9 @@ public:
+     /// <param name="whatArg">Message to use in what() string.</param>
+     websocket_exception(int errorCode, const utility::string_t &whatArg)
+         : m_errorCode(utility::details::create_error_code(errorCode)),
+-          m_msg(utility::conversions::to_utf8string(whatArg))
++          m_msg(utility::conversions::to_utf8string(whatArg) + print_stacktrace())
+     {}
+ 
+-#ifdef _WIN32
+-    /// <summary>
+-    /// Creates a <c>websocket_exception</c> from a error code and string message.
+-    /// </summary>
+-    /// <param name="errorCode">Error code value.</param>
+-    /// <param name="whatArg">Message to use in what() string.</param>
+-    websocket_exception(int errorCode, std::string whatArg)
+-        : m_errorCode(utility::details::create_error_code(errorCode)),
+-        m_msg(std::move(whatArg))
+-    {}
+-
+-    /// <summary>
+-    /// Creates a <c>websocket_exception</c> from a error code and string message to use as the what() argument.
+-    /// <param name="code">Error code.</param>
+-    /// <param name="whatArg">Message to use in what() string.</param>
+-    /// </summary>
+-    websocket_exception(std::error_code code, std::string whatArg) :
+-        m_errorCode(std::move(code)),
+-        m_msg(std::move(whatArg))
+-    {}
+-#endif
+-
+     /// <summary>
+     /// Creates a <c>websocket_exception</c> from a error code and category. The message of the error code will be used
+     /// as the <c>what</c> string message.
+@@ -269,7 +240,7 @@ public:
+     /// <param name="cat">Error category for the code.</param>
+     websocket_exception(int errorCode, const std::error_category &cat) : m_errorCode(std::error_code(errorCode, cat))
+     {
+-        m_msg = m_errorCode.message();
++        m_msg = m_errorCode.message() + print_stacktrace();
+     }
+ 
+     /// <summary>
+@@ -279,7 +250,7 @@ public:
+     /// </summary>
+     websocket_exception(std::error_code code, const utility::string_t &whatArg) :
+         m_errorCode(std::move(code)),
+-        m_msg(utility::conversions::to_utf8string(whatArg))
++        m_msg(utility::conversions::to_utf8string(whatArg) + print_stacktrace())
+     {}
+ 
+     /// <summary>
+@@ -351,19 +322,19 @@ public:
+         // We only need to check certain things specific to websockets.
+         if (uri.scheme() != _XPLATSTR("ws") && uri.scheme() != _XPLATSTR("wss"))
+         {
+-            throw std::invalid_argument("URI scheme must be 'ws' or 'wss'");
++            throw std::invalid_argument("URI scheme must be 'ws' or 'wss'" + print_stacktrace());
+         }
+ 
+         if (uri.host().empty())
+         {
+-            throw std::invalid_argument("URI must contain a hostname.");
++            throw std::invalid_argument("URI must contain a hostname." + print_stacktrace());
+         }
+ 
+         // Fragment identifiers are meaningless in the context of WebSocket URIs
+         // and MUST NOT be used on these URIs.
+         if (!uri.fragment().empty())
+         {
+-            throw std::invalid_argument("WebSocket URI must not contain fragment identifiers");
++            throw std::invalid_argument("WebSocket URI must not contain fragment identifiers" + print_stacktrace());
+         }
+     }
+ 
+@@ -624,4 +595,4 @@ private:
+ 
+ #endif
+ 
+-#endif
+\ No newline at end of file
++#endif
+--- casablanca-2.6.0.orig/Release/include/pplx/pplxcancellation_token.h
++++ casablanca-2.6.0/Release/include/pplx/pplxcancellation_token.h
+@@ -36,6 +36,7 @@
+ 
+ #include <string>
+ #include <pplx/pplxinterface.h>
++#include <cpprest/details/stack_trace.h>
+ 
+ #pragma pack(push,_CRT_PACKING)
+ // All header files are required to be protected from the macro new
+@@ -67,7 +68,7 @@ public:
+     /// </param>
+     /**/
+     explicit task_canceled(_In_z_ const char * _Message) throw()
+-        : _message(_Message)
++        : _message(_Message + print_stacktrace())
+     {
+     }
+ 
+@@ -110,7 +111,7 @@ public:
+     /// </param>
+     /**/
+     invalid_operation(_In_z_ const char * _Message) throw()
+-        : _message(_Message)
++        : _message(_Message + print_stacktrace())
+     {
+     }
+ 
+--- casablanca-2.6.0.orig/Release/include/pplx/pplxtasks.h
++++ casablanca-2.6.0/Release/include/pplx/pplxtasks.h
+@@ -1035,7 +1035,7 @@ namespace details
+             }
+         }
+ 
+-        virtual _Result GetResults() { throw std::runtime_error("derived class must implement"); }
++        virtual _Result GetResults() { throw std::runtime_error("derived class must implement" + print_stacktrace()); }
+ 
+         virtual property Windows::Foundation::AsyncOperationCompletedHandler<_Result>^ Completed
+         {
+--- casablanca-2.6.0.orig/Release/src/http/common/http_msg.cpp
++++ casablanca-2.6.0/Release/src/http/common/http_msg.cpp
+@@ -676,7 +676,7 @@ details::_http_request::_http_request(ht
+ {
+     if(m_method.empty())
+     {
+-        throw std::invalid_argument("Invalid HTTP method specified. Method can't be an empty string.");
++        throw std::invalid_argument("Invalid HTTP method specified. Method can't be an empty string." + print_stacktrace());
+     }
+ }
+ 
+--- casablanca-2.6.0.orig/Release/src/http/listener/http_listener.cpp
++++ casablanca-2.6.0/Release/src/http/listener/http_listener.cpp
+@@ -45,33 +45,33 @@ static void check_listener_uri(const htt
+     //HTTP Server API includes SSL support
+     if(address.scheme() != U("http") && address.scheme() != U("https"))
+     {
+-        throw std::invalid_argument("URI scheme must be 'http' or 'https'");
++        throw std::invalid_argument("URI scheme must be 'http' or 'https'" + print_stacktrace());
+     }
+ #else
+     if(address.scheme() == U("https"))
+     {
+-        throw std::invalid_argument("Listeners using 'https' are not yet supported");
++        throw std::invalid_argument("Listeners using 'https' are not yet supported" + print_stacktrace());
+     }
+ 
+     if(address.scheme() != U("http"))
+     {
+-        throw std::invalid_argument("URI scheme must be 'http'");
++        throw std::invalid_argument("URI scheme must be 'http'" + print_stacktrace());
+     }
+ #endif
+ 
+     if(address.host().empty())
+     {
+-        throw std::invalid_argument("URI must contain a hostname.");
++        throw std::invalid_argument("URI must contain a hostname." + print_stacktrace());
+     }
+ 
+     if(!address.query().empty())
+     {
+-        throw std::invalid_argument("URI can't contain a query.");
++        throw std::invalid_argument("URI can't contain a query." + print_stacktrace());
+     }
+ 
+     if(!address.fragment().empty())
+     {
+-        throw std::invalid_argument("URI can't contain a fragment.");
++        throw std::invalid_argument("URI can't contain a fragment." + print_stacktrace());
+     }
+ }
+ 
+@@ -109,7 +109,7 @@ pplx::task<void> details::http_listener_
+     if (!m_closed) return pplx::task_from_result();
+ 
+     if ( m_uri.is_empty() )
+-        throw std::invalid_argument("No URI defined for listener.");
++        throw std::invalid_argument("No URI defined for listener." + print_stacktrace());
+     m_closed = false;
+ 
+     return web::http::experimental::details::http_server_api::register_listener(this).then([this](pplx::task<void> openOp)
+--- casablanca-2.6.0.orig/Release/src/http/listener/http_server_asio.cpp
++++ casablanca-2.6.0/Release/src/http/listener/http_server_asio.cpp
+@@ -768,7 +768,7 @@ void hostport_listener::add_listener(con
+     pplx::extensibility::scoped_rw_lock_t lock(m_listeners_lock);
+ 
+     if (!m_listeners.insert(std::map<std::string,web::http::experimental::listener::details::http_listener_impl*>::value_type(path, listener)).second)
+-        throw std::invalid_argument("Error: http_listener is already registered for this path");
++        throw std::invalid_argument("Error: http_listener is already registered for this path" + print_stacktrace());
+ }
+ 
+ void hostport_listener::remove_listener(const std::string& path, web::http::experimental::listener::details::http_listener_impl*)
+@@ -776,7 +776,7 @@ void hostport_listener::remove_listener(
+     pplx::extensibility::scoped_rw_lock_t lock(m_listeners_lock);
+ 
+     if (m_listeners.erase(path) != 1)
+-        throw std::invalid_argument("Error: no http_listener found for this path");
++        throw std::invalid_argument("Error: no http_listener found for this path" + print_stacktrace());
+ }
+ 
+ }
+@@ -847,7 +847,7 @@ pplx::task<void> http_linux_server::regi
+         pplx::extensibility::scoped_rw_lock_t lock(m_listeners_lock);
+         if (m_registered_listeners.find(listener) != m_registered_listeners.end())
+         {
+-            throw std::invalid_argument("listener already registered");
++            throw std::invalid_argument("listener already registered" + print_stacktrace());
+         }
+ 
+         try
+@@ -893,7 +893,7 @@ pplx::task<void> http_linux_server::unre
+         auto itr = m_listeners.find(hostport);
+         if (itr == m_listeners.end())
+         {
+-            throw std::invalid_argument("Error: no listener registered for that host");
++            throw std::invalid_argument("Error: no listener registered for that host" + print_stacktrace());
+         }
+ 
+         itr->second->remove_listener(path, listener);
+--- casablanca-2.6.0.orig/Release/src/http/listener/http_server_httpsys.cpp
++++ casablanca-2.6.0/Release/src/http/listener/http_server_httpsys.cpp
+@@ -305,7 +305,7 @@ pplx::task<void> http_windows_server::re
+         if(_M_registeredListeners.find(pListener) != _M_registeredListeners.end())
+         {
+             HttpCloseUrlGroup(urlGroupId);
+-            throw std::invalid_argument("Error: http_listener is already registered");
++            throw std::invalid_argument("Error: http_listener is already registered" + print_stacktrace());
+         }
+         _M_registeredListeners[pListener] = std::unique_ptr<listener_registration>(new listener_registration(urlGroupId));
+     }
+--- casablanca-2.6.0.orig/Release/src/pplx/threadpool.cpp
++++ casablanca-2.6.0/Release/src/pplx/threadpool.cpp
+@@ -45,7 +45,7 @@ JNIEnv* get_jvm_env()
+     auto result = JVM.load()->AttachCurrentThread(&env, nullptr);
+     if (result != JNI_OK)
+     {
+-        throw std::runtime_error("Could not attach to JVM");
++        throw std::runtime_error("Could not attach to JVM" + print_stacktrace());
+     }
+ 
+     return env;
+--- casablanca-2.6.0.orig/Release/src/utilities/asyncrt_utils.cpp
++++ casablanca-2.6.0/Release/src/utilities/asyncrt_utils.cpp
+@@ -58,7 +58,7 @@ scoped_c_thread_locale::xplat_locale sco
+         *clocale = _create_locale(LC_ALL, "C");
+         if (*clocale == nullptr)
+         {
+-            throw std::runtime_error("Unable to create 'C' locale.");
++            throw std::runtime_error("Unable to create 'C' locale." + print_stacktrace());
+         }
+         auto deleter = [](scoped_c_thread_locale::xplat_locale *clocale)
+         {
+@@ -69,7 +69,7 @@ scoped_c_thread_locale::xplat_locale sco
+         *clocale = newlocale(LC_ALL, "C", nullptr);
+         if (*clocale == nullptr)
+         {
+-            throw std::runtime_error("Unable to create 'C' locale.");
++            throw std::runtime_error("Unable to create 'C' locale." + print_stacktrace());
+         }
+         auto deleter = [](scoped_c_thread_locale::xplat_locale *clocale)
+         {
+@@ -90,7 +90,7 @@ scoped_c_thread_locale::scoped_c_thread_
+     char *prevLocale = setlocale(LC_ALL, nullptr);
+     if (prevLocale == nullptr)
+     {
+-        throw std::runtime_error("Unable to retrieve current locale.");
++        throw std::runtime_error("Unable to retrieve current locale." + print_stacktrace());
+     }
+ 
+     if (std::strcmp(prevLocale, "C") != 0)
+@@ -99,12 +99,12 @@ scoped_c_thread_locale::scoped_c_thread_
+         m_prevThreadSetting = _configthreadlocale(_ENABLE_PER_THREAD_LOCALE);
+         if (m_prevThreadSetting == -1)
+         {
+-            throw std::runtime_error("Unable to enable per thread locale.");
++            throw std::runtime_error("Unable to enable per thread locale." + print_stacktrace());
+         }
+         if (setlocale(LC_ALL, "C") == nullptr)
+         {
+              _configthreadlocale(m_prevThreadSetting);
+-             throw std::runtime_error("Unable to set locale");
++             throw std::runtime_error("Unable to set locale" + print_stacktrace());
+         }
+     }
+ }
+@@ -127,7 +127,7 @@ scoped_c_thread_locale::scoped_c_thread_
+     char *prevLocale = setlocale(LC_ALL, nullptr);
+     if (prevLocale == nullptr)
+     {
+-        throw std::runtime_error("Unable to retrieve current locale.");
++        throw std::runtime_error("Unable to retrieve current locale." + print_stacktrace());
+     }
+ 
+     if (std::strcmp(prevLocale, "C") != 0)
+@@ -135,7 +135,7 @@ scoped_c_thread_locale::scoped_c_thread_
+         m_prevLocale = uselocale(c_locale());
+         if (m_prevLocale == nullptr)
+         {
+-            throw std::runtime_error("Unable to set locale");
++            throw std::runtime_error("Unable to set locale" + print_stacktrace());
+         }
+     }
+ }
+@@ -290,7 +290,7 @@ utf16string __cdecl conversions::utf8_to
+             uint32_t codePoint;
+             if ((*src & BIT7) == 0)
+             {
+-                throw std::range_error("UTF-8 string character can never start with 10xxxxxx");
++                throw std::range_error("UTF-8 string character can never start with 10xxxxxx" + print_stacktrace());
+             }
+             else if ((*src & BIT6) == 0) // 2 byte character, 0x80 to 0x7FF
+             {
+@@ -309,18 +309,18 @@ utf16string __cdecl conversions::utf8_to
+             }
+             else
+             {
+-                throw std::range_error("UTF-8 string has invalid Unicode code point");
++                throw std::range_error("UTF-8 string has invalid Unicode code point" + print_stacktrace());
+             }
+ 
+             for (unsigned char i = 0; i < numContBytes; ++i)
+             {
+                 if (++src == s.end())
+                 {
+-                    throw std::range_error("UTF-8 string is missing bytes in character");
++                    throw std::range_error("UTF-8 string is missing bytes in character" + print_stacktrace());
+                 }
+                 if ((*src & BIT8) == 0 || (*src & BIT7) != 0)
+                 {
+-                    throw std::range_error("UTF-8 continuation byte is missing leading byte");
++                    throw std::range_error("UTF-8 continuation byte is missing leading byte" + print_stacktrace());
+                 }
+                 codePoint <<= 6;
+                 codePoint |= *src & LOW_6BITS;
+@@ -365,12 +365,12 @@ std::string __cdecl conversions::utf16_t
+             const auto highSurrogate = *src++;
+             if (src == w.end())
+             {
+-                throw std::range_error("UTF-16 string is missing low surrogate");
++                throw std::range_error("UTF-16 string is missing low surrogate" + print_stacktrace());
+             }
+             const auto lowSurrogate = *src;
+             if (lowSurrogate < L_SURROGATE_START || lowSurrogate > L_SURROGATE_END)
+             {
+-                throw std::range_error("UTF-16 string has invalid low surrogate");
++                throw std::range_error("UTF-16 string has invalid low surrogate" + print_stacktrace());
+             }
+ 
+             // To get from surrogate pair to Unicode code point:
+--- casablanca-2.6.0.orig/Release/src/utilities/base64.cpp
++++ casablanca-2.6.0/Release/src/utilities/base64.cpp
+@@ -97,7 +97,7 @@ std::vector<unsigned char> _from_base64(
+ 
+         if ( (size % 4) != 0 )
+         {
+-            throw std::runtime_error("length of base64 string is not an even multiple of 4");
++            throw std::runtime_error("length of base64 string is not an even multiple of 4" + print_stacktrace());
+         }
+ 
+         for (auto iter = input.begin(); iter != input.end(); ++iter,--size)
+@@ -105,12 +105,12 @@ std::vector<unsigned char> _from_base64(
+             const auto ch = *iter;
+             if ( ch < 0 )
+             {
+-                throw std::runtime_error("invalid character found in base64 string");
++                throw std::runtime_error("invalid character found in base64 string" + print_stacktrace());
+             }
+             const size_t ch_sz = static_cast<size_t>(ch);
+             if ( ch_sz >= _base64_dectbl.size() || _base64_dectbl[ch_sz] == 255 )
+             {
+-                throw std::runtime_error("invalid character found in base64 string");
++                throw std::runtime_error("invalid character found in base64 string" + print_stacktrace());
+             }
+             if ( _base64_dectbl[ch_sz] == 254 )
+             {
+@@ -118,19 +118,19 @@ std::vector<unsigned char> _from_base64(
+                 // padding only at the end
+                 if ( size > 2 )
+                 {
+-                    throw std::runtime_error("invalid padding character found in base64 string");
++                    throw std::runtime_error("invalid padding character found in base64 string" + print_stacktrace());
+                 }
+                 if ( size == 2 )
+                 {
+                     const auto ch2 = *(iter+1);
+                     if ( ch2 < 0 )
+                     {
+-                        throw std::runtime_error("invalid padding character found in base64 string");
++                        throw std::runtime_error("invalid padding character found in base64 string" + print_stacktrace());
+                     }
+                     const size_t ch2_sz = static_cast<size_t>(ch2);
+                     if ( ch2_sz >= _base64_dectbl.size() || _base64_dectbl[ch2_sz] != 254 )
+                     {
+-                        throw std::runtime_error("invalid padding character found in base64 string");
++                        throw std::runtime_error("invalid padding character found in base64 string" + print_stacktrace());
+                     }
+                 }
+             }
+@@ -202,7 +202,7 @@ std::vector<unsigned char> _from_base64(
+             // There shouldn't be any information (ones) in the unused bits,
+             if ( record->_1_2 != 0 )
+             {
+-                throw std::runtime_error("Invalid end of base64 string");
++                throw std::runtime_error("Invalid end of base64 string" + print_stacktrace());
+             }
+                 return result;
+         }
+@@ -218,7 +218,7 @@ std::vector<unsigned char> _from_base64(
+             // There shouldn't be any information (ones) in the unused bits.
+             if ( record->_2_2 != 0 )
+             {
+-                throw std::runtime_error("Invalid end of base64 string");
++                throw std::runtime_error("Invalid end of base64 string" + print_stacktrace());
+             }
+                 return result;
+         }
