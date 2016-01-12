@@ -52,11 +52,14 @@ void init_key(KeyInfo *key)
     key->key[0] = 0;
 }
 
+time_t last_peer_access_ts = 0;
+
 /* Perform a query against given peer to try to fetch the key. */
 int read_peer(const char *host, int port, KeyInfo *key)
 {
     char buf[REQ_BUF_SZ];
     int sock, res, ip;
+    last_peer_access_ts = time(NULL);
     init_key(key);
     sock = connect_to(host, port, CONNECT_TIMEOUT, &ip);
     if (-1 == sock)
@@ -133,9 +136,17 @@ void format_key(char *buf, const void *local_key, const char iv[16])
 void process_command(int client, char *cmd, const Config *cfg,
         void *local_key, const char iv[16], int ip, int port)
 {
-    if (!strcmp(cmd, "read") || !strcmp(cmd, "get")) {
+    if (!strcmp(cmd, "ping")) {
         msg("processing command: %s", cmd);
-        if (!load_from_peers(!strcmp(cmd, "get")? cfg: NULL, local_key, iv)) {
+        send_str(client, "OK\n", SEND_TIMEOUT, ip, port);
+    }
+    else if (!strcmp(cmd, "read") || !strcmp(cmd, "get")) {
+        msg("processing command: %s", cmd);
+        if (!load_from_peers(
+                    !strcmp(cmd, "get") &&
+                    time(NULL) - last_peer_access_ts > 0? cfg: NULL,
+                    local_key, iv))
+        {
             send_str(client, "no key\n", SEND_TIMEOUT, ip, port);
         }
         else {
@@ -195,7 +206,8 @@ int process_client(int client, const Config *cfg, void *local_key,
     return 0;
 }
 
-#define CONFIG_FILE "./config"
+#define CONFIG_FILE "/etc/card_proxy/key_keeper.cfg"
+#define LOG_FILE "/var/log/card_proxy/key_keeper.log"
 
 int main()
 {
@@ -204,6 +216,28 @@ int main()
     KeyInfo t;
     char iv[16];
     Config cfg;
+    char *config_file_name = NULL;
+    char *log_file_name = NULL;
+
+    last_peer_access_ts = time(NULL) - 100500;
+
+    config_file_name = getenv("CONFIG_FILE");
+    if (!config_file_name || !*config_file_name)
+        config_file_name = CONFIG_FILE;
+    if (-1 == read_config(config_file_name, &cfg)) {
+        free(p);
+        return 1;
+    }
+
+    log_file_name = &cfg.log_file_name[0];
+    if (!*log_file_name)
+        log_file_name = LOG_FILE;
+        log_file = fopen(log_file_name, "a");
+    if (!log_file) {
+        perror("cannot open log file");
+        return 1;
+    }
+    setvbuf(log_file, NULL, _IONBF, 0);
 
     res = randomize();
     if (-1 == res)
@@ -221,11 +255,6 @@ int main()
     local_key_ofs = (rand() % (sz - sizeof(KeyInfo))) / 3;
     init_key(&t);
     update_key((char *)p + local_key_ofs * 3, &t, iv);
-
-    if (-1 == read_config(CONFIG_FILE, &cfg)) {
-        free(p);
-        return 1;
-    }
 
     load_from_peers(&cfg, (char *)p + local_key_ofs * 3, iv);
 
