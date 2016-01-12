@@ -10,11 +10,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#include <openssl/md5.h>
 
 #include "util.h"
-#include "md5.h"
 
 #define DEV_RANDOM "/dev/urandom"
+
+FILE *log_file = NULL;
 
 int startswith(const char *s, const char *t)
 {
@@ -46,10 +48,9 @@ void strip(char *s)
 void md5_hash(const char *s, int len, char digest[16])
 {
     MD5_CTX md5;
-    MD5Init(&md5);
-    MD5Update(&md5, s, len);
-    MD5Final(&md5);
-    memcpy(digest, md5.digest, 16);
+    MD5_Init(&md5);
+    MD5_Update(&md5, s, len);
+    MD5_Final((unsigned char *)digest, &md5);
 }
 
 void encrypt_md5_cfb(char *m, int nblocks, const char iv[16])
@@ -85,14 +86,16 @@ void msg(const char *fmt, ...)
     struct tm tx;
     va_list argptr;
 
+    if (!log_file)
+        return;
     va_start(argptr, fmt);
     t = time(NULL);
     memcpy(&tx, localtime(&t), sizeof(tx));
-    fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%02d ",
+    fprintf(log_file, "%04d-%02d-%02d %02d:%02d:%02d ",
             tx.tm_year + 1900, tx.tm_mon + 1, tx.tm_mday,
             tx.tm_hour, tx.tm_min, tx.tm_sec);
-    vfprintf(stderr, fmt, argptr);
-    fprintf(stderr, "\n");
+    vfprintf(log_file, fmt, argptr);
+    fprintf(log_file, "\n");
     va_end(argptr);
 }
 

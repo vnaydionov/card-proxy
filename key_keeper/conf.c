@@ -23,6 +23,11 @@ static int read_port(int *port_buf, const char *val)
 
 int parse_config_line(Config *cfg, const char *name, const char *val)
 {
+    if (!strcmp("log_file", name)) {
+        strncpy(cfg->log_file_name, val, LOG_FILE_NAME_SZ - 1);
+        cfg->log_file_name[LOG_FILE_NAME_SZ - 1] = 0;
+        return 0;
+    }
     if (!strcmp("bind_host", name))
         return read_host(cfg->bind_host, val);
     if (!strcmp("bind_port", name))

@@ -4,6 +4,7 @@ project (card_proxy)
 
 option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
 option (CPPREST_ROOT "Path where C++ REST SDK is installed" /usr/local)
+option (USE_VAULT_DEBUG_API "Whether to include debug methods in the build" OFF)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     SET(ENABLE_CXX11 "-std=c++11")
@@ -13,11 +14,11 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         SET(ENABLE_CXX11 "-std=c++0x")
     endif()
 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -Wall -Wno-deprecated-declarations -Wno-unused-local-typedefs")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLE_CXX11} -g -Wall -Wno-deprecated-declarations -Wno-unused-local-typedefs")
 endif()
 
 find_path (BOOST_INCLUDEDIR boost/lexical_cast.hpp /usr/include)
-set (BOOST_LIBRARYDIR /usr/lib)
+set (BOOST_LIBRARYDIR /usr/lib/x86_64-linux-gnu/)
 set (Boost_USE_STATIC_LIBS OFF)
 set (Boost_USE_MULTITHREADED ON)
 set (Boost_NO_SYSTEM_PATHS ON)
@@ -80,6 +81,7 @@ if ((NOT CPPREST_INCLUDES) OR (NOT CPPREST_LIB))
 endif ()
 
 add_subdirectory (src)
+add_subdirectory (key_keeper)
 
-install (FILES README.md DESTINATION doc)
+install (FILES LICENSE README.md DESTINATION share/doc/card-proxy)
 

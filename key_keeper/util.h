@@ -3,6 +3,8 @@
 
 #include <netinet/in.h>
 
+extern FILE *log_file;
+
 int startswith(const char *s, const char *t);
 int is_space(char c);
 void strip(char *s);
