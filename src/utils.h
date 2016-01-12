@@ -3,6 +3,13 @@
 #define CARD_PROXY__UTILS_H
 
 #include <string>
+#include <stdexcept>
+
+class RunTimeError: public std::runtime_error
+{
+public:
+    RunTimeError(const std::string &msg);
+};
 
 enum StringHexCaseMode { HEX_UPPERCASE=0, HEX_LOWERCASE=1, HEX_NOSPACES=2 };
 
@@ -20,11 +27,17 @@ std::string bcd_encode(const std::string &ascii_input);
 
 std::string generate_random_bytes(size_t length);
 
-// in fact: pseudo-random, for testing only
 std::string generate_random_number(size_t length);
 std::string generate_random_string(size_t length);
+std::string generate_random_hex_string(size_t length);
 
 std::string mask_pan(const std::string &pan);
+std::string normalize_pan(const std::string &pan);
+int normalize_year(int year);
+
+const std::string read_file(const std::string &file_name);
+const std::string get_process_name();
+const std::string fmt_string_escape(const std::string &s);
 
 #endif // CARD_PROXY__UTILS_H
 // vim:ts=4:sts=4:sw=4:et:

@@ -12,7 +12,7 @@ public:
     //static DEKPool* get_instance();
     //static DEKPool* get_instance(Yb::Session &session);
     //static bool delete_instance();
-    DEKPool(IConfig *config, Yb::Session &session);
+    DEKPool(IConfig &config, Yb::Session &session);
     DEKPool(const DEKPool &);
     DEKPool& operator=(DEKPool&);
 
@@ -34,7 +34,7 @@ private:
     //static DEKPool * instance_;
     Domain::DataKey generate_new_data_key();
 
-    IConfig *config_;
+    IConfig &config_;
     Yb::Session &session_;
     int dek_use_count_;
     int max_active_dek_count_;

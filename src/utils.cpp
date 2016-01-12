@@ -1,12 +1,19 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
-#include <stdio.h>
+#include <fstream>
+#include <iterator>
+#include <cstring>
+#include <ctime>
 #include <unistd.h>
 #include <fcntl.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
-#include <stdexcept>
+#include <cpprest/details/stack_trace.h>
 
 #include "utils.h"
+
+RunTimeError::RunTimeError(const std::string &msg)
+    : runtime_error(msg + print_stacktrace())
+{}
 
 char int_to_hexchar(int digit, int mode)
 {
@@ -14,7 +21,7 @@ char int_to_hexchar(int digit, int mode)
         return '0' + digit;
     else if (digit >= 10 && digit <= 15)
         return (!(mode & HEX_LOWERCASE)? 'A': 'a') + digit - 10;
-    throw std::runtime_error("Invalid digit");
+    throw RunTimeError("Invalid digit");
 }
 
 int hexchar_to_int(char symbol)
@@ -25,7 +32,7 @@ int hexchar_to_int(char symbol)
         return symbol - 'A' + 10;
     else if (symbol >= 'a' && symbol <= 'f')
         return symbol - 'a' + 10;
-    throw std::runtime_error("Invalid HEX digit character: " +
+    throw RunTimeError("Invalid HEX digit character: " +
             std::to_string((int)(unsigned char)symbol));
 }
  
@@ -57,11 +64,11 @@ std::string string_from_hexstring(const std::string &hex_input, int mode)
     bool insert_spaces = !(mode & HEX_NOSPACES);
     if (insert_spaces) {
         if (hex_input.size() % 3 != 2)
-            throw std::runtime_error("HEX data of wrong size");
+            throw RunTimeError("HEX data of wrong size");
     }
     else {
         if (hex_input.size() % 2)
-            throw std::runtime_error("HEX data of wrong size");
+            throw RunTimeError("HEX data of wrong size");
     }
     size_t result_len = in_size / 2;
     if (insert_spaces)
@@ -73,7 +80,7 @@ std::string string_from_hexstring(const std::string &hex_input, int mode)
         result[i] |= hexchar_to_int(*str++);
         if (insert_spaces) {
             if (*str != ' ' && *str)
-                throw std::runtime_error("HEX separator space is expected");
+                throw RunTimeError("HEX separator space is expected");
             ++str;
         }
     }
@@ -92,7 +99,7 @@ std::string encode_base64(const std::string &message)
     bio = BIO_push(b64, bio);
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
     BIO_write(bio, message.data(), message.size());
-    BIO_flush(bio);
+    (void)BIO_flush(bio);
     BIO_free_all(bio);
     fclose(stream);
     return result;
@@ -123,15 +130,15 @@ static int b64_decoded_size(const std::string &b64input)
 static void check_base64(const std::string &b64message)
 {
     if (b64message.size() % 4)
-        throw std::runtime_error("BASE64 data of wrong size");
+        throw RunTimeError("BASE64 data of wrong size");
     for (size_t i = 0; i < b64message.size(); ++i) {
         if (!valid_b64_char(b64message[i]))
-            throw std::runtime_error("Invalid BASE64 character");
+            throw RunTimeError("Invalid BASE64 character");
         if (b64message[i] == '=') {
             if (i < b64message.size() - 2 ||
                 (i == b64message.size() - 2 && b64message[i + 1] != '='))
             {
-                throw std::runtime_error("BASE64: Misplaced trailing =");
+                throw RunTimeError("BASE64: Misplaced trailing =");
             }
         }
     }
@@ -163,7 +170,7 @@ std::string bcd_decode(const std::string &bcd_input)
     if (!bcd_input.size())
         return std::string(); // TODO analyze this case
     if (bcd_input.size() > 32)
-        throw std::runtime_error("BCD decode data of wrong size");
+        throw RunTimeError("BCD decode data of wrong size");
     std::string x = string_to_hexstring(bcd_input,
                                         HEX_LOWERCASE|HEX_NOSPACES);
     size_t i = 0;
@@ -175,14 +182,14 @@ std::string bcd_decode(const std::string &bcd_input)
 
 std::string bcd_encode(const std::string &ascii_input)
 {
-
     if (!ascii_input.size())
         return std::string();
     if (ascii_input.size() > 31)
-        throw std::runtime_error("BCD encode data of wrong size");
+        throw RunTimeError("BCD encode data of wrong size");
     std::string x = ascii_input + "f";
-    while (x.size() < 32)
-        x = x + ascii_input + "f";
+    int padding_length = 32 - x.size();
+    if (padding_length > 0)
+        x += generate_random_hex_string(padding_length);
     return string_from_hexstring(x.substr(0, 32), HEX_NOSPACES);
 }
 
@@ -191,27 +198,29 @@ std::string generate_random_bytes(size_t length)
     std::string result(length, 0);
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1)
-        throw std::runtime_error("Can't open /dev/urandom");
+        throw RunTimeError("Can't open /dev/urandom");
     int n = read(fd, &result[0], result.size());
     close(fd);
     if (static_cast<int>(result.size()) != n)
-        throw std::runtime_error("Can't read from /dev/urandom");
+        throw RunTimeError("Can't read from /dev/urandom");
     return result;
 }
 
 std::string generate_random_number(size_t length)
 {
+    std::string rand_bytes = generate_random_bytes(length);
     std::string result(length, 0);
-    for (size_t i = 0; i < length; ++i) 
-        result[i] = rand() % 10 + '0';
+    for (size_t i = 0; i < length; ++i)
+        result[i] = (((unsigned char)rand_bytes[i]) * 10 / 256) + '0';
     return result;
 }
 
 std::string generate_random_string(size_t length)
 {
+    std::string rand_bytes = generate_random_bytes(length);
     std::string result(length, 0);
     for (size_t i = 0; i < length; ++i) {
-        int x = rand() % (26*2 + 10);
+        int x = ((unsigned char)rand_bytes[i]) * (26*2 + 10) / 256;
         if (x < 26)
             result[i] = 'A' + x;
         else if (x < 26*2)
@@ -224,22 +233,81 @@ std::string generate_random_string(size_t length)
 
 std::string generate_random_hex_string(size_t length)
 {
-    std::string result(length, 0);
-    for (size_t i = 0; i < length; ++i) {
-        int x = rand() % 16;
-        if (x < 10)
-            result[i] = '0' + x;
-        else
-            result[i] = 'A' + (x - 10);
-    }
-    return result;
+    std::string rand_bytes = generate_random_bytes((length + 1) / 2);
+    return string_to_hexstring(rand_bytes, HEX_NOSPACES).substr(0, length);
 }
 
 std::string mask_pan(const std::string &pan)
 {
     if (pan.size() < 13 || pan.size() > 20)
-        throw std::runtime_error("Strange PAN length: " + std::to_string(pan.size()));
-    return pan.substr(0, 6) + "**" + pan.substr(pan.size() - 4);
+        throw RunTimeError("Strange PAN length: " + std::to_string(pan.size()));
+    return pan.substr(0, 6) + std::string(pan.size() - 10, '*') + pan.substr(pan.size() - 4);
+}
+
+std::string normalize_pan(const std::string &pan)
+{
+    std::string r;
+    r.reserve(pan.size());
+    for (size_t i = 0; i < pan.size(); ++i) {
+        const unsigned char c = (unsigned char )pan[i];
+        if (c >= '0' && c <= '9')
+            r += c;
+        else if (!std::strchr(" \t\n\r", c))
+            throw RunTimeError("Wrong character in PAN: " + std::to_string((int )c));
+    }
+    return r;
+}
+
+int normalize_year(int year)
+{
+    if (year < 2000)
+        return 2000 + year;
+    return year;
+}
+
+const std::string read_file(const std::string &file_name)
+{
+    std::ifstream inp(file_name.c_str());
+    if (!inp)
+        throw ::RunTimeError("can't open file: " + file_name);
+    inp.seekg(0, std::ios::end);
+    std::string result(inp.tellg(), ' ');
+    inp.seekg(0, std::ios::beg);
+    inp.read(&result[0], result.size());
+    if (!inp)
+        throw ::RunTimeError("can't read file: " + file_name);
+    return result;
+}
+
+const std::string get_process_name()
+{
+    const std::string file_name = "/proc/self/cmdline";
+    std::ifstream inp(file_name.c_str());
+    if (!inp)
+        throw std::runtime_error("can't open file: " + file_name);
+    std::string cmdline;
+    std::copy(std::istream_iterator<char>(inp),
+              std::istream_iterator<char>(),
+              std::back_inserter(cmdline));
+    size_t pos = cmdline.find('\0');
+    if (std::string::npos != pos)
+        cmdline = cmdline.substr(0, pos);
+    pos = cmdline.rfind('/');
+    if (std::string::npos != pos)
+        cmdline = cmdline.substr(pos + 1);
+    return cmdline;
+}
+
+const std::string fmt_string_escape(const std::string &s)
+{
+    std::string r;
+    r.reserve(s.size() * 2);
+    for (size_t pos = 0; pos < s.size(); ++pos) {
+        if ('%' == s[pos])
+            r += '%';
+        r += s[pos];
+    }
+    return r;
 }
 
 // vim:ts=4:sts=4:sw=4:et:

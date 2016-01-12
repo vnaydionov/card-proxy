@@ -293,7 +293,7 @@ ElementTree::ElementPtr set_master_key(Session &session, ILogger &logger, const 
 }
 
 
-#define CFG_VALUE(x) theApp::instance().cfg()->get_value(x)
+#define CFG_VALUE(x) theApp::instance().cfg().get_value(x)
 
 const HttpHeaders bind_card(ILogger &logger, const HttpHeaders &request)
 {

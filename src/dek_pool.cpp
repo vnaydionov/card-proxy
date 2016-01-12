@@ -7,14 +7,14 @@
 
 //DEKPool *DEKPool::instance_ = 0;
 
-DEKPool::DEKPool(IConfig *config, Yb::Session &session)
+DEKPool::DEKPool(IConfig &config, Yb::Session &session)
     : config_(config)
     , session_(session)
 {
-    config->reload();
-    dek_use_count_ = config->get_value_as_int("dek/use_count");
-    max_active_dek_count_ = config->get_value_as_int("dek/max_limit");
-    min_active_dek_count_ = config->get_value_as_int("dek/min_limit");
+    config.reload();
+    dek_use_count_ = config.get_value_as_int("dek/use_count");
+    max_active_dek_count_ = config.get_value_as_int("dek/max_limit");
+    min_active_dek_count_ = config.get_value_as_int("dek/min_limit");
 }
 
 //DEKPool* DEKPool::get_instance() {

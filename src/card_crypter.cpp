@@ -75,7 +75,7 @@ void CardCrypter::remove_card_data(const std::string &token)
 
 void CardCrypter::change_master_key(const std::string &key)
 {
-    config_->reload();
+    config_.reload();
     auto deks = Yb::query<Domain::DataKey>(session_).all();
     for (auto &dek : deks) {
         std::string old_dek = decode_dek(dek.dek_crypted);
@@ -263,17 +263,17 @@ static void send_key_to_server(const std::string &key) {
     }
 }
 
-const std::string CardCrypter::assemble_master_key(IConfig *config, Yb::Session &session)
+const std::string CardCrypter::assemble_master_key(IConfig &config, Yb::Session &session)
 {
-    config->reload();
+    config.reload();
     std::string server_key, config_key, database_key;
     try {
         // 16 bytes from server
-        std::string key_keeper_host = config->get_value("key_keeper/host");
-        int key_keeper_port = config->get_value_as_int("key_keeper/port");
+        std::string key_keeper_host = config.get_value("key_keeper/host");
+        int key_keeper_port = config.get_value_as_int("key_keeper/port");
         server_key = decode_base64(recv_key_from_server(key_keeper_host, key_keeper_port));
         // 8 bytes from config_file
-        config_key = decode_base64(config->get_value("key_settings/kek2"));
+        config_key = decode_base64(config.get_value("key_settings/kek2"));
         // 8 bytes from database
         Domain::Config config = Yb::query<Domain::Config>(session)
             .filter_by(Domain::Config::c.ckey == "KEK3").one();
