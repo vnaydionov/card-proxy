@@ -13,6 +13,12 @@
 #define AES_TESTS       50
 #define FULL_TESTS      50
 
+TEST_CASE( "Testing format string escaping", "[str]" ) {
+    CHECK("abc,def" == fmt_string_escape("abc,def"));
+    CHECK("abc%%def" == fmt_string_escape("abc%def"));
+    CHECK("abc%%%%def" == fmt_string_escape("abc%%def"));
+}
+
 TEST_CASE( "Testing HEX string operations", "[hex][string]" ) {
     std::vector<std::pair<std::string, std::string>> cases{
         {"", ""},
@@ -71,13 +77,14 @@ TEST_CASE( "Testing HEX string error handling", "[hex][string]" ) {
 }
 
 TEST_CASE( "Testing BASE64 coding", "[base64]" ) {
-    std::vector<std::pair<std::string, std::string> > cases;
-    cases.push_back(std::make_pair("",      ""));
-    cases.push_back(std::make_pair(" ",     "IA=="));
-    cases.push_back(std::make_pair("A",     "QQ=="));
-    cases.push_back(std::make_pair("AB",    "QUI="));
-    cases.push_back(std::make_pair("ABC",   "QUJD"));
-    cases.push_back(std::make_pair("ABCD",  "QUJDRA=="));
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"",      ""},
+        {" ",     "IA=="},
+        {"A",     "QQ=="},
+        {"AB",    "QUI="},
+        {"ABC",   "QUJD"},
+        {"ABCD",  "QUJDRA=="},
+    };
     
     SECTION( "testing encoding" ) {
         for (const auto &p : cases) {
@@ -130,30 +137,42 @@ TEST_CASE( "Testing BCD encoder output size", "[bcd]" ) {
 }
 
 TEST_CASE( "Testing BCD coding", "[bcd]" ) {
-    std::vector<std::pair<std::string, std::string> > cases;
-    cases.push_back(std::make_pair("", ""));
-    cases.push_back(std::make_pair("1",
-                "1F 1F 1F 1F 1F 1F 1F 1F 1F 1F 1F 1F 1F 1F 1F 1F"));
-    cases.push_back(std::make_pair("12",
-                "12 F1 2F 12 F1 2F 12 F1 2F 12 F1 2F 12 F1 2F 12"));
-    cases.push_back(std::make_pair("87638103692640182746",
-                "87 63 81 03 69 26 40 18 27 46 F8 76 38 10 36 92"));
-    cases.push_back(std::make_pair("982751928377689164327",
-                "98 27 51 92 83 77 68 91 64 32 7F 98 27 51 92 83"));
-    cases.push_back(std::make_pair("1234567890123456123456789012345",
-                "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 5F"));
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"",   ""},
+        {"1",  "1F"},
+        {"12", "12 F"},
+        {"87638103692640182746",
+            "87 63 81 03 69 26 40 18 27 46 F"},
+        {"982751928377689164327",
+            "98 27 51 92 83 77 68 91 64 32 7F "},
+        {"1234567890123456123456789012345",
+            "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 5F"},
+    };
 
     SECTION( "testing encoding" ) { 
         for(const auto &p : cases) {
             std::string encode_bcd = bcd_encode(p.first);
             CAPTURE(p.first);
-            CHECK( p.second == string_to_hexstring(encode_bcd) );
+            if (!p.first.size()) {
+                CHECK( encode_bcd.size() == 0 );
+            }
+            else {
+                CHECK( encode_bcd.size() == 16 );
+                CHECK( p.second ==
+                        string_to_hexstring(encode_bcd).substr(0, p.second.size()) );
+            }
         }
     }
 
     SECTION( "testing decoding" ) { 
         for(const auto &p : cases) {
-            std::string code = string_from_hexstring(p.second);
+            std::string code;
+            if (!p.second.empty()) {
+                code = string_from_hexstring(
+                    p.second + std::string(
+                        "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+                    ).substr(p.second.size()));
+            }
             std::string decode_bcd = bcd_decode(code);
             CHECK( p.first == decode_bcd );
         }
@@ -186,15 +205,16 @@ TEST_CASE( "Testing BCD errors", "[bcd]" ) {
 }
 
 TEST_CASE( "Testing AES coding", "[aes]") {
-    std::vector<std::pair<std::string, std::string> > cases;
     std::string key = "12345678901234567890123456789012";
     AESCrypter aes_crypter(key);
-    cases.push_back(std::make_pair("1234567890123456",
-            "CF 21 48 02 A9 EA F1 F8 A1 68 91 6A 80 7F 60 54"));
-    cases.push_back(std::make_pair("abcdefghijklmnop",
-            "CB 3B D7 7F 8B 72 28 4A 17 66 21 88 4E 3E 06 C9"));
-    cases.push_back(std::make_pair("ABCDEFGHIJKLMNOP",
-            "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27"));
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"1234567890123456",
+            "CF 21 48 02 A9 EA F1 F8 A1 68 91 6A 80 7F 60 54"},
+        {"abcdefghijklmnop",
+            "CB 3B D7 7F 8B 72 28 4A 17 66 21 88 4E 3E 06 C9"},
+        {"ABCDEFGHIJKLMNOP",
+            "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27"},
+    };
     
     SECTION( "testing encrypt" ) {
         for(const auto &p : cases) { 
@@ -262,6 +282,42 @@ TEST_CASE( "Testing full coding", "[full][base64][aes][bcd]") {
             std::string decode_bindec = bcd_decode(decode_aes); 
             CHECK(p == decode_bindec);
         }
+    }
+}
+
+TEST_CASE( "Testing PAN masking", "[full][mask]" ) {
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"1234567890123456", "123456******3456"},
+        {"12345678901234", "123456****1234"},
+        {"123456789012345678", "123456********5678"},
+    };
+    SECTION( "testing masks" ) {
+        for (const auto &p : cases) {
+            CHECK(p.second == mask_pan(p.first));
+        }
+    }
+    SECTION( "trying to mask PAN of invalid length" ) {
+        CHECK_THROWS( mask_pan("") );
+        CHECK_THROWS( mask_pan("123456789012") );
+        CHECK_THROWS( mask_pan("12345678901234567890123") );
+    }
+}
+
+TEST_CASE( "Testing PAN normalization", "[full][normalize]" ) {
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"  1234 5678 9012 3456\t\n", "1234567890123456"},
+        {"1 2 3 4  5678901\n\n2 \t 34", "12345678901234"},
+        {"12345678901\n\n2 \t 34567890  ", "12345678901234567890"},
+    };
+    SECTION( "testing normalize" ) {
+        for (const auto &p : cases) {
+            CHECK(p.second == normalize_pan(p.first));
+        }
+    }
+    SECTION( "trying to normalize PAN with invalid characters" ) {
+        CHECK_THROWS( normalize_pan("1234567890123456*") );
+        CHECK_THROWS( normalize_pan("*1234 5678 9012 3456") );
+        CHECK_THROWS( normalize_pan("1234 5678 -012 3456") );
     }
 }
 
