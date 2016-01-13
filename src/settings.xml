@@ -4,10 +4,10 @@
     <log_name>card_proxy.log</log_name>
 
     <db_name>card_proxy_db</db_name>
-    <db_url>sqlite+sqlite:///home/vagrant/card_db.sqlite</db_url>
+    <db_url>mysql+soci://user=card_proxy_usr pass=card_proxy_pwd host=dmongo1f service=card_proxy_db</db_url>
 
     <card_proxy>
-        <port>9119</port>
+        <port>9120</port>
         <prefix>/card_bind/</prefix>
     </card_proxy>
 
@@ -25,14 +25,15 @@
     <!--
     <xi:include href="key_settings.xml" />
     -->
-<key_settings>
-    <kek2>eFfoBw3x0DY=</kek2>
-</key_settings>
+    <key_settings>
+        <kek2>Nzg5MDEyMzQ=</kek2>
+    </key_settings>
     <!-- For testing purposes:
-         kek: 5QVnB96InrkD5vH4z61BvHhX6AcN8dA29y4zGkdWiJ8=
-         kek1: 5QVnB96InrkD5vH4z61BvA== (key_keeper)
-         kek2: eFfoBw3x0DY= (config)
-         kek3: 9y4zGkdWiJ8= (database)
+         key:  12345678901234567890123456789012
+         kek:  MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+         kek1: MTIzNDU2Nzg5MDEyMzQ1Ng== (key_keeper)
+         kek2: Nzg5MDEyMzQ= (config)
+         kek3: NTY3ODkwMTI= (database)
     -->
 
     <bind_card_url>http://localhost/myfile.json</bind_card_url>

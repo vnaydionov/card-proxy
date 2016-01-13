@@ -39,9 +39,8 @@ static Domain::Card find_card_by_token(Yb::Session &session, const std::string &
     Domain::Card card;
     try {
         card = Yb::query<Domain::Card>(session)
-                //.select_from<Domain::Card>()
-                //.join<Domain::IncomingRequest>(Domain::Card::c.id ==
-                //        Domain::IncomingRequest::c::card_id)
+                .select_from<Domain::Card>()
+                .join<Domain::IncomingRequest>(Domain::Card::c.id == Domain::IncomingRequest::c.card_id)
                 .filter_by(Domain::Card::c.card_token == token)
                 .one();
     }
@@ -156,6 +155,8 @@ CardData CardCrypter::get_token(const CardData &card_data)
     int expire_month = card_data.get_as<int>("expire_month");
     Yb::DomainResultSet<Domain::Card> found_card_rs =
         Yb::query<Domain::Card>(session_)
+            .select_from<Domain::Card>()
+            .join<Domain::DataKey>()
             .filter_by(Domain::Card::c.pan_masked == pan_masked)
             .filter_by(Domain::Card::c.expire_year == expire_year)
             .filter_by(Domain::Card::c.expire_month == expire_month)
@@ -185,6 +186,8 @@ CardData CardCrypter::get_card(const std::string &token)
     CardData card_data;
     try {
         card = Yb::query<Domain::Card>(session_)
+            .select_from<Domain::Card>()
+            .join<Domain::DataKey>()
             .filter_by(Domain::Card::c.card_token == token)
             .one();
     } catch(Yb::NoDataFound &err) {
@@ -197,6 +200,8 @@ CardData CardCrypter::get_card(const std::string &token)
     card_data["card_holder"] = card.card_holder;
     Yb::DomainResultSet<Domain::IncomingRequest> request_rs =
         Yb::query<Domain::IncomingRequest>(session_)
+            .select_from<Domain::IncomingRequest>()
+            .join<Domain::DataKey>()
             .filter_by(Domain::IncomingRequest::c.card_id == card.id)
             .all();
     if (request_rs.begin() != request_rs.end()) {
@@ -278,6 +283,8 @@ const std::string CardCrypter::assemble_master_key(IConfig &config, Yb::Session 
         Domain::Config config = Yb::query<Domain::Config>(session)
             .filter_by(Domain::Config::c.ckey == "KEK3").one();
         database_key = decode_base64(config.cvalue);
+    } catch (const Yb::NoDataFound &err) {
+        return std::string();
     } catch (std::runtime_error &err) {
         // TODO: proper logging
         return std::string();

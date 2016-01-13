@@ -179,43 +179,6 @@ ElementTree::ElementPtr dek_status(Session &session, ILogger &logger,
     return resp;
 }
 
-ElementTree::ElementPtr dek_get(Session &session, ILogger &logger,
-        const StringDict &params) {
-    ElementTree::ElementPtr resp = mk_resp("success");
-    //DEKPool *dek_pool = DEKPool::get_instance();
-    DEKPool dek_pool(theApp::instance().cfg(), session);
-    DataKey data_key = dek_pool.get_active_data_key();
-    resp->sub_element("ID", Yb::to_string(data_key.id.value()));
-    resp->sub_element("DEK", data_key.dek_crypted);
-    resp->sub_element("START_TS", Yb::to_string(data_key.start_ts.value()));
-    resp->sub_element("FINISH_TS", Yb::to_string(data_key.finish_ts.value()));
-    resp->sub_element("COUNTER", Yb::to_string(data_key.counter.value()));
-    return resp;
-}
-
-ElementTree::ElementPtr dek_list(Session &session, ILogger &logger,
-        const StringDict &params) {
-    ElementTree::ElementPtr resp = mk_resp("success");
-    std::string master_key = CardCrypter::assemble_master_key(
-        theApp::instance().cfg(), session);
-    AESCrypter aes_crypter(master_key);
-    auto data_keys = Yb::query<Domain::DataKey>(session)
-            .filter_by(Domain::DataKey::c.counter < 10)
-            .all();
-    for (auto &data_key : data_keys) {
-        ElementTree::ElementPtr dk = resp->sub_element("data_key");
-        std::string dek_crypted = data_key.dek_crypted.value();
-        std::string dek_decoded = decode_base64(dek_crypted);
-        std::string dek_decrypted = string_to_hexstring(aes_crypter.decrypt(dek_decoded));
-        dk->sub_element("id", Yb::to_string(data_key.id.value()));
-        dk->sub_element("dek", dek_decrypted);
-        dk->sub_element("counter", Yb::to_string(data_key.counter.value()));
-        dk->sub_element("start_ts", Yb::to_string(data_key.start_ts.value()));
-        dk->sub_element("finish_ts", Yb::to_string(data_key.finish_ts.value()));
-    }
-    return resp;
-}
-
 ElementTree::ElementPtr get_token(Session &session, ILogger &logger,
         const StringDict &params) {
     ElementTree::ElementPtr resp = mk_resp("success");
@@ -427,8 +390,6 @@ int main(int argc, char *argv[])
 {
     CardProxyHttpWrapper handlers[] = {
         WRAP(dek_status),
-        WRAP(dek_get),
-        WRAP(dek_list),
         WRAP(get_token),
         WRAP(get_card),
         WRAP(remove_card),
