@@ -64,12 +64,13 @@ int run_server_app(const std::string &config_name,
     try {
         typedef HttpServer<HttpHandler> MyHttpServer;
         typename MyHttpServer::HandlerMap handlers;
+        std::string bind_host = "0.0.0.0";
+        int bind_port = theApp::instance().cfg().get_value_as_int("card_proxy/port");
         std::string prefix = theApp::instance().cfg().get_value("card_proxy/prefix");
         for (int i = 0; i < n_handlers; ++i)
             handlers[prefix + handlers_array[i].name()] = handlers_array[i];
         MyHttpServer server(
-                theApp::instance().cfg().get_value_as_int("card_proxy/port"),
-                handlers, &theApp::instance(),
+                bind_host, bind_port, 30, handlers, &theApp::instance(),
                 "application/json", "{ \"error\": \"unknown_error\" }");
         server.serve();
     }

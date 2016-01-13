@@ -8,12 +8,32 @@ using namespace std;
 using namespace Yb;
 using namespace Yb::StrUtils;
 
-HttpServerBase::HttpServerBase(int port, ILogger *root_logger,
-        const String &content_type, const String &bad_resp)
-    : port_(port)
+typedef void (*WorkerFunc)(HttpServerBase *, SOCKET);
+
+class WorkerThread: public Thread {
+    HttpServerBase *serv_;
+    SOCKET s_;
+    WorkerFunc worker_;
+    void on_run() { worker_(serv_, s_); }
+public:
+    WorkerThread(HttpServerBase *serv, SOCKET s, WorkerFunc worker)
+        : serv_(serv), s_(s), worker_(worker)
+    {}
+};
+
+typedef SharedPtr<WorkerThread>::Type WorkerThreadPtr;
+typedef std::vector<WorkerThreadPtr> Workers;
+
+HttpServerBase::HttpServerBase(const std::string &ip_addr, int port,
+        int back_log, ILogger *root_logger,
+        const String &content_type, const std::string &bad_resp)
+    : ip_addr_(ip_addr)
+    , port_(port)
+    , back_log_(back_log)
     , content_type_(content_type)
     , bad_resp_(bad_resp)
-    , log_(root_logger->new_logger("http_serv").release())
+    , log_(root_logger->new_logger("micro_http").release())
+    , prev_clean_ts(time(NULL))
 {}
 
 HttpHeaders
@@ -51,7 +71,7 @@ HttpServerBase::process_client_request(SOCKET cl_s)
 {
     TcpSocket cl_sock(cl_s);
     ILogger::Ptr logger = log_->new_logger("worker");
-    string bad_resp = NARROW(bad_resp_);
+    string &bad_resp = bad_resp_;
     String cont_type_resp = content_type_;
     // read and process request
     try {
@@ -60,7 +80,7 @@ HttpServerBase::process_client_request(SOCKET cl_s)
         logger->debug(buf);
         // parse request line
         Strings head_parts;
-        split_str_by_chars(buf, _T(" \t\r\n"), head_parts);
+        split_str_by_chars(WIDEN(buf), _T(" \t\r\n"), head_parts);
         if (head_parts.size() != 3)
             throw HttpParserError("process_client_request", "head_parts.size() != 3");
         HttpHeaders request_obj(head_parts[0],
@@ -104,7 +124,7 @@ HttpServerBase::process_client_request(SOCKET cl_s)
         // parse content length and type
         int cont_len = -1;
         try {
-            from_string(request_obj.get_header("Content-Length"), cont_len);
+            from_string(request_obj.get_header(_T("Content-Length")), cont_len);
         }
         catch (const std::exception &ex) {
             logger->warning(
@@ -112,17 +132,20 @@ HttpServerBase::process_client_request(SOCKET cl_s)
         }
         String cont_type;
         try {
-            cont_type = request_obj.get_header("Content-Type");
+            cont_type = request_obj.get_header(_T("Content-Type"));
         }
         catch (const std::exception &ex) {
             logger->warning(
                 string("couldn't parse Content-Type: ") + ex.what());
         }
         // read request body
-        if (cont_len > 0)
-            request_obj.set_request_body(cl_sock.read(cont_len),
-                                 str_to_lower(cont_type) ==
-                                 _T("application/x-www-form-urlencoded"));
+        if (cont_len > 0) {
+            const String prefix = _T("application/x-www-form-urlencoded");
+            bool parse_body = str_to_lower(
+                    str_substr(cont_type, 0, str_length(prefix)))
+                == _T("application/x-www-form-urlencoded");
+            request_obj.set_request_body(cl_sock.read(cont_len), parse_body);
+        }
         if (request_obj.get_method() != _T("GET") &&
             request_obj.get_method() != _T("POST"))
         {
@@ -178,55 +201,75 @@ HttpServerBase::process_client_request(SOCKET cl_s)
     cl_sock.close(true);
 }
 
-typedef void (*WorkerFunc)(HttpServerBase *, SOCKET);
+static void
+cleanup_workers(bool force,
+        time_t &prev_clean_ts, Workers &workers, Yb::ILogger *log_)
+{
+    if (force || time(NULL) - prev_clean_ts >= 5) {   // sec.
+        log_->info("clean up workers");
+        Workers workers_dead, workers_alive;
+        workers_dead.reserve(workers.size() + 1);
+        workers_alive.reserve(workers.size() + 1);
+        for (Workers::iterator i = workers.begin();
+             i != workers.end(); ++i)
+        {
+            if ((*i)->finished())
+                workers_dead.push_back(*i);
+            else
+                workers_alive.push_back(*i);
+        }
+        for (Workers::iterator i = workers_dead.begin();
+             i != workers_dead.end(); ++i)
+        {
+            (*i)->terminate();
+            (*i)->wait();
+        }
+        log_->info("workers: "
+                   "processing=" + NARROW(to_string(workers_alive.size())) +
+                   ", done=" + NARROW(to_string(workers_dead.size())));
+        workers.swap(workers_alive);
+        prev_clean_ts = time(NULL);
+    }
+}
 
-class WorkerThread: public Thread {
-    HttpServerBase *serv_;
-    SOCKET s_;
-    WorkerFunc worker_;
-    void on_run() { worker_(serv_, s_); }
-public:
-    WorkerThread(HttpServerBase *serv, SOCKET s, WorkerFunc worker)
-        : serv_(serv), s_(s), worker_(worker)
-    {}
-};
 
 void
 HttpServerBase::serve()
 {
     TcpSocket::init_socket_lib();
     log_->info("start server on port " + to_stdstring(port_));
-    sock_ = TcpSocket(TcpSocket::create());
-    sock_.bind(port_);
-    sock_.listen();
-    typedef SharedPtr<WorkerThread>::Type WorkerThreadPtr;
-    typedef std::vector<WorkerThreadPtr> Workers;
+    sock_.bind(ip_addr_, port_);
+    sock_.listen(back_log_);
     Workers workers;
     while (1) {
         // accept request
+        bool force_clean = false;
+        SOCKET cl_sock = INVALID_SOCKET;
         try {
+            log_->debug("waiting for incoming connect...");
             string ip_addr;
             int ip_port;
-            SOCKET cl_sock = sock_.accept(&ip_addr, &ip_port);
+            cl_sock = sock_.accept(&ip_addr, &ip_port);
             log_->info("accepted from " + ip_addr + ":" + to_stdstring(ip_port));
             WorkerThreadPtr worker(new WorkerThread(
                         this, cl_sock, HttpServerBase::process));
             workers.push_back(worker);
             worker->start();
-            Workers workers_dead, workers_alive;
-            for (Workers::iterator i = workers.begin(); i != workers.end(); ++i)
-                if ((*i)->finished())
-                    workers_dead.push_back(*i);
-                else
-                    workers_alive.push_back(*i);
-            for (Workers::iterator i = workers_dead.begin(); i != workers_dead.end(); ++i) {
-                (*i)->terminate();
-                (*i)->wait();
-            }
-            workers.swap(workers_alive);
         }
         catch (const std::exception &ex) {
             log_->error(string("exception: ") + ex.what());
+            if (cl_sock != INVALID_SOCKET) {
+                log_->info("closing failed socket");
+                TcpSocket s(cl_sock);
+            }
+            force_clean = true;
+        }
+        try {
+            cleanup_workers(force_clean,
+                    prev_clean_ts, workers, log_.get());
+        }
+        catch (const std::exception &ex) {
+            log_->error(string("cleanup exception: ") + ex.what());
         }
     }
 }
@@ -284,9 +327,9 @@ HttpHeaders::serialize_params(const Yb::StringDict &d)
     for (; it != end; ++it) {
         if (str_length(result))
             result += _T("&");
-        result += my_url_encode(it->first);
+        result += my_url_encode(NARROW(it->first));
         result += _T("=");
-        result += my_url_encode(it->second);
+        result += my_url_encode(NARROW(it->second));
     }
     return result;
 }

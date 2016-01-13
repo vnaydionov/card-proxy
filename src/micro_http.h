@@ -1,5 +1,5 @@
-#ifndef _CARD_PROXY__MICRO_HTTP_H_
-#define _CARD_PROXY__MICRO_HTTP_H_
+#ifndef _AUTH__MICRO_HTTP_H_
+#define _AUTH__MICRO_HTTP_H_
 
 #include <util/data_types.h>
 #include <util/string_utils.h>
@@ -85,14 +85,16 @@ public:
     }
 
     void set_response_body(const std::string &body,
-                  const Yb::String &content_type,
+                  const Yb::String &content_type=_T(""),
                   bool set_content_length=true)
     {
         body_ = body;
-        set_header(_T("Content-Type"), content_type);
-        if (set_content_length)
-            set_header(_T("Content-Length"),
-                       Yb::to_string(body.size()));
+        if (!Yb::str_empty(content_type)) {
+            set_header(_T("Content-Type"), content_type);
+            if (set_content_length)
+                set_header(_T("Content-Length"),
+                           Yb::to_string(body.size()));
+        }
     }
 
     const std::string &get_body() const { return body_; }
@@ -194,18 +196,24 @@ private:
 class HttpServerBase
 {
 public:
-    HttpServerBase(int port, Yb::ILogger *root_logger,
+    HttpServerBase(const std::string &ip_addr, int port, int back_log,
+            Yb::ILogger *root_logger,
             const Yb::String &content_type, const std::string &bad_resp);
     void serve();
+
 protected:
     virtual bool has_handler_for_path(const Yb::String &path) = 0;
     virtual const HttpHeaders call_handler(const HttpHeaders &request) = 0;
+
 private:
+    std::string ip_addr_;
     int port_;
+    int back_log_;
     Yb::String content_type_;
     std::string bad_resp_;
     Yb::ILogger::Ptr log_;
     TcpSocket sock_;
+    time_t prev_clean_ts;
 
     static void process(HttpServerBase *server, SOCKET cl_s);
     void process_client_request(SOCKET cl_s);
@@ -224,11 +232,12 @@ class HttpServer: public HttpServerBase
 {
 public:
     typedef Yb::Dict<Yb::String, Handler> HandlerMap;
-    HttpServer(int port, const HandlerMap &handlers,
-            Yb::ILogger *root_logger,
+    HttpServer(const std::string &ip_addr, int port, int back_log,
+            const HandlerMap &handlers, Yb::ILogger *root_logger,
             const Yb::String &content_type = _T("text/xml"),
             const std::string &bad_resp = "<status>NOT</status>"):
-        HttpServerBase(port, root_logger, content_type, bad_resp),
+        HttpServerBase(ip_addr, port, back_log, root_logger,
+                       content_type, bad_resp),
         handlers_(handlers)
     {}
 protected:
@@ -245,5 +254,5 @@ private:
     const HandlerMap handlers_;
 };
 
-#endif // _CARD_PROXY__MICRO_HTTP_H_
+#endif // _AUTH__MICRO_HTTP_H_
 // vim:ts=4:sts=4:sw=4:et:
