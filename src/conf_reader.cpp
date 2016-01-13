@@ -1,8 +1,8 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
-#include "conf_reader.h"
-#include <fstream>
 #include <stdexcept>
 #include <util/string_utils.h>
+#include "conf_reader.h"
+#include "utils.h"
 
 IConfig::~IConfig() {}
 
@@ -25,10 +25,7 @@ bool IConfig::get_value_as_bool(const Yb::String &key)
 
 Yb::ElementTree::ElementPtr XmlConfig::load_tree(const Yb::String &fname)
 {
-    std::ifstream file(NARROW(fname).c_str());
-    if (!file.good())
-        throw std::runtime_error("Cannot read XML config file: " + fname);
-    Yb::ElementTree::ElementPtr root = Yb::ElementTree::parse(file);
+    Yb::ElementTree::ElementPtr root = Yb::ElementTree::parse_file(fname);
     return root;
 }
 
@@ -39,11 +36,13 @@ XmlConfig::XmlConfig(const Yb::String &fname)
 
 void XmlConfig::reload()
 {
+    Yb::ScopedLock lock(config_mux_);
     config_ = load_tree(fname_);
 }
 
 const Yb::String XmlConfig::get_value(const Yb::String &key)
 {
+    Yb::ScopedLock lock(config_mux_);
     Yb::Strings parts;
     Yb::StrUtils::split_str(key, _T("/"), parts);
     Yb::ElementTree::ElementPtr cur_node = config_;
@@ -56,6 +55,7 @@ const Yb::String XmlConfig::get_value(const Yb::String &key)
 
 bool XmlConfig::has_key(const Yb::String &key)
 {
+    Yb::ScopedLock lock(config_mux_);
     try {
         get_value(key);
         return true;
@@ -73,7 +73,7 @@ const Yb::String EnvConfig::get_value(const Yb::String &key)
     Yb::String env_key = prefix_ + key;
     char *x = getenv(NARROW(env_key).c_str());
     if (!x)
-        throw std::runtime_error("No environment variable: " + NARROW(env_key));
+        throw RunTimeError("No environment variable: " + NARROW(env_key));
     return Yb::StrUtils::xgetenv(env_key);
 }
 

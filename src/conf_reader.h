@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <util/element_tree.h>
+#include <util/thread.h>
 
 class IConfig
 {
@@ -24,8 +25,12 @@ class XmlConfig: public IConfig
 {
     const Yb::String fname_;
     Yb::ElementTree::ElementPtr config_;
+    Yb::Mutex config_mux_;
 
     static Yb::ElementTree::ElementPtr load_tree(const Yb::String &fname);
+    // non-copyable
+    XmlConfig(const XmlConfig &);
+    XmlConfig &operator=(const XmlConfig &);
 public:
     XmlConfig(const Yb::String &fname);
     virtual void reload();

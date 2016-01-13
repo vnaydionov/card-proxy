@@ -1,5 +1,6 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include <openssl/aes.h>
+#include <openssl/sha.h>
 #include <iostream>
 
 #include "aes_crypter.h"
@@ -59,7 +60,18 @@ std::string AESCrypter::decrypt(const std::string &input_cipher)
 }
 
 AESBlockSizeException::AESBlockSizeException(int expected_size, const std::string &msg)
-    : std::runtime_error(msg + ": " + std::to_string(expected_size))
+    : RunTimeError(msg + ": " + std::to_string(expected_size))
 {}
+
+const std::string sha256_digest(const std::string &s)
+{
+    std::string out;
+    out.resize(SHA256_DIGEST_LENGTH);
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, s.data(), s.size());
+    SHA256_Final((unsigned char *)&out[0], &ctx);
+    return out;
+}
 
 // vim:ts=4:sts=4:sw=4:et:
