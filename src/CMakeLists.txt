@@ -56,9 +56,9 @@ target_link_libraries (
 )
 
 install (TARGETS card_proxy DESTINATION bin)
-install (PROGRAMS card_proxy-ping card_proxy_restarter.sh DESTINATION bin)
+install (PROGRAMS card_proxy-ping card_proxy-restarter DESTINATION bin)
 install (FILES card_proxy_schema.xml DESTINATION share/card_proxy)
 install (FILES key_settings.cfg.xml card_proxy.cfg.xml DESTINATION etc/card_proxy)
-install (PROGRAMS card-proxy DESTINATION etc/init.d)
+install (PROGRAMS card-proxy.init DESTINATION etc/init.d RENAME card-proxy)
 install (FILES card-proxy.logrotate DESTINATION etc/logrotate.d)
 

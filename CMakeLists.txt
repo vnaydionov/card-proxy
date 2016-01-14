@@ -83,5 +83,5 @@ endif ()
 add_subdirectory (src)
 add_subdirectory (key_keeper)
 
-install (FILES LICENSE README.md DESTINATION share/doc/card-proxy)
+install (FILES LICENSE README.md DESTINATION share/doc/card_proxy)
 

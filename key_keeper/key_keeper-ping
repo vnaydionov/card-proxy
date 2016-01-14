@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PORT=14009
+PORT=15008
 
 echo "ping" | netcat localhost $PORT 2> /dev/null | grep -q "OK"
 exit $?

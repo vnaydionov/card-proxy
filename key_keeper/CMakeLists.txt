@@ -11,6 +11,6 @@ target_link_libraries (
 
 install (TARGETS key_keeper DESTINATION bin)
 install (FILES key_keeper.cfg DESTINATION etc/card_proxy)
-install (PROGRAMS key_keeper-ping key_keeper_restarter.sh DESTINATION bin)
-#install (PROGRAMS key-keeper DESTINATION etc/init.d)
-#install (FILES key-keeper.logrotate DESTINATION etc/logrotate.d)
+install (PROGRAMS key_keeper-ping key_keeper-restarter DESTINATION bin)
+install (PROGRAMS key-keeper.init DESTINATION etc/init.d RENAME key-keeper)
+install (FILES key-keeper.logrotate DESTINATION etc/logrotate.d)
