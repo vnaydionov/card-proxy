@@ -1,0 +1,57 @@
+#!/bin/sh
+
+CP_USER="card_proxy"
+SERVANT=$(echo `basename $0` | sed 's/-/_/')
+LOG_FILE="/var/log/card_proxy/$SERVANT.log"
+SELF="$0"
+
+function log_info {
+    DT=`date '+%Y-%m-%d %H:%M:%S'`
+    MSG="$1"
+    echo "[$DT] <$SELF> info: $MSG" >> "$LOG_FILE"
+}
+
+log_info "SERVANT=$SERVANT"
+
+MODE="$1"
+log_info "MODE=$MODE"
+if [ "x$MODE" = "x" ] ; then
+    echo "Usage: $0 start|stop|restart" >&2
+    exit 1
+fi
+
+if [ "$MODE" = "stop" ] || [ "$MODE" = "restart" ] || [ "$MODE" = "start" ] ; then
+    echo "Stopping..."
+    RUNNING=`ps aux | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
+    if [ "x$RUNNING" != "x" ] ; then
+        kill $RUNNING
+        sleep 1
+        RUNNING=`ps aux | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
+        if [ "x$RUNNING" != "x" ] ; then
+            kill -9 $RUNNING
+            sleep 1
+        fi
+    fi
+fi
+
+if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
+    echo "Starting..."
+    touch "$LOG_FILE"
+    chown "$CP_USER:$CP_USER" "$LOG_FILE"
+    su $CP_USER -c "setsid \
+        /usr/bin/${SERVANT}_restarter.sh /usr/bin/$SERVANT /usr/bin/$SERVANT-ping &>> \"$LOG_FILE\" & "
+    CNT="15"
+    while [ "$CNT" != 0 ] ; do
+        if /usr/bin/$SERVANT-ping ; then
+            echo "OK"
+            exit 0
+        else
+            echo -n "."
+        fi
+        python -c 'import time; time.sleep(0.3)'
+        CNT=`python -c "print $CNT - 1"`
+    done
+    echo "FAIL"
+    exit 1
+fi
+

@@ -1,0 +1,15 @@
+#!/bin/sh
+
+SERVANT=$(echo `basename $0` | sed 's/-ping//')
+#echo "SERVANT=$SERVANT"
+
+CFG_FILE="/etc/$SERVANT/$SERVANT.cfg.xml"
+#echo "CFG_FILE=$CFG_FILE"
+
+PORT=`python -c "import xml.etree.ElementTree as et; \
+    print et.XML(open('$CFG_FILE').read())\
+    .findtext('HttpListener/Port')" 2> /dev/null`
+#echo "PORT=$PORT"
+
+curl -m 1 "http://localhost:$PORT/ping" 2> /dev/null | grep -q 'success'
+exit $?
