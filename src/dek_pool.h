@@ -2,6 +2,7 @@
 #ifndef CARD_PROXY__DEK_POOL_H
 #define CARD_PROXY__DEK_POOL_H
 
+#include "util/nlogger.h"
 #include "conf_reader.h"
 #include "domain/DataKey.h"
 
@@ -9,38 +10,42 @@ struct DEKPoolStatus;
 
 class DEKPool {
 public:
-    //static DEKPool* get_instance();
-    //static DEKPool* get_instance(Yb::Session &session);
-    //static bool delete_instance();
-    DEKPool(IConfig &config, Yb::Session &session);
-    DEKPool(const DEKPool &);
-    DEKPool& operator=(DEKPool&);
+    DEKPool(IConfig &config, Yb::ILogger &logger,
+            Yb::Session &session, const std::string &master_key);
 
-    const int get_active_dek_use_count();
+    int dek_use_count() const { return dek_use_count_; }
+    int min_active_dek_count() const { return min_active_dek_count_; }
+
     const DEKPoolStatus get_status();
-    const DEKPoolStatus check_pool();
     Domain::DataKey get_active_data_key();
-    
-    int get_max_active_dek_count();
-    int get_auto_generation_threshold();
-    int get_man_generation_threshold();
-    int get_check_timeout();
 
-    void set_max_active_dek_use_count(unsigned val);
-    void set_auto_generation_threshold(unsigned val);
-    void set_man_generation_threshold(unsigned val);
-    void set_check_timeout(unsigned val);
-    
 private:
-    //static DEKPool * instance_;
+    // non-copyable object
+    DEKPool(const DEKPool &);  
+    DEKPool &operator=(const DEKPool &);
+
+    template <class DataKeyContainer>
+    int get_unused_count(DataKeyContainer &active_deks)
+    {
+        int unused_count = 0;
+        for (auto &data_key : active_deks)
+            unused_count += dek_use_count_ - data_key.counter;
+        return unused_count;
+    }
+
+    Domain::DataKey::ResultSet query_active_deks();
+    void generate_enough_deks();
+    void fill_active_deks();
     Domain::DataKey generate_new_data_key();
 
     IConfig &config_;
+    Yb::ILogger::Ptr logger_;
     Yb::Session &session_;
+    std::string master_key_;
     int dek_use_count_;
-    int max_active_dek_count_;
     int min_active_dek_count_;
-    int check_timeout_;
+
+    Domain::DataKey::List active_deks_;
 };
 
 struct DEKPoolStatus {

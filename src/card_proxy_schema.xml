@@ -1,51 +1,52 @@
 <?xml version="1.0"?>
 <schema>
     <table name="t_config" class="Config" xml-name="config">
-        <column name="CKEY" type="string" size="40" null="false">
+        <column name="ckey" type="string" size="40" null="false">
             <primary-key />
         </column>
-        <column name="CVALUE" type="string" size="100" null="false" />
-        <column name="UPDATE_TS" type="datetime" default="sysdate" />
-    </table>
+        <column name="cvalue" type="string" size="100" null="true" />
+        <column name="update_ts" type="datetime" default="sysdate" />
+    </table> 
 
-    <table name="t_dek" sequence="S_DEK" class="DataKey" xml-name="data_key">
-        <column name="ID" type="longint">
+    <table name="t_dek" sequence="s_dek" class="DataKey" xml-name="data_key">
+        <column name="id" type="longint">
             <primary-key />
         </column>
-        <column name="DEK_CRYPTED" type="string" size="100" />
-        <column name="START_TS" type="datetime" null="false" default="sysdate" />
-        <column name="COUNTER" type="longint" null="false" default="0" />
-        <column name="FINISH_TS" type="datetime" />
+        <column name="dek_crypted" type="string" size="100" null="false" />
+        <column name="start_ts" type="datetime" null="false" default="sysdate" />
+        <column name="finish_ts" type="datetime" null="true"/>
+        <column name="counter" type="longint" null="false" default="0" />
+        <column name="old_kek" type="integer" null="false" default="0" />
     </table>
  
     <table name="t_card" sequence="s_card" class="Card" xml-name="card">
-        <column name="ID" type="longint">
+        <column name="id" type="longint">
             <primary-key />
         </column>
-        <column name="DEK_ID" type="longint">
+        <column name="dek_id" type="longint" null="false">
             <foreign-key table="t_dek" />
         </column>
-        <column name="CARD_TOKEN" type="string" null="false" size="32"/>
-        <column name="TS" type="datetime"  null="false" />
-        <column name="PAN_CRYPTED" type="string" size="25" null="false" />
-        <column name="EXPIRE_YEAR" type="integer" null="false" />
-        <column name="EXPIRE_MONTH" type="integer" null="false" />
-        <column name="CARD_HOLDER" type="string" size="100"  null="false" />
-        <column name="PAN_MASKED" type="string" size="20"  null="false"/>
+        <column name="card_token" type="string" size="32" null="false" />
+        <column name="ts" type="datetime" null="false" default="sysdate" />
+        <column name="store_ts" type="datetime" null="false" />
+        <column name="pan_crypted" type="string" size="25" null="false" />
+        <column name="expire_year" type="integer" null="false" />
+        <column name="expire_month" type="integer" null="false" />
+        <column name="card_holder" type="string" size="100" null="false" />
+        <column name="pan_masked" type="string" size="20" null="false"/>
     </table>
 
-    <table name="t_incoming_request" sequence="s_incoming_request" class="IncomingRequest" xml-name="incoming_request">
-        <column name="ID" type="longint">
+    <table name="t_incoming_request" sequence="s_incoming_request"
+            class="IncomingRequest" xml-name="incoming_request">
+        <column name="id" type="longint">
             <primary-key />
         </column>
-        <column name="DEK_ID" type="longint">
+        <column name="dek_id" type="longint" null="false">
             <foreign-key table="t_dek" />
         </column>
-        <column name="CARD_ID" type="longint">
-            <foreign-key table="t_card" />
-        </column>
-        <column name="TS" type="datetime"  null="false" />
-        <column name="CVN_CRYPTED" type="string" size="25" />
+        <column name="ts" type="datetime" null="false" default="sysdate" />
+        <column name="cvn_token" type="string" size="32" null="false" />
+        <column name="cvn_crypted" type="string" size="25" null="false" />
     </table>
 
     <relation type="one-to-many">
@@ -56,10 +57,5 @@
     <relation type="one-to-many">
         <one class="DataKey" />
         <many class="IncomingRequest" property="dek" />
-    </relation>
-    
-    <relation type="one-to-many">
-        <one class="Card" property="cvn" use-list="false"/>
-        <many class="IncomingRequest" property="card" />
     </relation>
 </schema>
