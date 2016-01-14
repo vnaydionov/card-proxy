@@ -3,19 +3,15 @@
 import os
 import sys
 import unittest
+import random
 
-from proxy_web_api import get_resp_field, call_proxy
+from proxy_web_api import get_resp_field, call_proxy, generate_random_card_data, \
+        generate_random_number
 import logger
-
-top_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-if top_dir not in sys.path:
-    sys.path = [top_dir] + sys.path
-from card_pyproxy_common import utils
 
 log = logger.get_logger()
 
-# SERVER_URI = 'http://localhost:32192/debug_api'
-SERVER_URI = 'http://localhost:19119/debug_api'
+SERVER_URI = 'http://localhost:17117/debug_api'
 
 
 class TestBaseWebApi(unittest.TestCase):
@@ -53,7 +49,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_token_with_cvn_get(self):
         log.debug('Starting test_get_token_with_cvn_get...')
-        card_data = utils.generate_random_card_data(mode='full')
+        card_data = generate_random_card_data(mode='full')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'GET', card_data)
         self.assertEqual(status, 'success')
@@ -65,7 +61,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_token_with_cvn_post(self):
         log.debug('Starting test_get_token_with_cvn_post...')
-        card_data = utils.generate_random_card_data(mode='full')
+        card_data = generate_random_card_data(mode='full')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'POST', card_data)
         self.assertEqual(status, 'success')
@@ -77,7 +73,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_token_without_cvn_get(self):
         log.debug('Starting test_get_token_without_cvn_get...')
-        card_data = utils.generate_random_card_data(mode='without_cvn')
+        card_data = generate_random_card_data(mode='without_cvn')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'GET', card_data)
         self.assertEqual(status, 'success')
@@ -87,7 +83,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_token_without_cvn_post(self):
         log.debug('Starting test_get_token_without_cvn_get_post...')
-        card_data = utils.generate_random_card_data(mode='without_cvn')
+        card_data = generate_random_card_data(mode='without_cvn')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'POST', card_data)
         self.assertEqual(status, 'success')
@@ -97,13 +93,13 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_token_multiple_duplicate_get(self):
         log.debug('Starting test_get_token_multiple_duplicate_get...')
-        card_data = utils.generate_random_card_data(mode='without_cvn')
+        card_data = generate_random_card_data(mode='without_cvn')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'GET', card_data)
         orig_pan = card_data.pan
         orig_card_token = get_resp_field(resp, 'card_token')
         for _ in range(10):
-            new_pan = orig_pan[:6] + utils.generate_random_number(6) \
+            new_pan = orig_pan[:6] + generate_random_number(6) \
                 + orig_pan[12:]
             card_data.pan = new_pan
             status, resp, f_time = call_proxy(self.server_uri,
@@ -118,13 +114,13 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_token_multiple_duplicate_post(self):
         log.debug('Starting test_get_token_multiple_duplicate_post...')
-        card_data = utils.generate_random_card_data(mode='without_cvn')
+        card_data = generate_random_card_data(mode='without_cvn')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'POST', card_data)
         orig_pan = card_data.pan
         orig_card_token = get_resp_field(resp, 'card_token')
         for _ in range(10):
-            new_pan = orig_pan[:6] + utils.generate_random_number(6) \
+            new_pan = orig_pan[:6] + generate_random_number(6) \
                 + orig_pan[12:]
             card_data.pan = new_pan
             status, resp, f_time = call_proxy(self.server_uri,
@@ -139,7 +135,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_card_get(self):
         log.debug('Starting test_get_card_get...')
-        source_card_data = utils.generate_random_card_data(mode='full')
+        source_card_data = generate_random_card_data(mode='full')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'GET', source_card_data)
         card_token = get_resp_field(resp, 'card_token')
@@ -159,7 +155,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_get_card_post(self):
         log.debug('Starting test_get_card_post...')
-        source_card_data = utils.generate_random_card_data(mode='full')
+        source_card_data = generate_random_card_data(mode='full')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'POST',
                                           source_card_data)
@@ -180,7 +176,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_remove_card_get(self):
         log.debug('Starting test_remove_card_get...')
-        source_card_data = utils.generate_random_card_data(mode='full')
+        source_card_data = generate_random_card_data(mode='full')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'GET',
                                           source_card_data)
@@ -193,7 +189,7 @@ class TestBaseWebApi(unittest.TestCase):
 
     def test_remove_card_post(self):
         log.debug('Starting test_remove_card_post...')
-        source_card_data = utils.generate_random_card_data(mode='full')
+        source_card_data = generate_random_card_data(mode='full')
         status, resp, f_time = call_proxy(self.server_uri,
                                           'get_token', 'POST',
                                           source_card_data)

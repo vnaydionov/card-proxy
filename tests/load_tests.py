@@ -9,20 +9,14 @@ from bisect import insort
 from multiprocessing import Process, Queue, Event
 from Queue import Empty
 
-from proxy_web_api import get_resp_field, call_proxy
+from proxy_web_api import get_resp_field, call_proxy, generate_random_card_data
 import logger
-
-top_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-if top_dir not in sys.path:
-    sys.path = [top_dir] + sys.path
-from card_pyproxy_common import utils
 
 log = logger.get_logger()
 
 
 HTTP_METHOD = 'POST'
-# SERVER_URI = 'http://localhost:32192/debug_api'
-SERVER_URI = 'http://localhost:19119/debug_api'
+SERVER_URI = 'http://localhost:17117/debug_api'
 
 
 def wrapped_call_proxy(method, *args):
@@ -132,7 +126,7 @@ class Worker(Process):
 
     def scenario(self):
         self.sleep()
-        card_data = utils.generate_random_card_data(mode='full')
+        card_data = generate_random_card_data(mode='full')
         status, resp, exec_time = wrapped_call_proxy('get_token', card_data)
         self.send_result('get_token', status, resp, exec_time)
         if status != 'success':

@@ -34,3 +34,7 @@ src/domain/*.bak
 
 # Logs
 *.log
+
+# Python
+*.pyc
+
