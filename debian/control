@@ -1,0 +1,28 @@
+Source: card-proxy
+Section: misc
+Priority: extra
+Maintainer: Viacheslav Naydenov <vnaydionov@gmail.com>
+Build-Depends: 
+ debhelper,
+ dh-buildinfo,
+ cdbs (>= 0.4.69~),
+ devscripts, cmake, g++ (>= 4.8), libcpprest-dev (>= 2.6), libyborm-dev (>= 0.4.7-fix7)
+Standards-Version: 3.7.3
+Homepage: https://github.com/vnaydionov/card-proxy
+
+Package: card-proxy
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: This is a HTTP proxy-server that stores the payment card data
+ sent by a user from a WEB-form or a mobile application in a secure card vault.
+ On receival of the card data the proxy passes to the upstream only an opaque
+ card token parameter.  And vice versa: when addressing the payment gate
+ the card token is automatically unwrapped to a full record.
+ The proxy code is implemented in C++.
+
+Package: card-proxy-keykeeper
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, netcat
+Description: This is a simple TCP server that keeps a portion of a key in memory,
+ automatically sharing the information between the specified peers.
+

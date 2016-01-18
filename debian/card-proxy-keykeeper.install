@@ -1,0 +1,4 @@
+usr/bin/key_keeper*
+usr/etc/card_proxy/key_keeper*
+usr/etc/init.d/key-keeper
+usr/etc/logrotate.d/key-keeper.logrotate

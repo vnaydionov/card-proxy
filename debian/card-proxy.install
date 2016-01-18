@@ -1,0 +1,7 @@
+usr/share/card_proxy
+usr/share/doc/card_proxy
+usr/bin/card_proxy*
+usr/etc/card_proxy/card_proxy*
+usr/etc/card_proxy/key_settings.cfg.xml
+usr/etc/init.d/card-proxy
+usr/etc/logrotate.d/card-proxy.logrotate

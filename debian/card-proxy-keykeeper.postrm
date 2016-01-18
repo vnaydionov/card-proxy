@@ -1,0 +1,18 @@
+#!/bin/bash
+
+case "$1" in
+    "remove" | "purge" | "abort-install" | "disappear")
+        update-rc.d key-keeper remove
+        ;;
+
+    "upgrade" | "failed-upgrade" | "abort-upgrade")
+        ;;
+
+    *)
+        echo "postrm called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
+

@@ -1,0 +1,41 @@
+#!/usr/bin/make -f
+
+DEB_SRCDIR=src
+DEB_CMAKE_INSTALL_PREFIX=/usr
+
+#include /usr/share/cdbs/1/rules/debhelper.mk
+#include /usr/share/cdbs/1/class/cmake.mk
+#include /usr/share/cdbs/1/rules/utils.mk
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+VERSION := $(shell dpkg-parsechangelog | sed -n 's/^Version: \(.*\)-.*/\1/p')
+
+%:
+	dh $@ --buildsystem cmake --with python-support
+
+override_dh_auto_configure:
+	dh_auto_configure -- -DPACKAGE_MANAGER=ON -DYBORM_ROOT=/usr -DUSE_VAULT_DEBUG_API:BOOL=ON
+
+# If you want to make use of more than one core (replace the 6 with your number of cores)
+override_dh_auto_build:
+	dh_auto_build -- -j6
+
+# If you want to disable test runs (if you officially maintain, you should not)
+override_dh_auto_test:
+
+override_dh_installdocs:
+
+CARDPROXY_DIR=debian/card-proxy
+KEYKEEPER_DIR=debian/card-proxy-keykeeper
+
+override_dh_install:
+	dh_install
+	mv $(CARDPROXY_DIR)/usr/etc $(CARDPROXY_DIR)
+	mv $(KEYKEEPER_DIR)/usr/etc $(KEYKEEPER_DIR)
+

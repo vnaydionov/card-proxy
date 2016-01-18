@@ -38,3 +38,7 @@ src/domain/*.bak
 # Python
 *.pyc
 
+# Build directory
+obj-x86_64-linux-gnu
+obj-i386-linux-gnu
+
