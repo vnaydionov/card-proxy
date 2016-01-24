@@ -57,10 +57,14 @@ cleanup(Yb::Session &session, Yb::ILogger &logger,
 
 int main(int argc, char *argv[])
 {
-    const std::string config_name = "key_keeper2.cfg.xml";
+    auto config_file = Yb::StrUtils::xgetenv("CONFIG_FILE");
+    if (!config_file.size())
+        config_file = "/etc/card_proxy/key_keeper2.cfg.xml";
     Yb::ILogger::Ptr logger;
     try {
-        theApp::instance().init(IConfig::Ptr(new XmlConfig(config_name)));
+        theApp::instance().init(
+                IConfig::Ptr(new XmlConfig(config_file)),
+                false);
         logger.reset(theApp::instance().new_logger("main").release());
     }
     catch (const std::exception &ex) {

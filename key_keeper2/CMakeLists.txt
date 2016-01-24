@@ -24,6 +24,7 @@ target_link_libraries (key_keeper2
     ssl
     ${CURL_LIBRARIES}
     ${YBUTIL_LIB}
+    ${YBORM_LIB}
     ${YB_BOOST_LIBS}
     )
 

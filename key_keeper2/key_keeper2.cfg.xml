@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <Config>
-    <Log level="DEBUG">key_keeper2.log</Log>
+    <Log level="DEBUG">/var/log/card_proxy/key_keeper2.log</Log>
     <LogLevel>
         yb.sql: DEBUG,
         micro_http: INFO,
-	method_wrapper: INFO,
+        method_wrapper: INFO,
     </LogLevel>
 
     <HttpListener>

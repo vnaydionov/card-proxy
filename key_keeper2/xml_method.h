@@ -109,10 +109,12 @@ public:
             const Yb::StringDict &params = request.get_params();
             logger->info("started path: " + NARROW(request.get_path())
                          + ", params: " + dict2str(params));
-            std::auto_ptr<Yb::Session> session(
-                    theApp::instance().new_session());
+            std::auto_ptr<Yb::Session> session;
+            if (theApp::instance().uses_db())
+                session.reset(theApp::instance().new_session().release());
             Yb::ElementTree::ElementPtr res = f_(*session, *logger, params);
-            session->commit();
+            if (theApp::instance().uses_db())
+                session->commit();
             HttpHeaders response(10, 200, _T("OK"));
             response.set_response_body(dump_result(*logger, res), cont_type);
             t.set_ok();

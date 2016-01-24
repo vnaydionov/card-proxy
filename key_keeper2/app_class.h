@@ -7,17 +7,8 @@
 #include <util/nlogger.h>
 #include <util/singleton.h>
 #include "conf_reader.h"
-#ifdef USE_DB
 #include <orm/data_object.h>
-#else
-namespace Yb {
-    struct Session {
-        void commit() { }
-        void rollback() { }
-    };
-    struct Engine { };
-}
-#endif
+
 class SyslogAppender: public Yb::ILogAppender
 {
     static char process_name[100];
@@ -43,6 +34,7 @@ class App: public Yb::ILogger
     std::auto_ptr<std::ofstream> file_stream_;
     std::auto_ptr<Yb::ILogAppender> appender_;
     Yb::ILogger::Ptr log_;
+    bool use_db_;
     std::auto_ptr<Yb::Engine> engine_;
 
     void init_log(const std::string &log_name,
@@ -50,11 +42,12 @@ class App: public Yb::ILogger
     void init_engine(const std::string &db_name);
     const std::string get_db_url();
 public:
-    App() {}
-    void init(IConfig::Ptr config);
+    App(): use_db_(true) {}
+    void init(IConfig::Ptr config, bool use_db = true);
     virtual ~App();
     IConfig &cfg();
     Yb::Engine &get_engine();
+    bool uses_db() const { return use_db_; }
     std::auto_ptr<Yb::Session> new_session();
 
     // implement ILogger

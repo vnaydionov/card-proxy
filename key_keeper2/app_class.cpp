@@ -3,9 +3,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <util/string_utils.h>
-#ifdef USE_DB
 #include <orm/domain_object.h>
-#endif
 
 using namespace std;
 
@@ -170,11 +168,7 @@ void App::init_log(const string &log_name, const string &log_level)
             appender_.reset(new Yb::LogAppender(*file_stream_));
         }
         log_.reset(new Yb::Logger(appender_.get()));
-#ifdef VAULT_DEBUG_API
-        info("Application started. Debug methods are enabled.");
-#else
         info("Application started.");
-#endif
         info("Setting level " + encode_log_level(decode_log_level(log_level))
                 + " for root logger");
         log_->set_level(decode_log_level(log_level));
@@ -220,7 +214,6 @@ const string App::get_db_url()
 
 void App::init_engine(const string &db_name)
 {
-#ifdef USE_DB
     if (!engine_.get()) {
         Yb::ILogger::Ptr yb_logger(new_logger("yb").release());
         Yb::init_schema();
@@ -235,16 +228,15 @@ void App::init_engine(const string &db_name)
         engine_->set_echo(true);
         engine_->set_logger(yb_logger);
     }
-#endif
 }
 
-void App::init(IConfig::Ptr config)
+void App::init(IConfig::Ptr config, bool use_db)
 {
     config_.reset(config.release());
     init_log(cfg().get_value("Log"), cfg().get_value("Log/@level"));
-#ifdef USE_DB
-    init_engine(cfg().get_value("DbBackend/@id"));
-#endif
+    use_db_ = use_db;
+    if (use_db_)
+        init_engine(cfg().get_value("DbBackend/@id"));
 }
 
 IConfig &App::cfg()
@@ -278,12 +270,8 @@ Yb::Engine &App::get_engine()
 
 auto_ptr<Yb::Session> App::new_session()
 {
-#ifdef USE_DB
     return auto_ptr<Yb::Session>(
-            new Yb::Session(Yb::theSchema(), get_engine()));
-#else
-    return auto_ptr<Yb::Session>();
-#endif
+            new Yb::Session(Yb::theSchema(), &get_engine()));
 }
 
 Yb::ILogger::Ptr App::new_logger(const string &name)
