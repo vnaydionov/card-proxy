@@ -81,7 +81,13 @@ if ((NOT CPPREST_INCLUDES) OR (NOT CPPREST_LIB))
     message(SEND_ERROR "C++ REST SDK not found!!")
 endif ()
 
+find_package(CURL)
+IF (NOT CURL_FOUND)
+    MESSAGE(FATAL_ERROR "Could not find the CURL library and development files.")
+ENDIF ()
+
 add_subdirectory (src)
+add_subdirectory (key_keeper2)
 add_subdirectory (key_keeper)
 
 install (FILES LICENSE README.md DESTINATION share/doc/card_proxy)

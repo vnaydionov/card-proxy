@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<Config>
+    <Log level="DEBUG">key_keeper2.log</Log>
+    <LogLevel>
+        yb.sql: DEBUG,
+        micro_http: INFO,
+	method_wrapper: INFO,
+    </LogLevel>
+
+    <HttpListener>
+        <Port>15017</Port>
+        <Host>0.0.0.0</Host>
+        <Prefix>key_keeper2/</Prefix>
+    </HttpListener>
+
+    <Peers>
+        <Timeout>1200</Timeout>
+        <RefreshInterval>5000</RefreshInterval>
+        <Peer1>http://localhost:15017/</Peer1>
+        <Peer2>http://localhost:15018/</Peer2>
+        <Peer3>http://localhost:15019/</Peer3>
+    </Peers>
+</Config> 
