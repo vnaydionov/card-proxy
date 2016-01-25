@@ -1,6 +1,8 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#include <util/string_utils.h>
 #include "card_crypter.h"
 #include "utils.h"
+#include "http_post.h"
 #include "aes_crypter.h"
 #include "dek_pool.h"
 #include "tcp_socket.h"
@@ -258,29 +260,53 @@ const std::string CardCrypter::decode_data(const std::string &dek,
     return data_encrypter.decrypt(decode_base64(data_crypted));
 }
 
-const std::string CardCrypter::recv_key_from_server(IConfig &config) {
-    TcpSocket sock(-1, config.get_value_as_int("KeyKeeper/Timeout"));
-    sock.connect(config.get_value("KeyKeeper/Host"),
-                 config.get_value_as_int("KeyKeeper/Port"));
-    sock.write("get\n");
-    std::string response = sock.readline();
-    sock.close(true);
-    std::string prefix = "key=";
-    if (response.substr(0, 4) != prefix)
-        throw RunTimeError("KeyKeeper protocol error");
-    size_t pos = response.find(' ');
-    if (std::string::npos == pos)
-        throw RunTimeError("KeyKeeper protocol error");
-    return response.substr(prefix.size(), pos - prefix.size());
+const std::string CardCrypter::recv_key_from_server(IConfig &config,
+                                                    int kek_version)
+{
+    double key_keeper_timeout =
+        config.get_value_as_int("KeyKeeper/Timeout")/1000.;
+    std::string key_keeper_uri = config.get_value("KeyKeeper/URL");
+    std::string target_id = "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
+    std::string body = http_post(key_keeper_uri + "get",
+                                 HttpParams(), key_keeper_timeout, "GET");
+    auto root = Yb::ElementTree::parse(body);
+    if (root->find_first("status")->get_text() != "success")
+        throw ::RunTimeError("recv_key_from_server: not success");
+    auto items_node = root->find_first("items");
+    auto item_nodes = items_node->find_children("item");
+    for (auto i = item_nodes->begin(), iend = item_nodes->end();
+            i != iend; ++i)
+    {
+        using Yb::StrUtils::starts_with;
+        using Yb::StrUtils::ends_with;
+        auto &node = *i;
+        const std::string &id = node->attrib_["id"];
+        if (!starts_with(id, "KEK_VER") || !ends_with(id, "_PART1"))
+            continue;
+        if (kek_version < 0 || id == target_id)
+            return node->attrib_["data"];
+    }
+    throw ::RunTimeError("recv_key_from_server: key not found");
 }
 
-void CardCrypter::send_key_to_server(IConfig &config, const std::string &key) {
-    TcpSocket sock(-1, config.get_value_as_int("KeyKeeper/Timeout"));
-    sock.connect(config.get_value("KeyKeeper/Host"),
-                 config.get_value_as_int("KeyKeeper/Port"));
-    sock.write("set key=" + key + "\n");
-    sock.close(true);
+void CardCrypter::send_key_to_server(IConfig &config,
+                                     const std::string &key,
+                                     int kek_version)
+{
+    double key_keeper_timeout =
+        config.get_value_as_int("KeyKeeper/Timeout")/1000.;
+    std::string key_keeper_uri = config.get_value("KeyKeeper/URL");
+    if (kek_version < 0)
+        kek_version = 0;
+    std::string target_id = "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
+    HttpParams params;
+    params["id"] = target_id;
+    params["data"] = key;
+    std::string body = http_post(key_keeper_uri + "set",
+                                 params, key_keeper_timeout, "POST");
+    auto root = Yb::ElementTree::parse(body);
+    if (root->find_first("status")->get_text() != "success")
+        throw ::RunTimeError("send_key_to_server: not success");
 }
-
 
 // vim:ts=4:sts=4:sw=4:et:

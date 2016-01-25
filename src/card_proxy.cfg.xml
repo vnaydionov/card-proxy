@@ -28,8 +28,7 @@
     </HttpListener>
 
     <KeyKeeper>
-        <Host>127.0.0.1</Host>
-        <Port>15008</Port>
+        <URL>http://localhost:15017/key_keeper2/</URL>
         <Timeout>2500</Timeout>  <!-- millisec -->
     </KeyKeeper>
 

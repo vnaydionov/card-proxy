@@ -105,28 +105,28 @@ int main(int argc, char *argv[])
     const std::string outbound_prefix = "/cp/outbound/";
     CardProxyHttpWrapper handlers[] = {
         // service methods
-        WRAP(ping, ping_prefix),
+        CWRAP(ping_prefix, ping),
 #ifdef VAULT_DEBUG_API
         // debug methods
-        WRAP(debug_method, dbg_prefix),
-        WRAP(dek_status, dbg_prefix),
-        WRAP(get_token, dbg_prefix),
-        WRAP(get_card, dbg_prefix),
-        WRAP(remove_card, dbg_prefix),
-        WRAP(remove_incoming_request, dbg_prefix),
-        WRAP(set_master_key, dbg_prefix),
-        WRAP(get_master_key, dbg_prefix),
-        WRAP(run_load_scenario, dbg_prefix),
+        CWRAP(dbg_prefix, debug_method),
+        CWRAP(dbg_prefix, dek_status),
+        CWRAP(dbg_prefix, get_token),
+        CWRAP(dbg_prefix, get_card),
+        CWRAP(dbg_prefix, remove_card),
+        CWRAP(dbg_prefix, remove_incoming_request),
+        CWRAP(dbg_prefix, set_master_key),
+        CWRAP(dbg_prefix, get_master_key),
+        CWRAP(dbg_prefix, run_load_scenario),
 #endif
         // proxy methods
-        WRAP(bind_card, inbound_prefix),
-        WRAP(supply_payment_data, inbound_prefix),
-        WRAP(start_payment, inbound_prefix),
-        WRAP(authorize, outbound_prefix),
+        CWRAP(inbound_prefix, bind_card),
+        CWRAP(inbound_prefix, supply_payment_data),
+        CWRAP(inbound_prefix, start_payment),
+        CWRAP(outbound_prefix, authorize),
         // a temporary proxy methods of YM host2host API
-        WRAP(status, outbound_prefix),
-        WRAP(cancel, outbound_prefix),
-        WRAP(clear, outbound_prefix),
+        CWRAP(outbound_prefix, status),
+        CWRAP(outbound_prefix, cancel),
+        CWRAP(outbound_prefix, clear),
     };
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     auto config_file = Yb::StrUtils::xgetenv("CONFIG_FILE");

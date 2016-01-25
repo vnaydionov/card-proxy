@@ -1,5 +1,6 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "key_keeper_logic.h"
+#include "utils.h"
 
 #include <util/util_config.h>
 #if defined(YBUTIL_WINDOWS)
@@ -22,10 +23,10 @@ Yb::LongInt _get_random()
 #else
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1)
-        throw std::runtime_error("can't open /dev/urandom");
+        throw ::RunTimeError("can't open /dev/urandom");
     if (read(fd, &buf, sizeof(buf)) != sizeof(buf)) {
         close(fd);
-        throw std::runtime_error("can't read from /dev/urandom");
+        throw ::RunTimeError("can't read from /dev/urandom");
     }
     close(fd);
 #endif
@@ -54,7 +55,7 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         params, peer_timeout_, http_method);
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
-        throw std::runtime_error("call_peer: not success");
+        throw ::RunTimeError("call_peer: not success");
     std::string app_id = root->find_first("app_id")->get_text();
     Storage storage;
     auto items_node = root->find_first("items");

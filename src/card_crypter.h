@@ -143,8 +143,10 @@ private:
     Domain::Card save_card(const CardData &card_data);
     Domain::IncomingRequest save_cvn(const CardData &card_data);
 
-    static const std::string recv_key_from_server(IConfig &config);
-    static void send_key_to_server(IConfig &config, const std::string &key);
+    static const std::string recv_key_from_server(IConfig &config,
+            int kek_version = -1);
+    static void send_key_to_server(IConfig &config,
+            const std::string &key, int kek_version = -1);
 };
 
 class TokenNotFound: public RunTimeError

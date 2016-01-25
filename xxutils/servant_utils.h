@@ -8,14 +8,16 @@
 #include <util/data_types.h>
 #include <util/nlogger.h>
 #include <util/element_tree.h>
+#include <orm/data_object.h>
 
+#include "micro_http.h"
 #include "utils.h"
 
+void randomize();
 const std::string money2str(const Yb::Decimal &x);
 const std::string timestamp2str(double ts);
 double datetime2timestamp(const Yb::DateTime &d);
 double datetime_diff(const Yb::DateTime &a, const Yb::DateTime &b);
-void randomize();
 const std::string uri_decode(const std::string &s);
 const std::string serialize_params(const Yb::StringDict &params);
 
@@ -52,6 +54,44 @@ public:
     virtual ~ApiResult() throw () {}
     Yb::ElementTree::ElementPtr result() const { return p_; }
 };
+
+typedef const HttpHeaders (*PlainHttpHandler)(
+        Yb::ILogger &logger, const HttpHeaders &request);
+
+typedef Yb::ElementTree::ElementPtr (*XmlHttpHandler)(
+        Yb::Session &session, Yb::ILogger &logger,
+        const Yb::StringDict &params);
+
+class XmlHttpWrapper
+{
+    Yb::String name_, prefix_, default_status_;
+    XmlHttpHandler f_;
+    PlainHttpHandler g_;
+    boost::shared_ptr<Yb::ILogger> logger_;
+
+    std::string dump_result(Yb::ElementTree::ElementPtr res);
+
+    const HttpHeaders try_call(TimerGuard &t,
+                               const HttpHeaders &request, int n);
+
+public:
+    XmlHttpWrapper(): f_(NULL), g_(NULL) {}
+
+    XmlHttpWrapper(const Yb::String &name, XmlHttpHandler f,
+            const Yb::String &prefix = _T(""),
+            const Yb::String &default_status = _T("internal_error"));
+
+    XmlHttpWrapper(const Yb::String &name, PlainHttpHandler g,
+            const Yb::String &prefix = _T(""),
+            const Yb::String &default_status = _T("internal_error"));
+
+    const Yb::String &name() const { return name_; }
+    const Yb::String &prefix() const { return prefix_; }
+
+    const HttpHeaders operator() (const HttpHeaders &request);
+};
+
+#define WRAP(prefix, func) XmlHttpWrapper(_T(#func), func, prefix)
 
 #endif // CARD_PROXY__SERVANT_UTILS_H
 // vim:ts=4:sts=4:sw=4:et:

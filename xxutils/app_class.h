@@ -1,3 +1,4 @@
+// -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #ifndef _AUTH__APP_H_
 #define _AUTH__APP_H_
 
@@ -6,8 +7,8 @@
 #include <fstream>
 #include <util/nlogger.h>
 #include <util/singleton.h>
-#include "conf_reader.h"
 #include <orm/data_object.h>
+#include "conf_reader.h"
 
 class SyslogAppender: public Yb::ILogAppender
 {

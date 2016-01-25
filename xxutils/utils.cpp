@@ -283,7 +283,7 @@ const std::string get_process_name()
     const std::string file_name = "/proc/self/cmdline";
     std::ifstream inp(file_name.c_str());
     if (!inp)
-        throw std::runtime_error("can't open file: " + file_name);
+        throw ::RunTimeError("can't open file: " + file_name);
     std::string cmdline;
     std::copy(std::istream_iterator<char>(inp),
               std::istream_iterator<char>(),

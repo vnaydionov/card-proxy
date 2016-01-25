@@ -91,7 +91,7 @@ web::http::http_response proxy_any(Yb::ILogger &logger,
 }
 
 
-typedef web::http::http_response (*PlainHttpHandler)(
+typedef web::http::http_response (*PlainCBHttpHandler)(
         Yb::ILogger &logger, web::http::http_request &request);
 
 typedef Yb::ElementTree::ElementPtr (*XmlHttpHandler)(
@@ -102,7 +102,7 @@ class CardProxyHttpWrapper
 {
     std::string name_, prefix_, default_status_;
     XmlHttpHandler f_;
-    PlainHttpHandler g_;
+    PlainCBHttpHandler g_;
 
     std::string dump_result(Yb::ILogger &logger, Yb::ElementTree::ElementPtr res)
     {
@@ -149,7 +149,7 @@ public:
         , default_status_(default_status), f_(f), g_(NULL)
     {}
 
-    CardProxyHttpWrapper(const std::string &name, PlainHttpHandler g,
+    CardProxyHttpWrapper(const std::string &name, PlainCBHttpHandler g,
             const std::string &prefix = "",
             const std::string &default_status = "not_available")
         : name_(name), prefix_(prefix)
@@ -195,7 +195,7 @@ public:
     }
 };
 
-#define WRAP(func, prefix) CardProxyHttpWrapper(#func, func, prefix)
+#define CWRAP(prefix, func) CardProxyHttpWrapper(#func, func, prefix)
 
 template <class HttpHandler>
 inline int run_server_app(const std::string &config_name,
