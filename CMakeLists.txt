@@ -86,6 +86,7 @@ IF (NOT CURL_FOUND)
     MESSAGE(FATAL_ERROR "Could not find the CURL library and development files.")
 ENDIF ()
 
+add_subdirectory (xxutils)
 add_subdirectory (src)
 add_subdirectory (key_keeper2)
 add_subdirectory (key_keeper)

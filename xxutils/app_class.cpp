@@ -4,41 +4,11 @@
 #include <stdexcept>
 #include <util/string_utils.h>
 #include <orm/domain_object.h>
+#include "utils.h"
 
 using namespace std;
 
 char SyslogAppender::process_name[100];
-
-const std::string get_process_name()
-{
-    const std::string file_name = "/proc/self/cmdline";
-    std::ifstream inp(file_name.c_str());
-    if (!inp)
-        throw std::runtime_error("can't open file: " + file_name);
-    std::string cmdline;
-    std::copy(std::istream_iterator<char>(inp),
-              std::istream_iterator<char>(),
-              std::back_inserter(cmdline));
-    size_t pos = cmdline.find('\0');
-    if (std::string::npos != pos)
-        cmdline = cmdline.substr(0, pos);
-    pos = cmdline.rfind('/');
-    if (std::string::npos != pos)
-        cmdline = cmdline.substr(pos + 1);
-    return cmdline;
-}
-
-const std::string fmt_string_escape(const std::string &s)
-{
-    std::string r;
-    r.reserve(s.size() * 2);
-    for (size_t pos = 0; pos < s.size(); ++pos) {
-        if ('%' == s[pos])
-            r += '%';
-        r += s[pos];
-    }
-    return r;
-}
 
 int SyslogAppender::log_level_to_syslog(int log_level)
 {
@@ -143,7 +113,7 @@ static int decode_log_level(const string &log_level0)
         return Yb::ll_DEBUG;
     if (log_level == "trace"    || log_level == "trc" || log_level == "trac")
         return Yb::ll_TRACE;
-    throw runtime_error("invalid log level: " + log_level);
+    throw RunTimeError("invalid log level: " + log_level);
 }
 
 static const string encode_log_level(int level)
@@ -164,7 +134,7 @@ void App::init_log(const string &log_name, const string &log_level)
         else {
             file_stream_.reset(new ofstream(log_name.data(), ios::app));
             if (file_stream_->fail())
-                throw runtime_error("can't open logfile: " + log_name);
+                throw RunTimeError("can't open logfile: " + log_name);
             appender_.reset(new Yb::LogAppender(*file_stream_));
         }
         log_.reset(new Yb::Logger(appender_.get()));
@@ -209,7 +179,7 @@ const string App::get_db_url()
     if (type == "mysql+odbc") {
         return type + "://" + user + ":" + pass + "@" + db;
     }
-    throw runtime_error("invalid DbBackend configuration");
+    throw RunTimeError("invalid DbBackend configuration");
 }
 
 void App::init_engine(const string &db_name)
@@ -264,7 +234,7 @@ App::~App()
 Yb::Engine &App::get_engine()
 {
     if (!engine_.get())
-        throw runtime_error("engine not created");
+        throw RunTimeError("engine not created");
     return *engine_.get();
 }
 
@@ -277,28 +247,28 @@ auto_ptr<Yb::Session> App::new_session()
 Yb::ILogger::Ptr App::new_logger(const string &name)
 {
     if (!log_.get())
-        throw runtime_error("log not open");
+        throw RunTimeError("log not opened");
     return log_->new_logger(name);
 }
 
 Yb::ILogger::Ptr App::get_logger(const std::string &name)
 {
     if (!log_.get())
-        throw runtime_error("log not opened");
+        throw RunTimeError("log not opened");
     return log_->get_logger(name);
 }
 
 int App::get_level()
 {
     if (!log_.get())
-        throw runtime_error("log not opened");
+        throw RunTimeError("log not opened");
     return log_->get_level();
 }
 
 void App::set_level(int level)
 {
     if (!log_.get())
-        throw runtime_error("log not opened");
+        throw RunTimeError("log not opened");
     log_->set_level(level);
 }
 

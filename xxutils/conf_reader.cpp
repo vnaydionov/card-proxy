@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <util/string_utils.h>
 #include "conf_reader.h"
+#include "utils.h"
 
 IConfig::~IConfig() {}
 
@@ -71,7 +72,7 @@ const Yb::String EnvConfig::get_value(const Yb::String &key)
     Yb::String env_key = prefix_ + key;
     char *x = getenv(NARROW(env_key).c_str());
     if (!x)
-        throw std::runtime_error("No environment variable: " + NARROW(env_key));
+        throw RunTimeError("No environment variable: " + NARROW(env_key));
     return Yb::StrUtils::xgetenv(env_key);
 }
 

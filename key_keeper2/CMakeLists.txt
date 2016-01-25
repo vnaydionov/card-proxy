@@ -3,14 +3,7 @@ include_directories (
     ${BOOST_INCLUDEDIR}
     ${YBORM_INCLUDES}
     ${CURL_INCLUDE_DIR}
-    )
-
-add_library (servant_skel STATIC
-    app_class.cpp
-    conf_reader.cpp
-    http_post.cpp
-    micro_http.cpp
-    tcp_socket.cpp
+    ${PROJECT_SOURCE_DIR}/xxutils
     )
 
 add_executable (key_keeper2
@@ -19,7 +12,7 @@ add_executable (key_keeper2
     )
 
 target_link_libraries (key_keeper2
-    servant_skel
+    xxutils
     crypto
     ssl
     ${CURL_LIBRARIES}
