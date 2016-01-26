@@ -1,3 +1,9 @@
+card-proxy (0.5.1) unstable; urgency=low
+
+  * add key_keeper2
+
+ -- Vaclav Naydionov (linux rulez) <vaclav@yandex.ru>  Sun, 26 Dec 2015 11:35:02 +0300
+
 card-proxy (0.5.0) unstable; urgency=low
 
   * initial build

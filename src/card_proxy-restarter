@@ -2,8 +2,8 @@
 
 SELF="$0"
 SERVANT=$(echo `basename $0` | sed 's/-restarter//' | sed 's/-/_/')
-BIN="$1"
-PINGER="$2"
+BIN="$2"
+PINGER="$1"
 shift
 shift
 DELAY=2
@@ -16,7 +16,7 @@ log_info () {
     echo "[$DT] <$SELF> info: $MSG"
 }
 
-trap "echo SIGHUP received" SIGHUP
+trap "echo SIGHUP received" HUP
 
 log_info "BIN=$BIN"
 log_info "PINGER=$PINGER"

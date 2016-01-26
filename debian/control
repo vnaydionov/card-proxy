@@ -26,3 +26,9 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, netcat
 Description: This is a simple TCP server that keeps a portion of a key in memory,
  automatically sharing the information between the specified peers.
 
+Package: card-proxy-keykeeper2
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: This is a simple HTTP server that keeps a portion of a key in memory,
+ automatically sharing the information between the specified peers.
+

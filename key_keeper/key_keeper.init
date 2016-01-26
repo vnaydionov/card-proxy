@@ -22,11 +22,11 @@ fi
 
 if [ "$MODE" = "stop" ] || [ "$MODE" = "restart" ] || [ "$MODE" = "start" ] ; then
     echo "Stopping..."
-    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
+    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT$" | grep -v grep | awk '{print$2}'`
     if [ "x$RUNNING" != "x" ] ; then
         kill $RUNNING
         sleep 1
-        RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
+        RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT$" | grep -v grep | awk '{print$2}'`
         if [ "x$RUNNING" != "x" ] ; then
             kill -9 $RUNNING
             sleep 1
@@ -39,7 +39,7 @@ if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
     touch "$LOG_FILE"
     chown "$CP_USER:$CP_USER" "$LOG_FILE"
     su $CP_USER -c "setsid \
-        ${SERVANT}-restarter $SERVANT $SERVANT-ping &>> \"$LOG_FILE\" & "
+        ${SERVANT}-restarter $SERVANT-ping $SERVANT &>> \"$LOG_FILE\" & "
     CNT="15"
     while [ "$CNT" != 0 ] ; do
         if $SERVANT-ping ; then

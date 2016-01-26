@@ -27,10 +27,17 @@
         <Port>17117</Port>
     </HttpListener>
 
+    <!--
     <KeyKeeper>
-        <URL>http://localhost:15017/key_keeper2/</URL>
-        <Timeout>2500</Timeout>  <!-- millisec -->
+        <Host>127.0.0.1</Host>
+        <Port>15008</Port>
+        <Timeout>2500</Timeout>
     </KeyKeeper>
+    -->
+    <KeyKeeper2>
+        <URL>http://localhost:15017/key_keeper2/</URL>
+        <Timeout>2500</Timeout>
+    </KeyKeeper2>
 
     <xi:include href="key_settings.cfg.xml" />
     <!-- For testing purposes:

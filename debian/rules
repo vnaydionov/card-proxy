@@ -33,9 +33,11 @@ override_dh_installdocs:
 
 CARDPROXY_DIR=debian/card-proxy
 KEYKEEPER_DIR=debian/card-proxy-keykeeper
+KEYKEEPER2_DIR=debian/card-proxy-keykeeper2
 
 override_dh_install:
 	dh_install
 	mv $(CARDPROXY_DIR)/usr/etc $(CARDPROXY_DIR)
 	mv $(KEYKEEPER_DIR)/usr/etc $(KEYKEEPER_DIR)
+	mv $(KEYKEEPER2_DIR)/usr/etc $(KEYKEEPER2_DIR)
 

@@ -42,3 +42,11 @@ src/domain/*.bak
 obj-x86_64-linux-gnu
 obj-i386-linux-gnu
 
+# Debian
+debian/*.substvars
+debian/card-proxy-keykeeper
+debian/card-proxy-keykeeper2
+debian/card-proxy
+debian/files
+debian/tmp
+

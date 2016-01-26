@@ -1,6 +1,13 @@
 #!/bin/sh
 
-PORT=15008
+SERVANT=$(echo `basename $0` | sed 's/-ping//')
+#echo "SERVANT=$SERVANT"
+
+CFG_FILE="/etc/card_proxy/$SERVANT.cfg"
+#echo "CFG_FILE=$CFG_FILE"
+
+PORT=`cat $CFG_FILE | grep bind_port | sed 's/.*=//'`
+#echo "PORT=$PORT"
 
 echo "ping" | netcat localhost $PORT 2> /dev/null | grep -q "OK"
 exit $?
