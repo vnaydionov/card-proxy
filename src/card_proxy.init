@@ -2,7 +2,7 @@
 
 CP_USER="card_proxy"
 SERVANT=$(echo `basename $0` | sed 's/-/_/')
-LOG_FILE="/var/log/card_proxy/$SERVANT.log"
+LOG_FILE="/var/log/$CP_USER/$SERVANT.log"
 SELF="$0"
 
 log_info () {
@@ -11,27 +11,50 @@ log_info () {
     echo "[$DT] <$SELF> info: $MSG" >> "$LOG_FILE"
 }
 
+kill_running () {
+    SIG=$1
+    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT$" | grep -v grep | awk '{print$2}'`
+    if [ "x$RUNNING" != "x" ] ; then
+        echo "Sending $SIG..."
+        kill -$SIG $RUNNING
+        return 0
+    fi
+    return 1
+}
+
+stop_service () {
+    echo "Stopping..."
+    if kill_running TERM ; then
+        sleep 1
+        if kill_running KILL ; then
+            sleep 1
+        fi
+    fi
+}
+
 log_info "SERVANT=$SERVANT"
 
 MODE="$1"
 log_info "MODE=$MODE"
 if [ "x$MODE" = "x" ] ; then
-    echo "Usage: $0 start|stop|restart" >&2
+    echo "Usage: $0 start|stop|restart|reload" >&2
     exit 1
 fi
 
-if [ "$MODE" = "stop" ] || [ "$MODE" = "restart" ] || [ "$MODE" = "start" ] ; then
-    echo "Stopping..."
-    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
-    if [ "x$RUNNING" != "x" ] ; then
-        kill $RUNNING
-        sleep 1
-        RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
-        if [ "x$RUNNING" != "x" ] ; then
-            kill -9 $RUNNING
-            sleep 1
-        fi
+if [ "$MODE" = "reload" ] ; then
+    echo "Reloading..."
+    if kill_running HUP ; then
+        sleep 3
+        echo "Done."
+        exit 0
+    else
+        echo "Not started."
+        exit 1
     fi
+fi
+
+if [ "$MODE" = "stop" ] || [ "$MODE" = "restart" ] || [ "$MODE" = "start" ] ; then
+    stop_service
 fi
 
 if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
@@ -39,10 +62,10 @@ if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
     touch "$LOG_FILE"
     chown "$CP_USER:$CP_USER" "$LOG_FILE"
     su $CP_USER -c "setsid \
-        ${SERVANT}-restarter $SERVANT $SERVANT-ping &>> \"$LOG_FILE\" & "
+        /usr/bin/${SERVANT}-restarter /usr/bin/$SERVANT-ping /usr/bin/$SERVANT &>> \"$LOG_FILE\" & "
     CNT="15"
     while [ "$CNT" != 0 ] ; do
-        if $SERVANT-ping ; then
+        if /usr/bin/$SERVANT-ping ; then
             echo "OK"
             exit 0
         else
@@ -52,6 +75,7 @@ if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
         CNT=`python -c "print $CNT - 1"`
     done
     echo "FAIL"
+    stop_service
     exit 1
 fi
 
