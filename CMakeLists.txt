@@ -4,7 +4,7 @@ project (card_proxy)
 
 option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
 option (CPPREST_ROOT "Path where C++ REST SDK is installed" /usr/local)
-option (USE_VAULT_DEBUG_API "Whether to include debug methods in the build" OFF)
+option (USE_VAULT_DEBUG_API "Whether to include debug methods in the build" ON)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     SET(ENABLE_CXX11 "-std=c++11")

@@ -44,7 +44,9 @@ void CardCrypter::change_master_key(const std::string &key)
 {
     config_.reload();
     auto deks = Yb::query<Domain::DataKey>(session_).all();
-    for (auto &dek : deks) {
+    auto i = deks.begin(), iend = deks.end();
+    for (; i != iend; ++i) {
+        auto &dek = *i;
         std::string old_dek = decode_dek(dek.dek_crypted);
         std::string new_dek = encode_data(key, old_dek);
         dek.dek_crypted = new_dek;
@@ -129,7 +131,9 @@ CardData CardCrypter::get_token(const CardData &card_data)
                 .filter_by(Domain::Card::c.expire_year == card_data.expire_year)
                 .filter_by(Domain::Card::c.expire_month == card_data.expire_month)
                 .all();
-        for (auto &found_card : found_card_rs) {
+        auto i = found_card_rs.begin(), iend = found_card_rs.end();
+        for (; i != iend; ++i) {
+            auto &found_card = *i;
             std::string dek = decode_dek(found_card.dek->dek_crypted);
             std::string pan = bcd_decode(decode_data(dek, found_card.pan_crypted));
             session_.debug("pan_decryped=" + pan + ", pan=" + card_data.pan);
@@ -237,11 +241,11 @@ const std::string CardCrypter::assemble_master_key(IConfig &config,
     std::string out = server_key + config_key + database_key;
     if (out.size() != 32)
         throw Yb::RunTimeError("invalid master key length: "
-                + std::to_string(out.size()));
+                + Yb::to_string(out.size()));
     out = sha256_digest(out);
     if (out.size() != 32)
         throw Yb::RunTimeError("invalid master key length: "
-                + std::to_string(out.size()));
+                + Yb::to_string(out.size()));
     logger.debug("master key assembled OK");
     return out;
 }

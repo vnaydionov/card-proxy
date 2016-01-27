@@ -36,7 +36,7 @@ void dump_nested_response(web::http::http_response &nested_response,
                           Yb::ILogger &logger)
 {
     Yb::ILogger::Ptr nest_logger(logger.new_logger("nested").release());
-    nest_logger->debug(std::to_string(nested_response.status_code()) +
+    nest_logger->debug(Yb::to_string(nested_response.status_code()) +
                         " " + nested_response.reason_phrase());
     for (const auto &p : nested_response.headers()) {
         nest_logger->debug(p.first + ": " + p.second);
@@ -131,7 +131,7 @@ inline int run_server_app(const std::string &config_name,
         int bind_port = theApp::instance().cfg()
             .get_value_as_int("HttpListener/Port");
         std::string listen_at = "http://" + bind_host + ":"
-                + std::to_string(bind_port) + "/";
+                + Yb::to_string(bind_port) + "/";
         logger->error("listen at: " + listen_at);
         typedef HttpServer<HttpHandler> MyHttpServer;
         typename MyHttpServer::HandlerMap handlers;

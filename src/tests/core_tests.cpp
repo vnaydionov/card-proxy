@@ -28,14 +28,16 @@ TEST_CASE( "Testing HEX string operations", "[hex][string]" ) {
     };
 
     SECTION( "testing encoding" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encoded = string_to_hexstring(p.first);
             CHECK(p.second == encoded);
         }
     }
 
     SECTION( "testing decoding" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string decoded = string_from_hexstring(p.second);
             CHECK(p.first == decoded);
         }
@@ -51,14 +53,16 @@ TEST_CASE( "Testing HEX string operations, without spaces", "[hex][string]" ) {
     };
 
     SECTION( "testing encoding" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encoded = string_to_hexstring(p.first, HEX_LOWERCASE|HEX_NOSPACES);
             CHECK(p.second == encoded);
         }
     }
 
     SECTION( "testing decoding" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string decoded = string_from_hexstring(p.second, HEX_NOSPACES);
             CHECK(p.first == decoded);
         }
@@ -87,21 +91,24 @@ TEST_CASE( "Testing BASE64 coding", "[base64]" ) {
     };
     
     SECTION( "testing encoding" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode64 = encode_base64(p.first);
             CHECK( p.second == encode64 );
         }
     }
 
     SECTION( "testing decoding" ) {
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string decode64 = decode_base64(p.second);
             CHECK( p.first == decode64 );
         }
     }
 
     SECTION( "testing encode/decode" ) {
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode64 = encode_base64(p.first);
             std::string decode64 = decode_base64(encode64);
             CHECK( p.first == decode64 );
@@ -114,12 +121,13 @@ TEST_CASE( "Testing BASE64 random strings", "[base64]" ) {
     for (int i = 0; i < B64_TESTS; ++i) {
         int rnd_len = rand() % 20;
         std::string gen_str = generate_random_string(rnd_len);
-        REQUIRE( rnd_len == gen_str.size() );
+        REQUIRE( rnd_len == (int)gen_str.size() );
         cases.push_back(gen_str);
     }
 
     SECTION( "testing coding" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode64 = encode_base64(p);
             std::string decode64 = decode_base64(encode64);
             CHECK( p == decode64 );
@@ -150,7 +158,8 @@ TEST_CASE( "Testing BCD coding", "[bcd]" ) {
     };
 
     SECTION( "testing encoding" ) { 
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode_bcd = bcd_encode(p.first);
             CAPTURE(p.first);
             if (!p.first.size()) {
@@ -165,7 +174,8 @@ TEST_CASE( "Testing BCD coding", "[bcd]" ) {
     }
 
     SECTION( "testing decoding" ) { 
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string code;
             if (!p.second.empty()) {
                 code = string_from_hexstring(
@@ -184,12 +194,13 @@ TEST_CASE( "Testing BCD random_coding", "[bcd]" ) {
     for(int i = 0; i < BCD_TESTS; ++i) {
         int rnd_len = rand() % 20 + 1;
         std::string gen_str = generate_random_number(rnd_len);
-        REQUIRE( rnd_len == gen_str.size() );
+        REQUIRE( rnd_len == (int)gen_str.size() );
         cases.push_back(gen_str);
     }
 
     SECTION( "testing encode/decode" ) {
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode_bcd = bcd_encode(p);
             std::string decode_bcd = bcd_decode(encode_bcd);
             CHECK( p == decode_bcd);
@@ -217,14 +228,16 @@ TEST_CASE( "Testing AES coding", "[aes]") {
     };
     
     SECTION( "testing encrypt" ) {
-        for(const auto &p : cases) { 
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string aes_encode = aes_crypter.encrypt(p.first);
             CHECK(p.second == string_to_hexstring(aes_encode));
         }
     }
 
     SECTION( "testing decrypt" ) {
-        for(const auto &p : cases) { 
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string code = string_from_hexstring(p.second);
             std::string aes_decode = aes_crypter.decrypt(code);
             CAPTURE(p.second);
@@ -243,7 +256,8 @@ TEST_CASE( "Testing AES random coding", "[aes]") {
     }
 
     SECTION( "testing encode/decode" ) { 
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode_aes = aes_crypter.encrypt(p);
             std::string decode_aes = aes_crypter.decrypt(encode_aes);
             CHECK(p == decode_aes);
@@ -273,7 +287,8 @@ TEST_CASE( "Testing full coding", "[full][base64][aes][bcd]") {
     }
 
     SECTION( "testing encode/decode" ) {
-        for(const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             std::string encode_bindec = bcd_encode(p);
             std::string encode_aes =    aes_crypter.encrypt(encode_bindec);
             std::string encode_b64 =    encode_base64(encode_aes);
@@ -292,7 +307,8 @@ TEST_CASE( "Testing PAN masking", "[full][mask]" ) {
         {"123456789012345678", "123456********5678"},
     };
     SECTION( "testing masks" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             CHECK(p.second == mask_pan(p.first));
         }
     }
@@ -310,7 +326,8 @@ TEST_CASE( "Testing PAN normalization", "[full][normalize]" ) {
         {"12345678901\n\n2 \t 34567890  ", "12345678901234567890"},
     };
     SECTION( "testing normalize" ) {
-        for (const auto &p : cases) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
             CHECK(p.second == normalize_pan(p.first));
         }
     }

@@ -7,7 +7,8 @@
 #include <fcntl.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
-#include <cpprest/details/stack_trace.h>
+#include <util/string_utils.h>
+#include "stack_trace.h"
 #include "utils.h"
 
 RunTimeError::RunTimeError(const std::string &msg)
@@ -32,7 +33,7 @@ int hexchar_to_int(char symbol)
     else if (symbol >= 'a' && symbol <= 'f')
         return symbol - 'a' + 10;
     throw RunTimeError("Invalid HEX digit character: " +
-            std::to_string((int)(unsigned char)symbol));
+            Yb::to_string((int)(unsigned char)symbol));
 }
  
 std::string string_to_hexstring(const std::string &input, int mode)
@@ -239,7 +240,7 @@ std::string generate_random_hex_string(size_t length)
 std::string mask_pan(const std::string &pan)
 {
     if (pan.size() < 13 || pan.size() > 20)
-        throw RunTimeError("Strange PAN length: " + std::to_string(pan.size()));
+        throw RunTimeError("Strange PAN length: " + Yb::to_string(pan.size()));
     return pan.substr(0, 6) + std::string(pan.size() - 10, '*') + pan.substr(pan.size() - 4);
 }
 
@@ -252,7 +253,7 @@ std::string normalize_pan(const std::string &pan)
         if (c >= '0' && c <= '9')
             r += c;
         else if (!std::strchr(" \t\n\r", c))
-            throw RunTimeError("Wrong character in PAN: " + std::to_string((int )c));
+            throw RunTimeError("Wrong character in PAN: " + Yb::to_string((int )c));
     }
     return r;
 }

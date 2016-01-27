@@ -41,11 +41,11 @@ struct CardData
     bool empty() const { return !expire_year && !expire_month; }
 
     const std::string format_year() const {
-        return std::to_string(expire_year);
+        return Yb::to_string(expire_year);
     }
 
     const std::string format_month() const {
-        std::string s = std::to_string(expire_month);
+        std::string s = Yb::to_string(expire_month);
         if (s.size() == 1)
             s = "0" + s;
         return s;

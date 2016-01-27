@@ -28,8 +28,9 @@ private:
     int get_unused_count(DataKeyContainer &active_deks)
     {
         int unused_count = 0;
-        for (auto &data_key : active_deks)
-            unused_count += dek_use_count_ - data_key.counter;
+        auto i = active_deks.begin(), iend = active_deks.end();
+        for (; i != iend; ++i)
+            unused_count += dek_use_count_ - i->counter;
         return unused_count;
     }
 

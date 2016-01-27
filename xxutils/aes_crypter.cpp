@@ -2,6 +2,7 @@
 #include <openssl/aes.h>
 #include <openssl/sha.h>
 #include <iostream>
+#include <util/string_utils.h>
 
 #include "aes_crypter.h"
 #include "utils.h"
@@ -60,7 +61,7 @@ std::string AESCrypter::decrypt(const std::string &input_cipher)
 }
 
 AESBlockSizeException::AESBlockSizeException(int expected_size, const std::string &msg)
-    : RunTimeError(msg + ": " + std::to_string(expected_size))
+    : RunTimeError(msg + ": " + Yb::to_string(expected_size))
 {}
 
 const std::string sha256_digest(const std::string &s)
