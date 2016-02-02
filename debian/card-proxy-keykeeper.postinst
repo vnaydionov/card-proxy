@@ -1,16 +1,23 @@
 #!/bin/bash
 
+CP_USER="cpr_keykeeper"
+
 case "$1" in
     "configure")
-        grep -q '^card_proxy:' /etc/passwd || ( \
-            adduser --gecos 'Card.Proxy' --disabled-password card_proxy ; \
-            mkdir -p /var/run/card_proxy /var/log/card_proxy ; \
-            chown card_proxy:root /var/log/card_proxy /var/run/card_proxy )
+        grep -q "^$CP_USER:" /etc/passwd || ( \
+            adduser --gecos 'CardProxy.KeyKeeper' --disabled-password $CP_USER ; \
+            mkdir -p /var/run/$CP_USER /var/log/$CP_USER ; \
+            chown $CP_USER:root /var/log/$CP_USER /var/run/$CP_USER )
+
+        service key-keeper restart
 
         update-rc.d key-keeper defaults
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")
+
+        service key-keeper restart
+
         ;;
 
     *) 

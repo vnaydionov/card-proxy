@@ -2,6 +2,10 @@
 
 case "$1" in
     "remove" | "purge" | "abort-install" | "disappear")
+        rm -f /etc/nginx/sites-enabled/10-card_proxy_tokenizer
+        service nginx restart
+        service card-proxy stop
+
         update-rc.d card-proxy remove
         ;;
 

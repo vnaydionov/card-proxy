@@ -9,7 +9,7 @@
 #include "conf.h"
 
 /* Maximal key string length + 1. */
-#define KEY_BUF_SZ (16 * 5 - 2 * sizeof(time_t))
+#define KEY_BUF_SZ 1025
 
 /* Any protocol message must fit in a buffer of that size. */
 #define REQ_BUF_SZ (KEY_BUF_SZ + 100)

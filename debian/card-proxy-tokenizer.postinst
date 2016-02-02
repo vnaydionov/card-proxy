@@ -1,24 +1,24 @@
 #!/bin/bash
 
-CP_USER="cpr_keykeeper"
+CP_USER="cpr_tokenizer"
 
 case "$1" in
     "configure")
         grep -q "^$CP_USER:" /etc/passwd || ( \
-            adduser --gecos 'CardProxy.KeyKeeper' --disabled-password $CP_USER ; \
+            adduser --gecos 'CardProxy.Tokenizer' --disabled-password $CP_USER ; \
             mkdir -p /var/run/$CP_USER /var/log/$CP_USER ; \
             chown $CP_USER:root /var/log/$CP_USER /var/run/$CP_USER )
 
-        ln -s ../sites-available/10-card_proxy_keykeeper2 /etc/nginx/sites-enabled
+        ln -s ../sites-available/10-card_proxy_tokenizer /etc/nginx/sites-enabled
         service nginx restart
-        service key-keeper2 restart
+        service card-proxy restart
 
-        update-rc.d key-keeper2 defaults
+        update-rc.d card-proxy defaults
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")
 
-        service key-keeper2 restart
+        service card-proxy restart
 
         ;;
 

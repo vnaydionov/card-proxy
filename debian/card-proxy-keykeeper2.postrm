@@ -2,6 +2,10 @@
 
 case "$1" in
     "remove" | "purge" | "abort-install" | "disappear")
+        rm -f /etc/nginx/sites-enabled/10-card_proxy_keykeeper2
+        service nginx restart
+        service key-keeper2 stop
+
         update-rc.d key-keeper2 remove
         ;;
 

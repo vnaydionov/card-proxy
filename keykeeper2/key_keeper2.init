@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CP_USER="card_proxy"
+CP_USER="cpr_keykeeper"
 SERVANT=$(echo `basename $0` | sed 's/-/_/')
 LOG_FILE="/var/log/$CP_USER/$SERVANT.log"
 SELF="$0"

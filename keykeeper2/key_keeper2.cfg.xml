@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Config>
-    <Log level="DEBUG">/var/log/card_proxy/key_keeper2.log</Log>
+    <Log level="DEBUG">/var/log/cpr_keykeeper/key_keeper2.log</Log>
     <LogLevel>
         yb.sql: DEBUG,
         micro_http: INFO,
@@ -9,15 +9,15 @@
 
     <HttpListener>
         <Port>15017</Port>
-        <Host>0.0.0.0</Host>
+        <Host>127.0.0.1</Host>
         <Prefix>key_keeper2/</Prefix>
     </HttpListener>
 
     <Peers>
         <Timeout>1200</Timeout>
         <RefreshInterval>5000</RefreshInterval>
-        <Peer1>http://localhost:15017/</Peer1>
-        <Peer2>http://localhost:15018/</Peer2>
-        <Peer3>http://localhost:15019/</Peer3>
+        <Peer1>https://node1.cluster:15117/</Peer1>
+        <Peer2>https://node2.cluster:15117/</Peer2>
+        <Peer3>https://node3.cluster:15117/</Peer3>
     </Peers>
 </Config> 

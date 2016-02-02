@@ -10,7 +10,7 @@ Build-Depends:
 Standards-Version: 3.7.3
 Homepage: https://github.com/vnaydionov/card-proxy
 
-Package: card-proxy
+Package: card-proxy-tokenizer
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: This is a HTTP proxy-server that stores the payment card data

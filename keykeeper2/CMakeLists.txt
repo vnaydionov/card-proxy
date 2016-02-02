@@ -25,5 +25,8 @@ install (TARGETS key_keeper2 DESTINATION bin)
 install (PROGRAMS key_keeper2-ping key_keeper2-restarter DESTINATION bin)
 install (FILES key_keeper2.cfg.xml DESTINATION etc/card_proxy)
 install (PROGRAMS key_keeper2.init DESTINATION etc/init.d RENAME key-keeper2)
-install (FILES key_keeper2.logrotate DESTINATION etc/logrotate.d RENAME key-keeper2)
+install (FILES key_keeper2.logrotate DESTINATION etc/logrotate.d
+         RENAME card_proxy_keykeeper2)
+install (FILES key_keeper2.nginx DESTINATION etc/nginx/sites-available
+         RENAME 10-card_proxy_keykeeper2)
 

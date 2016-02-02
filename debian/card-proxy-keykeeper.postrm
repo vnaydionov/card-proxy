@@ -2,6 +2,8 @@
 
 case "$1" in
     "remove" | "purge" | "abort-install" | "disappear")
+        service key-keeper stop
+
         update-rc.d key-keeper remove
         ;;
 

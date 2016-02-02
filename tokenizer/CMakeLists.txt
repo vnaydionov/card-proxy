@@ -61,5 +61,8 @@ install (PROGRAMS card_proxy-ping card_proxy-restarter DESTINATION bin)
 install (FILES card_proxy_schema.xml DESTINATION share/card_proxy)
 install (FILES key_settings.cfg.xml card_proxy.cfg.xml DESTINATION etc/card_proxy)
 install (PROGRAMS card_proxy.init DESTINATION etc/init.d RENAME card-proxy)
-install (FILES card_proxy.logrotate DESTINATION etc/logrotate.d RENAME card-proxy)
+install (FILES card_proxy.logrotate DESTINATION etc/logrotate.d
+         RENAME card_proxy_tokenizer)
+install (FILES card_proxy.nginx DESTINATION etc/nginx/sites-available
+         RENAME 10-card_proxy_tokenizer)
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Config xmlns:xi="http://www.w3.org/2001/XInclude">
 
-    <Log level="DEBUG">/var/log/card_proxy/card_proxy.log</Log>
+    <Log level="DEBUG">/var/log/cpr_tokenizer/card_proxy.log</Log>
     <LogLevel>
         yb.sql: INFO,
         micro_http.worker: ERROR,
@@ -23,7 +23,7 @@
     </DbBackend>
 
     <HttpListener>
-        <Host>0.0.0.0</Host>
+        <Host>127.0.0.1</Host>
         <Port>17117</Port>
     </HttpListener>
 
@@ -35,7 +35,7 @@
     </KeyKeeper>
     -->
     <KeyKeeper2>
-        <URL>http://localhost:15017/key_keeper2/</URL>
+        <URL>http://127.0.0.1:15017/key_keeper2/</URL>
         <Timeout>2500</Timeout>
     </KeyKeeper2>
 

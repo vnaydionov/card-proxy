@@ -3,7 +3,7 @@ include_directories (
     ${BOOST_INCLUDEDIR}
     ${YBORM_INCLUDES}
     ${PROJECT_SOURCE_DIR}/xxutils
-    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/tokenizer
     )
 
 add_executable (core_tests

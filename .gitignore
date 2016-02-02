@@ -46,7 +46,7 @@ obj-i386-linux-gnu
 debian/*.substvars
 debian/card-proxy-keykeeper
 debian/card-proxy-keykeeper2
-debian/card-proxy
+debian/card-proxy-tokenizer
 debian/files
 debian/tmp
 
