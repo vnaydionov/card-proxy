@@ -1,17 +1,18 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "aes_crypter.h"
-#include "card_crypter.h"
 #include "dek_pool.h"
 #include "utils.h"
 
 DEKPool::DEKPool(IConfig &config, Yb::ILogger &logger,
-                 Yb::Session &session, const std::string &master_key)
+                 Yb::Session &session, const std::string &master_key,
+                 int kek_version)
     : config_(config)
     , logger_(logger.new_logger("dek_pool").release())
     , session_(session)
     , master_key_(master_key)
     , dek_use_count_(config.get_value_as_int("Dek/UseCount"))
     , min_active_dek_count_(config.get_value_as_int("Dek/MinLimit"))
+    , kek_version_(kek_version)
 {}
 
 const DEKPoolStatus DEKPool::get_status() {
@@ -84,9 +85,12 @@ Domain::DataKey DEKPool::generate_new_data_key() {
     std::string dek_value = generate_random_bytes(32);
     AESCrypter aes_crypter(master_key_);
     encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
-    data_key.dek_crypted = encoded_dek;
     data_key.start_ts = Yb::now();
-    data_key.finish_ts = Yb::dt_make(2020, 12, 31);
+    data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
+            400 * 24 * 3600);
+    data_key.dek_crypted = encoded_dek;
+    data_key.kek_version = kek_version_;
+    data_key.max_counter = dek_use_count();
     data_key.counter = 0;
     data_key.save(session_);
     return data_key;

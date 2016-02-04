@@ -11,11 +11,12 @@ include_directories (
     )
 
 add_library (cardkeeper STATIC
-    card_crypter.cpp dek_pool.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/domain/DataToken.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/domain/IncomingRequest.cpp
+    dek_pool.cpp
+    tokenizer.cpp
+    card_crypter.cpp
     )
 
 set (LOGIC_DEBUG_CPP)
@@ -35,10 +36,9 @@ add_executable (card_proxy
     )
 
 set_source_files_properties (
-    ${CMAKE_CURRENT_BINARY_DIR}/domain/Card.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/domain/DataToken.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/DataKey.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/domain/Config.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/domain/IncomingRequest.cpp
     PROPERTIES GENERATED 1
     )
 

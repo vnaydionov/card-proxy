@@ -29,6 +29,18 @@ Yb::ElementTree::ElementPtr XmlConfig::load_tree(const Yb::String &fname)
     return root;
 }
 
+Yb::ElementTree::ElementPtr XmlConfig::find_key(const Yb::String &key)
+{
+    Yb::Strings parts;
+    Yb::StrUtils::split_str(key, _T("/"), parts);
+    Yb::ElementTree::ElementPtr cur_node = config_;
+    for (size_t i = 0; i < parts.size(); ++i)
+    {
+        cur_node = cur_node->find_first(parts[i]);
+    }
+    return cur_node;
+}
+
 XmlConfig::XmlConfig(const Yb::String &fname)
     : fname_(fname)
     , config_(load_tree(fname))
@@ -43,14 +55,7 @@ void XmlConfig::reload()
 const Yb::String XmlConfig::get_value(const Yb::String &key)
 {
     Yb::ScopedLock lock(config_mux_);
-    Yb::Strings parts;
-    Yb::StrUtils::split_str(key, _T("/"), parts);
-    Yb::ElementTree::ElementPtr cur_node = config_;
-    for (size_t i = 0; i < parts.size(); ++i)
-    {
-        cur_node = cur_node->find_first(parts[i]);
-    }
-    return cur_node->get_text();
+    return find_key(key)->get_text(); 
 }
 
 bool XmlConfig::has_key(const Yb::String &key)
@@ -61,6 +66,24 @@ bool XmlConfig::has_key(const Yb::String &key)
     }
     catch (const Yb::ElementTree::ElementNotFound &) { }
     return false;
+}
+
+Yb::ElementTree::ElementPtr copy_etree(Yb::ElementTree::ElementPtr node0)
+{
+    Yb::ElementTree::ElementPtr node = Yb::ElementTree::new_element(node0->name_);
+    node->attrib_ = node0->attrib_;
+    node->text_ = node0->text_;
+    Yb::ElementTree::Elements::iterator i = node0->children_.begin(),
+        iend = node0->children_.end();
+    for (; i != iend; ++i)
+        node->children_.push_back(copy_etree(*i));
+    return node;
+}
+
+Yb::ElementTree::ElementPtr XmlConfig::get_branch(const Yb::String &key)
+{
+    Yb::ScopedLock lock(config_mux_);
+    return copy_etree(find_key(key));
 }
 
 EnvConfig::EnvConfig(const Yb::String &prefix)

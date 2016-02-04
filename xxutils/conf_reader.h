@@ -21,6 +21,8 @@ public:
     bool get_value_as_bool(const Yb::String &key);
 };
 
+Yb::ElementTree::ElementPtr copy_etree(Yb::ElementTree::ElementPtr node0);
+
 class XmlConfig: public IConfig
 {
     const Yb::String fname_;
@@ -31,11 +33,13 @@ class XmlConfig: public IConfig
     // non-copyable
     XmlConfig(const XmlConfig &);
     XmlConfig &operator=(const XmlConfig &);
+    Yb::ElementTree::ElementPtr find_key(const Yb::String &key);
 public:
     XmlConfig(const Yb::String &fname);
     virtual void reload();
     virtual const Yb::String get_value(const Yb::String &key);
     virtual bool has_key(const Yb::String &key);
+    Yb::ElementTree::ElementPtr get_branch(const Yb::String &key);
 };
 
 class EnvConfig: public IConfig

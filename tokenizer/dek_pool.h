@@ -11,12 +11,14 @@ struct DEKPoolStatus;
 class DEKPool {
 public:
     DEKPool(IConfig &config, Yb::ILogger &logger,
-            Yb::Session &session, const std::string &master_key);
+            Yb::Session &session, const std::string &master_key,
+            int kek_version);
 
     int dek_use_count() const { return dek_use_count_; }
     int min_active_dek_count() const { return min_active_dek_count_; }
 
     const DEKPoolStatus get_status();
+    Domain::DataKey generate_new_data_key();
     Domain::DataKey get_active_data_key();
 
 private:
@@ -37,7 +39,6 @@ private:
     Domain::DataKey::ResultSet query_active_deks();
     void generate_enough_deks();
     void fill_active_deks();
-    Domain::DataKey generate_new_data_key();
 
     IConfig &config_;
     Yb::ILogger::Ptr logger_;
@@ -45,6 +46,7 @@ private:
     std::string master_key_;
     int dek_use_count_;
     int min_active_dek_count_;
+    int kek_version_;
 
     Domain::DataKey::List active_deks_;
 };

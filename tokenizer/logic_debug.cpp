@@ -82,9 +82,10 @@ Yb::ElementTree::ElementPtr dek_status(
         const Yb::StringDict &params)
 {
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
+    TokenizerConfig &tcfg(theTokenizerConfig::instance().refresh());
     DEKPool dek_pool(theApp::instance().cfg(), logger, session,
-                     CardCrypter::assemble_master_key(
-                         theApp::instance().cfg(), logger, session));
+                     tcfg.get_active_master_key(),
+                     tcfg.get_active_master_key_version());
     DEKPoolStatus dek_status = dek_pool.get_status();
     resp->sub_element("total_count", Yb::to_string(dek_status.total_count));
     resp->sub_element("active_count", Yb::to_string(dek_status.active_count));
@@ -148,10 +149,10 @@ Yb::ElementTree::ElementPtr remove_card(
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
     CardCrypter card_crypter(theApp::instance().cfg(), logger, session);
     std::string card_token = params["card_token"];
-    card_crypter.remove_card(card_token);
+    card_crypter.remove_data_token(card_token);
     std::string cvn_token = params.get("cvn_token", "");
     if (!cvn_token.empty())
-        card_crypter.remove_incoming_request(cvn_token);
+        card_crypter.remove_data_token(cvn_token);
     return resp;
 }
 
@@ -162,7 +163,7 @@ Yb::ElementTree::ElementPtr remove_incoming_request(
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
     CardCrypter card_crypter(theApp::instance().cfg(), logger, session);
     std::string token = params["token"];
-    card_crypter.remove_incoming_request(token);
+    card_crypter.remove_data_token(token);
     return resp;
 }
 
@@ -171,8 +172,8 @@ Yb::ElementTree::ElementPtr get_master_key(
         const Yb::StringDict &params)
 {
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
-    std::string master_key = CardCrypter::assemble_master_key(
-        theApp::instance().cfg(), logger, session);
+    TokenizerConfig &tcfg(theTokenizerConfig::instance().refresh());
+    std::string master_key = tcfg.get_active_master_key();
     resp->sub_element("master_key", master_key);
     return resp;
 }
@@ -184,7 +185,8 @@ Yb::ElementTree::ElementPtr set_master_key(
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
     CardCrypter card_crypter(theApp::instance().cfg(), logger, session);
     std::string new_key = params["key"];
-    card_crypter.change_master_key(new_key);
+    //card_crypter.change_master_key(new_key);
+    YB_ASSERT(false);
     return resp;
 }
 

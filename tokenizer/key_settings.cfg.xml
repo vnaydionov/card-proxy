@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <KeySettings>
     <KEK2>QUM3MjY3QTg=</KEK2>
+    <items>
+        <item id="KEK_VER0_PART2" data="cc6be6a292a6f48012859f1161d8a60da53d22341f1fb04881cdb17b1e2ef238" />
+    </items>
 </KeySettings>

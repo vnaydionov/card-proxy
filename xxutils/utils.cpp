@@ -260,7 +260,7 @@ std::string normalize_pan(const std::string &pan)
 
 int normalize_year(int year)
 {
-    if (year < 2000)
+    if (year && year < 2000)
         return 2000 + year;
     return year;
 }

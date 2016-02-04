@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <stdexcept>
+#include <util/nlogger.h>
 
 typedef std::map<std::string, std::string> HttpParams;
 
@@ -17,7 +18,8 @@ public:
 const std::string http_post(const std::string &uri,
     const HttpParams &params,
     double timeout = 0,
-    const std::string &method = "POST");
+    const std::string &method = "POST",
+    Yb::ILogger *logger = NULL);
 
 #endif // CARD_PROXY__HTTP_POST_H
 // vim:ts=4:sts=4:sw=4:et:

@@ -1,61 +1,54 @@
 <?xml version="1.0"?>
 <schema>
     <table name="t_config" class="Config" xml-name="config">
-        <column name="ckey" type="string" size="40" null="false">
+        <column name="ckey" type="string" size="80" null="false">
             <primary-key />
         </column>
-        <column name="cvalue" type="string" size="100" null="true" />
+        <column name="cvalue" type="string" size="1000" null="true" />
         <column name="update_ts" type="datetime" default="sysdate" />
     </table> 
 
-    <table name="t_dek" sequence="s_dek" class="DataKey" xml-name="data_key">
+    <table name="t_dek" sequence="s_dek"
+            class="DataKey" xml-name="data_key">
         <column name="id" type="longint">
             <primary-key />
         </column>
-        <column name="dek_crypted" type="string" size="100" null="false" />
         <column name="start_ts" type="datetime" null="false" default="sysdate" />
-        <column name="finish_ts" type="datetime" null="true"/>
+        <column name="finish_ts" type="datetime" null="false">
+            <index>i_dek_finish</index>
+        </column>
+        <!-- two blocks 128 bit each (AES blocks) encoded in BASE64 -->
+        <column name="dek_crypted" type="string" size="45" null="false" />
+        <column name="kek_version" type="integer" null="false" />
+        <column name="max_counter" type="longint" null="false" default="0" />
         <column name="counter" type="longint" null="false" default="0" />
-        <column name="old_kek" type="integer" null="false" default="0" />
     </table>
  
-    <table name="t_card" sequence="s_card" class="Card" xml-name="card">
+    <table name="t_data_token" sequence="s_data_token"
+            class="DataToken" xml-name="data_token">
         <column name="id" type="longint">
             <primary-key />
         </column>
+        <column name="finish_ts" type="datetime" null="false">
+            <index>i_dtoken_finish</index>
+        </column>
+        <column name="token_string" type="string" size="32" null="false">
+            <index>i_dtoken_string</index> <!-- unique -->
+        </column>
+        <!-- one block of 128 bit (an AES block) encoded in BASE64 -->
+        <column name="data_crypted" type="string" size="25" null="false" />
         <column name="dek_id" type="longint" null="false">
             <foreign-key table="t_dek" />
+            <index>i_dtoken_dek</index>
         </column>
-        <column name="card_token" type="string" size="32" null="false" />
-        <column name="ts" type="datetime" null="false" default="sysdate" />
-        <column name="store_ts" type="datetime" null="false" />
-        <column name="pan_crypted" type="string" size="25" null="false" />
-        <column name="expire_year" type="integer" null="false" />
-        <column name="expire_month" type="integer" null="false" />
-        <column name="card_holder" type="string" size="100" null="false" />
-        <column name="pan_masked" type="string" size="20" null="false"/>
-    </table>
-
-    <table name="t_incoming_request" sequence="s_incoming_request"
-            class="IncomingRequest" xml-name="incoming_request">
-        <column name="id" type="longint">
-            <primary-key />
+        <column name="hmac_digest" type="string" size="46" null="false">
+            <index>i_dtoken_hmac</index>
         </column>
-        <column name="dek_id" type="longint" null="false">
-            <foreign-key table="t_dek" />
-        </column>
-        <column name="ts" type="datetime" null="false" default="sysdate" />
-        <column name="cvn_token" type="string" size="32" null="false" />
-        <column name="cvn_crypted" type="string" size="25" null="false" />
+        <column name="hmac_version" type="integer" null="false" />
     </table>
 
     <relation type="one-to-many">
         <one class="DataKey" />
-        <many class="Card" property="dek" />
-    </relation>
-
-    <relation type="one-to-many">
-        <one class="DataKey" />
-        <many class="IncomingRequest" property="dek" />
+        <many class="DataToken" property="dek" />
     </relation>
 </schema>

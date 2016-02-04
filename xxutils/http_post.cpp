@@ -15,10 +15,13 @@ static int writer(char *data, size_t size, size_t nmemb,
     return size * nmemb;
 }
 
+#define DBG_LOG(s) do{ if (logger) logger->debug(s); }while(0)
+
 const std::string http_post(const std::string &uri,
     const HttpParams &params,
     double timeout,
-    const std::string &method)
+    const std::string &method,
+    Yb::ILogger *logger)
 {
     CURL *curl = NULL;
     std::string buffer;
@@ -26,6 +29,7 @@ const std::string http_post(const std::string &uri,
         curl = curl_easy_init();
         if (!curl)
             throw HttpClientError("curl_easy_init() failed");
+        DBG_LOG("http_post: method=" + method + ", uri=" + uri);
         std::string fixed_uri = uri;
         std::string body;
         auto i = params.begin(), iend = params.end();
