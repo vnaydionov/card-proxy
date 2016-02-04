@@ -47,6 +47,7 @@ class TokenizerConfig
     ConfigMap xml_params_;
     ConfigMap db_params_;
     VersionMap master_keys_;
+    VersionMap hmac_keys_;
 
     mutable Yb::Mutex mux_;
     time_t ts_;
@@ -57,6 +58,10 @@ class TokenizerConfig
     static const VersionMap assemble_master_keys(
             Yb::ILogger &logger, IConfig &config,
             const ConfigMap &xml_params, const ConfigMap &db_params);
+
+    static const VersionMap load_hmac_keys(
+            Yb::ILogger &logger, const ConfigMap &db_params,
+            Yb::Session &session, const VersionMap &master_keys);
 
     // non-copyable
     TokenizerConfig(const TokenizerConfig &);
@@ -72,10 +77,15 @@ public:
     const std::string get_active_master_key() const {
         return get_master_key(get_active_master_key_version());
     }
+    const VersionMap get_master_keys() const;
 
     int get_active_hmac_key_version() const;
+    const std::string get_hmac_key(int version) const;
+    const std::string get_active_hmac_key() const {
+        return get_hmac_key(get_active_hmac_key_version());
+    }
+    const VersionMap get_hmac_keys() const;
     const std::vector<int> get_hmac_versions() const;
-    int get_hmac_key_id(int hmac_version) const;
 
     time_t get_ts() const { return ts_; }
     void reload();

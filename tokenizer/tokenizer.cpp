@@ -216,7 +216,7 @@ const VersionMap
             ConfigMap::const_iterator j = xml_params.find(
                     prefix + ver_str + "_PART2");
             if (xml_params.end() == j)
-                throw ::RunTimeError("can't access kek part2");
+                throw ::RunTimeError("can't access KEK part2");
             const std::string kek2 = string_from_hexstring(
                     j->second, HEX_NOSPACES);
             if (kek2.size() != 32)
@@ -234,6 +234,44 @@ const VersionMap
         }
     }
     return mk;
+}
+
+const VersionMap
+    TokenizerConfig::load_hmac_keys(
+            Yb::ILogger &logger, const ConfigMap &db_params,
+            Yb::Session &session, const VersionMap &master_keys)
+{
+    VersionMap hk;
+    const std::string prefix = "HMAC_VER", suffix = "_ID";
+    auto i = db_params.begin(), iend = db_params.end();
+    for (; i != iend; ++i) {
+        const std::string &id = i->first;
+        if (!starts_with(id, prefix) || !ends_with(id, suffix))
+            continue;
+        auto ver_str = id.substr(prefix.size(),
+                id.size() - prefix.size() - suffix.size());
+        try {
+            logger.debug("loading HMAC key ver" + ver_str);
+            int ver = boost::lexical_cast<int>(ver_str);
+            int hmac_id = boost::lexical_cast<int>(i->second);
+            Domain::DataKey hmac_key = Yb::query<Domain::DataKey>(session)
+                .filter_by(Domain::DataKey::c.id == hmac_id).one();
+            int kek_version = hmac_key.kek_version;
+            auto mk = master_keys.find(hmac_key.kek_version);
+            if (master_keys.end() == mk)
+                throw ::RunTimeError("can't decode HMAC using KEK ver" +
+                                     Yb::to_string(kek_version));
+            auto hmac = Tokenizer::decode_data(mk->second,
+                                               hmac_key.dek_crypted);
+            hk[ver] = hmac;
+            logger.info("HMAC key ver" + ver_str + " assembled OK");
+        }
+        catch (const std::exception &e) {
+            logger.error("loading HMAC key ver" + ver_str + " failed: "
+                    + std::string(e.what()));
+        }
+    }
+    return hk;
 }
 
 TokenizerConfig::TokenizerConfig()
@@ -276,9 +314,32 @@ const std::string TokenizerConfig::get_master_key(int version) const
     return i->second;
 }
 
+const VersionMap TokenizerConfig::get_master_keys() const
+{
+    Yb::ScopedLock lock(mux_);
+    VersionMap result(master_keys_);
+    return result;
+}
+
 int TokenizerConfig::get_active_hmac_key_version() const
 {
     return boost::lexical_cast<int>(get_db_config_key("HMAC_VERSION"));
+}
+
+const std::string TokenizerConfig::get_hmac_key(int version) const
+{
+    Yb::ScopedLock lock(mux_);
+    auto i = hmac_keys_.find(version);
+    if (hmac_keys_.end() == i)
+        throw Yb::KeyError("hmac key not found: " + Yb::to_string(version));
+    return i->second;
+}
+
+const VersionMap TokenizerConfig::get_hmac_keys() const
+{
+    Yb::ScopedLock lock(mux_);
+    VersionMap result(hmac_keys_);
+    return result;
 }
 
 const std::vector<int> TokenizerConfig::get_hmac_versions() const
@@ -287,26 +348,11 @@ const std::vector<int> TokenizerConfig::get_hmac_versions() const
     int active_hmac_ver = get_active_hmac_key_version();
     versions.push_back(active_hmac_ver);
     Yb::ScopedLock lock(mux_);
-    const std::string prefix = "HMAC_VER", suffix = "_ID";
-    auto i = db_params_.begin(), iend = db_params_.end();
-    for (; i != iend; ++i) {
-        const std::string &id = i->first;
-        if (!starts_with(id, prefix) || !ends_with(id, suffix))
-            continue;
-        auto ver_str = id.substr(prefix.size(),
-                id.size() - prefix.size() - suffix.size());
-        int ver = boost::lexical_cast<int>(ver_str);
-        if (ver != active_hmac_ver)
-            versions.push_back(ver);
-    }
+    auto i = hmac_keys_.begin(), iend = hmac_keys_.end();
+    for (; i != iend; ++i)
+        if (i->first != active_hmac_ver)
+            versions.push_back(i->first);
     return versions;
-}
-
-int TokenizerConfig::get_hmac_key_id(int hmac_version) const
-{
-    const std::string hmac_id = get_db_config_key(
-            "HMAC_VER" + Yb::to_string(hmac_version) + "_ID");
-    return boost::lexical_cast<int>(hmac_id);
 }
 
 void TokenizerConfig::reload()
@@ -322,22 +368,29 @@ void TokenizerConfig::reload()
     std::auto_ptr<Yb::Session> session(
             theApp::instance().new_session().release());
     ConfigMap db_params(load_config_from_db(*session));
-    session.reset(NULL);
 
     VersionMap master_keys(assemble_master_keys(
             *logger, config, xml_params, db_params));
+
+    VersionMap hmac_keys(load_hmac_keys(
+            *logger, db_params, *session, master_keys));
+    session.reset(NULL);
 
     Yb::ScopedLock lock(mux_);
     std::swap(xml_params, xml_params_);
     std::swap(db_params, db_params_);
     std::swap(master_keys, master_keys_);
+    std::swap(hmac_keys, hmac_keys_);
     ts_ = time(NULL);
 }
 
 TokenizerConfig &TokenizerConfig::refresh()
 {
-    if (time(NULL) - ts_ > 15)
+    time_t now = time(NULL);
+    if (now - ts_ > 15) {
+        ts_ = now;
         reload();
+    }
     return *this;
 }
 
@@ -369,6 +422,8 @@ const std::string Tokenizer::search(const std::string &plain_text)
                 .filter_by(Domain::DataToken::c.hmac_digest == hmac_digest)
                 .one();
             result = data_token.token_string;
+            logger_->debug("deduplicated using HMAC ver"
+                           + Yb::to_string(hmac_version));
             break;
         }
         catch (const Yb::NoDataFound &) {
@@ -502,10 +557,7 @@ Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
 const std::string Tokenizer::count_hmac(const std::string &plain_text,
                                         int hmac_version)
 {
-    int hmac_id = tokenizer_config_.get_hmac_key_id(hmac_version);
-    Domain::DataKey hmac_key = Yb::query<Domain::DataKey>(session_)
-        .filter_by(Domain::DataKey::c.id == hmac_id).one();
-    std::string hk = decode_dek(hmac_key.dek_crypted, hmac_key.kek_version);
+    std::string hk = tokenizer_config_.get_hmac_key(hmac_version);
     return encode_base64(sha256_digest(hk + ":" + plain_text));
 }
 
