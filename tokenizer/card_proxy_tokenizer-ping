@@ -1,9 +1,9 @@
 #!/bin/sh
 
-SERVANT=$(echo `basename $0` | sed 's/-ping//')
+SERVANT=$(basename "$0" | sed 's/-ping//')
 #echo "SERVANT=$SERVANT"
 
-CFG_FILE="/etc/card_proxy/$SERVANT.cfg.xml"
+CFG_FILE="/etc/$SERVANT/$SERVANT.cfg.xml"
 #echo "CFG_FILE=$CFG_FILE"
 
 PORT=`python -c "import xml.etree.ElementTree as et; \

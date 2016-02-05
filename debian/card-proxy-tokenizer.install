@@ -4,4 +4,4 @@ usr/etc/init.d/card_proxy_tokenizer
 usr/etc/logrotate.d/card_proxy_tokenizer
 usr/etc/nginx/sites-available/10-card_proxy_tokenizer
 usr/share/card_proxy_tokenizer
-usr/share/doc/card_proxy
+usr/share/doc/card-proxy-tokenizer

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Config>
-    <Log level="DEBUG">/var/log/cpr_keykeeper/key_keeper2.log</Log>
+    <Log level="DEBUG">/var/log/cpr_keykeeper/card_proxy_keykeeper2.log</Log>
     <LogLevel>
         yb.sql: DEBUG,
         micro_http: INFO,

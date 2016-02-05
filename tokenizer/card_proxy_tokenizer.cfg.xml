@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Config xmlns:xi="http://www.w3.org/2001/XInclude">
 
-    <Log level="DEBUG">/var/log/cpr_tokenizer/card_proxy.log</Log>
+    <Log level="DEBUG">/var/log/cpr_tokenizer/card_proxy_tokenizer.log</Log>
     <LogLevel>
         yb.sql: INFO,
         micro_http.worker: ERROR,

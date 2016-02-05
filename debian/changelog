@@ -1,3 +1,9 @@
+card-proxy (0.5.2) unstable; urgency=low
+
+  * remove key_keeper, CB listener, rename files. 
+
+ -- Vaclav Naydionov (linux rulez) <vaclav@yandex.ru>  Fri, 05 Feb 2016 20:09:41 +0300
+
 card-proxy (0.5.1) unstable; urgency=low
 
   * add key_keeper2
