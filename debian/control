@@ -20,12 +20,6 @@ Description: This is a HTTP proxy-server that stores the payment card data
  the card token is automatically unwrapped to a full record.
  The proxy code is implemented in C++.
 
-Package: card-proxy-keykeeper
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, netcat
-Description: This is a simple TCP server that keeps a portion of a key in memory,
- automatically sharing the information between the specified peers.
-
 Package: card-proxy-keykeeper2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}

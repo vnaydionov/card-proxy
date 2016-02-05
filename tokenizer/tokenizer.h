@@ -32,12 +32,8 @@ public:
                  Yb::ILogger *logger = NULL)
         : config_(NULL), logger_(logger), timeout_(timeout), uri_(uri)
     {}
-    const std::string recv_key_from_server_v1(int kek_version);
-    const std::string recv_key_from_server_v2(int kek_version);
     const std::string recv_key_from_server(int kek_version);
     const std::string get_key_by_version(int kek_version);
-    void send_key_to_server_v1(const std::string &key, int kek_version);
-    void send_key_to_server_v2(const std::string &key, int kek_version);
     void send_key_to_server(const std::string &key, int kek_version);
 };
 

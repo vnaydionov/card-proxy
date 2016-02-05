@@ -17,27 +17,7 @@ using Yb::StrUtils::ends_with;
 
 
 const std::string
-    KeyKeeperAPI::recv_key_from_server_v1(int kek_version)
-{
-    YB_ASSERT(config_ != NULL);
-    // TODO: support versioning
-    TcpSocket sock(-1, config_->get_value_as_int("KeyKeeper/Timeout"));
-    sock.connect(config_->get_value("KeyKeeper/Host"),
-                 config_->get_value_as_int("KeyKeeper/Port"));
-    sock.write("get\n");
-    std::string response = sock.readline();
-    sock.close(true);
-    std::string prefix = "key=";
-    if (response.substr(0, 4) != prefix)
-        throw RunTimeError("KeyKeeper protocol error");
-    size_t pos = response.find(' ');
-    if (std::string::npos == pos)
-        throw RunTimeError("KeyKeeper protocol error");
-    return response.substr(prefix.size(), pos - prefix.size());
-}
-
-const std::string
-    KeyKeeperAPI::recv_key_from_server_v2(int kek_version)
+    KeyKeeperAPI::recv_key_from_server(int kek_version)
 {
     double key_keeper_timeout;
     std::string key_keeper_uri;
@@ -80,15 +60,6 @@ const std::string
 }
 
 const std::string
-    KeyKeeperAPI::recv_key_from_server(int kek_version)
-{
-    if ((config_ && config_->has_key("KeyKeeper2/Timeout"))
-            || !uri_.empty())
-        return recv_key_from_server_v2(kek_version);
-    return recv_key_from_server_v1(kek_version);
-}
-
-const std::string
     KeyKeeperAPI::get_key_by_version(int kek_version)
 {
     std::string target_id =
@@ -99,19 +70,7 @@ const std::string
     return i->second;
 }
 
-void KeyKeeperAPI::send_key_to_server_v1(const std::string &key,
-                                         int kek_version)
-{
-    YB_ASSERT(config_ != NULL);
-    // TODO: support versioning
-    TcpSocket sock(-1, config_->get_value_as_int("KeyKeeper/Timeout"));
-    sock.connect(config_->get_value("KeyKeeper/Host"),
-                 config_->get_value_as_int("KeyKeeper/Port"));
-    sock.write("set key=" + key + "\n");
-    sock.close(true);
-}
-
-void KeyKeeperAPI::send_key_to_server_v2(const std::string &key,
+void KeyKeeperAPI::send_key_to_server(const std::string &key,
                                          int kek_version)
 {
     double key_keeper_timeout;
@@ -137,15 +96,6 @@ void KeyKeeperAPI::send_key_to_server_v2(const std::string &key,
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("send_key_to_server: not success");
-}
-
-void KeyKeeperAPI::send_key_to_server(const std::string &key,
-                                      int kek_version)
-{
-    if ((config_ && config_->has_key("KeyKeeper2/Timeout"))
-            || !uri_.empty())
-        return send_key_to_server_v2(key, kek_version);
-    return send_key_to_server_v1(key, kek_version);
 }
 
 
