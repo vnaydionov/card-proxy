@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 {
     auto config_file = Yb::StrUtils::xgetenv("CONFIG_FILE");
     if (!config_file.size())
-        config_file = "/etc/card_proxy/key_keeper2.cfg.xml";
+        config_file = "/etc/card_proxy_keykeeper2/card_proxy_keykeeper2.cfg.xml";
     Yb::ILogger::Ptr logger;
     try {
         theApp::instance().init(

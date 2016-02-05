@@ -90,5 +90,5 @@ add_subdirectory (xxutils)
 add_subdirectory (tokenizer)
 add_subdirectory (keykeeper2)
 
-install (FILES LICENSE README.md DESTINATION share/doc/card_proxy)
+install (FILES LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
 

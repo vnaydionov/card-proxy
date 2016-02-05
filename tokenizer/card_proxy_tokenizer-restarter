@@ -1,9 +1,9 @@
 #!/bin/sh
 
 SELF="$0"
-SERVANT=$(echo `basename $0` | sed 's/-restarter//' | sed 's/-/_/')
-BIN="$2"
+SERVANT=$(basename "$SELF" | sed 's/-restarter//' | sed 's/-/_/')
 PINGER="$1"
+BIN="$2"
 shift
 shift
 DELAY=2
@@ -21,7 +21,7 @@ trap "echo SIGHUP received" HUP
 log_info "BIN=$BIN"
 log_info "PINGER=$PINGER"
 
-CFG_FILE="/etc/card_proxy/$SERVANT.cfg.xml"
+CFG_FILE="/etc/$SERVANT/$SERVANT.cfg.xml"
 log_info "CFG_FILE=$CFG_FILE"
 
 while [ 1 = 1 ] ; do

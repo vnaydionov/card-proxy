@@ -11,9 +11,9 @@ case "$1" in
 
         ln -s ../sites-available/10-card_proxy_keykeeper2 /etc/nginx/sites-enabled
         service nginx restart
-        service key-keeper2 restart
+        service card_proxy_keykeeper2 restart
 
-        update-rc.d key-keeper2 defaults
+        update-rc.d card_proxy_keykeeper2 defaults
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")

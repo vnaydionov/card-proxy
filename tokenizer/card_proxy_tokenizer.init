@@ -1,9 +1,9 @@
 #!/bin/sh
 
-CP_USER="cpr_keykeeper"
-SERVANT=$(echo `basename $0` | sed 's/-/_/')
-LOG_FILE="/var/log/$CP_USER/$SERVANT.log"
+CP_USER="cpr_tokenizer"
 SELF="$0"
+SERVANT=$(basename "$SELF" | sed 's/-/_/' | sed 's/^[SK][0-9][0-9]//')
+LOG_FILE="/var/log/$CP_USER/$SERVANT.log"
 
 log_info () {
     DT=`date '+%Y-%m-%d %H:%M:%S'`
@@ -37,7 +37,7 @@ log_info "SERVANT=$SERVANT"
 MODE="$1"
 log_info "MODE=$MODE"
 if [ "x$MODE" = "x" ] ; then
-    echo "Usage: $0 start|stop|restart|reload" >&2
+    echo "Usage: $SELF start|stop|restart|reload" >&2
     exit 1
 fi
 

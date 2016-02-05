@@ -4,9 +4,9 @@ case "$1" in
     "remove" | "purge" | "abort-install" | "disappear")
         rm -f /etc/nginx/sites-enabled/10-card_proxy_tokenizer
         service nginx restart
-        service card-proxy stop
+        service card_proxy_tokenizer stop
 
-        update-rc.d card-proxy remove
+        update-rc.d card_proxy_tokenizer remove
         ;;
 
     "upgrade" | "failed-upgrade" | "abort-upgrade")

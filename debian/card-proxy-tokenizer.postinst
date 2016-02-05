@@ -11,9 +11,9 @@ case "$1" in
 
         ln -s ../sites-available/10-card_proxy_tokenizer /etc/nginx/sites-enabled
         service nginx restart
-        service card-proxy restart
+        service card_proxy_tokenizer restart
 
-        update-rc.d card-proxy defaults
+        update-rc.d card_proxy_tokenizer defaults
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")

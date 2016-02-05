@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
     int n_handlers = sizeof(handlers)/sizeof(handlers[0]);
     auto config_file = Yb::StrUtils::xgetenv("CONFIG_FILE");
     if (!config_file.size())
-        config_file = "/etc/card_proxy/card_proxy.cfg.xml";
+        config_file = "/etc/card_proxy_tokenizer/card_proxy_tokenizer.cfg.xml";
     return run_server_app(config_file, handlers, n_handlers);
 }
 

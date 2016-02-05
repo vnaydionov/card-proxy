@@ -1,5 +1,5 @@
-usr/bin/key_keeper2*
-usr/etc/card_proxy/key_keeper2*
-usr/etc/init.d/key-keeper2
+usr/bin/card_proxy_keykeeper2*
+usr/etc/card_proxy_keykeeper2
+usr/etc/init.d/card_proxy_keykeeper2
 usr/etc/logrotate.d/card_proxy_keykeeper2
 usr/etc/nginx/sites-available/10-card_proxy_keykeeper2
