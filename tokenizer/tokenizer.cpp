@@ -264,7 +264,7 @@ const VersionMap
             auto hmac = Tokenizer::decode_data(mk->second,
                                                hmac_key.dek_crypted);
             hk[ver] = hmac;
-            logger.info("HMAC key ver" + ver_str + " assembled OK");
+            logger.info("HMAC key ver" + ver_str + " loaded OK");
         }
         catch (const std::exception &e) {
             logger.error("loading HMAC key ver" + ver_str + " failed: "

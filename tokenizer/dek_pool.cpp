@@ -36,7 +36,7 @@ Domain::DataKey DEKPool::get_active_data_key() {
                                    + half_size)
                                 : (rand() % half_size);
         Domain::DataKey dek = Yb::lock_and_refresh(session_, active_deks_[choice]);
-        if (dek.counter < dek_use_count_ && dek.finish_ts > Yb::now()) {
+        if (dek.counter < dek.max_counter && dek.finish_ts > Yb::now()) {
             session_.debug("selected DEK: " + Yb::to_string(dek.id.value()));
             return dek;
         }
@@ -50,7 +50,7 @@ Domain::DataKey DEKPool::get_active_data_key() {
 
 Domain::DataKey::ResultSet DEKPool::query_active_deks() {
     return Yb::query<Domain::DataKey>(session_)
-        .filter_by(Domain::DataKey::c.counter < dek_use_count_)
+        .filter_by(Domain::DataKey::c.counter < Domain::DataKey::c.max_counter)
         .filter_by(Domain::DataKey::c.finish_ts > Yb::now())
         .order_by(Domain::DataKey::c.counter)
         .all();
