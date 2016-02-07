@@ -5,8 +5,7 @@ include_directories (
     ${CPPREST_INCLUDES}
     ${PROJECT_SOURCE_DIR}/xxutils
     ${PROJECT_SOURCE_DIR}/xxcommon
-    ${CMAKE_CURRENT_BINARY_DIR}
-    )
+    ${CMAKE_CURRENT_BINARY_DIR}/../xxcommon)
 
 set (LOGIC_DEBUG_CPP)
 if (USE_VAULT_DEBUG_API)
