@@ -87,6 +87,7 @@ IF (NOT CURL_FOUND)
 ENDIF ()
 
 add_subdirectory (xxutils)
+add_subdirectory (xxcommon)
 add_subdirectory (tokenizer)
 add_subdirectory (keykeeper2)
 
