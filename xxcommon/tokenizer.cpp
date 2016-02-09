@@ -19,16 +19,12 @@ using Yb::StrUtils::ends_with;
 const std::string
     KeyKeeperAPI::recv_key_from_server(int kek_version)
 {
-    double key_keeper_timeout;
-    std::string key_keeper_uri;
+    double key_keeper_timeout = timeout_;
+    std::string key_keeper_uri = uri_;
     if (config_) {
         key_keeper_timeout =
             config_->get_value_as_int("KeyKeeper2/Timeout")/1000.;
         key_keeper_uri = config_->get_value("KeyKeeper2/URL");
-    }
-    else {
-        key_keeper_timeout = timeout_;
-        key_keeper_uri = uri_;
     }
     std::string target_id =
         "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
@@ -73,16 +69,12 @@ const std::string
 void KeyKeeperAPI::send_key_to_server(const std::string &key,
                                          int kek_version)
 {
-    double key_keeper_timeout;
-    std::string key_keeper_uri;
+    double key_keeper_timeout = timeout_;
+    std::string key_keeper_uri = uri_;
     if (config_) {
         key_keeper_timeout =
             config_->get_value_as_int("KeyKeeper2/Timeout")/1000.;
         key_keeper_uri = config_->get_value("KeyKeeper2/URL");
-    }
-    else {
-        key_keeper_timeout = timeout_;
-        key_keeper_uri = uri_;
     }
     if (kek_version < 0)
         kek_version = 0;
@@ -125,7 +117,8 @@ const ConfigMap
     auto found_keys_rs = Yb::query<Domain::Config>(session)
         .filter_by(
                 Domain::Config::c.ckey.like_(Yb::ConstExpr("KEK%")) ||
-                Domain::Config::c.ckey.like_(Yb::ConstExpr("HMAC%")))
+                Domain::Config::c.ckey.like_(Yb::ConstExpr("HMAC%")) ||
+                Domain::Config::c.ckey == "STATUS")
         .all();
     auto i = found_keys_rs.begin(), iend = found_keys_rs.end();
     for (; i != iend; ++i) {
@@ -207,7 +200,7 @@ const VersionMap
             Domain::DataKey hmac_key = Yb::query<Domain::DataKey>(session)
                 .filter_by(Domain::DataKey::c.id == hmac_id).one();
             int kek_version = hmac_key.kek_version;
-            auto mk = master_keys.find(hmac_key.kek_version);
+            auto mk = master_keys.find(kek_version);
             if (master_keys.end() == mk)
                 throw ::RunTimeError("can't decode HMAC using KEK ver" +
                                      Yb::to_string(kek_version));
@@ -350,9 +343,9 @@ Tokenizer::Tokenizer(IConfig &config, Yb::ILogger &logger,
     : logger_(logger.new_logger("tokenizer").release())
     , session_(session)
     , tokenizer_config_(theTokenizerConfig::instance().refresh())
+    , kek_version_(tokenizer_config_.get_active_master_key_version())
     , dek_pool_(config, *logger_, session,
-                tokenizer_config_.get_active_master_key(),
-                tokenizer_config_.get_active_master_key_version())
+                tokenizer_config_.get_master_key(kek_version_), kek_version_)
 {}
 
 const std::string Tokenizer::search(const std::string &plain_text)

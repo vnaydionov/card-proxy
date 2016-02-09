@@ -32,7 +32,7 @@ private:
         int unused_count = 0;
         auto i = active_deks.begin(), iend = active_deks.end();
         for (; i != iend; ++i)
-            unused_count += dek_use_count_ - i->counter;
+            unused_count += i->max_counter - i->counter;
         return unused_count;
     }
 
@@ -44,9 +44,8 @@ private:
     Yb::ILogger::Ptr logger_;
     Yb::Session &session_;
     std::string master_key_;
-    int dek_use_count_;
-    int min_active_dek_count_;
     int kek_version_;
+    int dek_use_count_, min_active_dek_count_, dek_usage_period_;
 
     Domain::DataKey::List active_deks_;
 };

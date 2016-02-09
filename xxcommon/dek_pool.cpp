@@ -10,9 +10,10 @@ DEKPool::DEKPool(IConfig &config, Yb::ILogger &logger,
     , logger_(logger.new_logger("dek_pool").release())
     , session_(session)
     , master_key_(master_key)
-    , dek_use_count_(config.get_value_as_int("Dek/UseCount"))
-    , min_active_dek_count_(config.get_value_as_int("Dek/MinLimit"))
     , kek_version_(kek_version)
+    , dek_use_count_(config.get_value_as_int("Dek/UseCount"))
+    , min_active_dek_count_(config.get_value_as_int("Dek/MinActiveLimit"))
+    , dek_usage_period_(config.get_value_as_int("Dek/UsagePeriod"))
 {}
 
 const DEKPoolStatus DEKPool::get_status() {
@@ -87,7 +88,7 @@ Domain::DataKey DEKPool::generate_new_data_key() {
     encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
     data_key.start_ts = Yb::now();
     data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
-            400 * 24 * 3600);
+            dek_usage_period_ * 24 * 3600);
     data_key.dek_crypted = encoded_dek;
     data_key.kek_version = kek_version_;
     data_key.max_counter = dek_use_count();

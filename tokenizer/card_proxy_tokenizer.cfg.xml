@@ -33,17 +33,11 @@
     </KeyKeeper2>
 
     <xi:include href="key_settings.cfg.xml" />
-    <!-- For testing purposes:
-         key:  7B43239EDC4B27ABAC7267A8538C65B4
-         kek:  N0I0MzIzOUVEQzRCMjdBQkFDNzI2N0E4NTM4QzY1QjQ=
-         kek1: N0I0MzIzOUVEQzRCMjdBQg== (key_keeper)
-         kek2: QUM3MjY3QTg= (config)
-         kek3: NTM4QzY1QjQ= (database)
-    -->
 
     <Dek>
         <UseCount>10</UseCount>
-        <MinLimit>200</MinLimit>
+        <MinActiveLimit>200</MinActiveLimit>
+        <UsagePeriod>100</UsagePeriod>
     </Dek>
 
     <bind_card_url>http://appserv/api/bind</bind_card_url>

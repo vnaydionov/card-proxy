@@ -119,6 +119,7 @@ private:
     Yb::ILogger::Ptr logger_;
     Yb::Session &session_;
     TokenizerConfig &tokenizer_config_;
+    int kek_version_;
     DEKPool dek_pool_;
 
     Domain::DataToken do_tokenize(const std::string &plain_text,
