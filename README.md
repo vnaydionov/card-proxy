@@ -1,4 +1,9 @@
 
+<a href="https://scan.coverity.com/projects/vnaydionov-card-proxy">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/7872/badge.svg"/>
+</a>
+
 ABOUT
 
 This is a HTTP proxy-server that stores securely the payment card data
