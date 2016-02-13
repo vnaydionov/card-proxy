@@ -50,9 +50,16 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         const HttpParams &params,
         const std::string &http_method)
 {
-    std::string body = http_post(
+    HttpResponse resp = http_post(
         peer_uri + path_prefix_ + method,
-        params, peer_timeout_, http_method);
+        NULL,
+        peer_timeout_,
+        http_method,
+        HttpHeaders(),
+        params);
+    if (resp.get<0>() != 200)
+        throw ::RunTimeError("call_peer: not HTTP 200");
+    const std::string &body = resp.get<2>();
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("call_peer: not success");

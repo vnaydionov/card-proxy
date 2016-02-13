@@ -38,7 +38,8 @@ different places:
 
 SOFTWARE REQUIREMENTS
 
-* Linux: Ubuntu Trusty 14.04 with GNU g++ 4.8
-* C++ REST SDK: ver2.0
+* Linux: Ubuntu 12.04 with GNU g++
+* LibCURL
+* LibJSON-C
 * YB.ORM: 0.4.7
 

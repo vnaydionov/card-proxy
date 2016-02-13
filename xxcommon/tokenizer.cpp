@@ -28,9 +28,13 @@ const std::string
     }
     std::string target_id =
         "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
-    std::string body = http_post(key_keeper_uri + "get",
-                                 HttpParams(), key_keeper_timeout, "GET",
-                                 logger_);
+    HttpResponse resp = http_post(key_keeper_uri + "get",
+                                  logger_,
+                                  key_keeper_timeout,
+                                  "GET");
+    if (resp.get<0>() != 200)
+        throw ::RunTimeError("recv_key_from_server: not HTTP 200");
+    const std::string &body = resp.get<2>();
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("recv_key_from_server: not success");
@@ -82,9 +86,15 @@ void KeyKeeperAPI::send_key_to_server(const std::string &key,
     HttpParams params;
     params["id"] = target_id;
     params["data"] = key;
-    std::string body = http_post(key_keeper_uri + "set",
-                                 params, key_keeper_timeout, "POST",
-                                 logger_);
+    HttpResponse resp = http_post(key_keeper_uri + "set",
+                                  logger_,
+                                  key_keeper_timeout,
+                                  "POST",
+                                  HttpHeaders(),
+                                  params);
+    if (resp.get<0>() != 200)
+        throw ::RunTimeError("recv_key_from_server: not HTTP 200");
+    const std::string &body = resp.get<2>();
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("send_key_to_server: not success");

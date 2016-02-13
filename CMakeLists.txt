@@ -3,7 +3,6 @@ cmake_minimum_required (VERSION 2.8)
 project (card_proxy)
 
 option (YBORM_ROOT "Path where YB.ORM is installed" /usr/local)
-option (CPPREST_ROOT "Path where C++ REST SDK is installed" /usr/local)
 option (USE_VAULT_DEBUG_API "Whether to include debug methods in the build" ON)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
@@ -61,29 +60,14 @@ if ((NOT YBORM_INCLUDES) OR (NOT YBUTIL_LIB) OR (NOT YBORM_LIB))
     message(SEND_ERROR "YB.ORM not found!!")
 endif ()
 
-function (check_cpprest_root CPPREST_ROOT)
-    if (EXISTS ${CPPREST_ROOT})
-        find_path (CPPREST_INCLUDES cpprest/http_client.h ${CPPREST_ROOT}/include)
-        find_library (CPPREST_LIB cpprest ${CPPREST_ROOT}/lib ${CPPREST_ROOT}/build.release/Binaries)
-        if (CPPREST_INCLUDES AND CPPREST_LIB)
-            message (STATUS "C++ REST SDK found: ${CPPREST_ROOT}")
-        endif ()
-    endif ()
-endfunction ()
-
-if (CPPREST_ROOT)
-    check_cpprest_root (${CPPREST_ROOT})
-else ()
-    check_cpprest_root (/usr/local)
-endif ()
-
-if ((NOT CPPREST_INCLUDES) OR (NOT CPPREST_LIB))
-    message(SEND_ERROR "C++ REST SDK not found!!")
-endif ()
-
 find_package(CURL)
 IF (NOT CURL_FOUND)
     MESSAGE(FATAL_ERROR "Could not find the CURL library and development files.")
+ENDIF ()
+
+find_library(JSONC_LIB json-c)
+if (NOT JSONC_LIB)
+    MESSAGE(FATAL_ERROR "Could not find the JSON-C library and development files.")
 ENDIF ()
 
 add_subdirectory (xxutils)

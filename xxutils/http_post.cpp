@@ -1,13 +1,16 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "http_post.h"
+#include <util/string_utils.h>
 #include <curl/curl.h>
+
+#define DBG_LOG(s) do{ if (logger) logger->debug(s); }while(0)
 
 HttpClientError::HttpClientError(const std::string &msg):
     runtime_error(msg)
 {}
 
-static int writer(char *data, size_t size, size_t nmemb,
-                  std::string *writerData)
+static size_t writer(char *data, size_t size, size_t nmemb,
+                     std::string *writerData)
 {
     if (writerData == NULL)
         return 0;
@@ -15,80 +18,197 @@ static int writer(char *data, size_t size, size_t nmemb,
     return size * nmemb;
 }
 
-#define DBG_LOG(s) do{ if (logger) logger->debug(s); }while(0)
+static size_t header_callback(char *data, size_t size, size_t nmemb,
+                              HttpHeaders *headersData)
+{
+    using Yb::StrUtils::trim_trailing_space;
+    using Yb::StrUtils::split_str_by_chars;
 
-const std::string http_post(const std::string &uri,
-    const HttpParams &params,
+    if (headersData == NULL)
+        return 0;
+    std::string header(data, size*nmemb);
+    size_t colon_pos = header.find(':');
+    if (colon_pos == std::string::npos) {
+        std::vector<std::string> parts;
+        split_str_by_chars(header, " ", parts, 3);
+        if (parts.size() == 3)
+            (*headersData)["X-ReasonPhrase"] = trim_trailing_space(parts[2]);
+        return size * nmemb;
+    }
+    std::string header_name = header.substr(0, colon_pos);
+    std::string header_value = header.substr(colon_pos + 1);
+    (*headersData)[trim_trailing_space(header_name)]
+            = trim_trailing_space(header_value);
+    return size * nmemb;
+}
+
+static const std::string escape(CURL *curl, const std::string &s)
+{
+    std::string result;
+    char *output = curl_easy_escape(curl, s.c_str(), s.size());
+    if (output) {
+        result = output;
+        curl_free(output);
+    }
+    return result;
+}
+
+static const std::string serialize_params(CURL *curl, const HttpParams &params)
+{
+    std::string result;
+    auto i = params.begin(), iend = params.end();
+    for (bool first = true; i != iend; ++i, first = false) {
+        if (!first)
+            result += "&";
+        result += escape(curl, i->first) + "=" + escape(curl, i->second);
+    }
+    return result;
+}
+
+static curl_slist *fill_headers(CURL *curl, const HttpHeaders &headers)
+{
+    if (!headers.size())
+        return NULL;
+    curl_slist *hlist = NULL;
+    try {
+        auto i = headers.begin(), iend = headers.end();
+        for (; i != iend; ++i) {
+            curl_slist *new_hlist = curl_slist_append(
+                hlist,
+                (i->first + ": " + i->second).c_str()
+            );
+            if (!new_hlist)
+                throw HttpClientError("curl_slist_append() failed!");
+            hlist = new_hlist;
+        }
+        return hlist;
+    }
+    catch (...) {
+        if (hlist)
+            curl_slist_free_all(hlist);
+        throw;
+    }
+}
+
+const HttpResponse http_post(const std::string &uri,
+    Yb::ILogger *logger,
     double timeout,
     const std::string &method,
-    Yb::ILogger *logger)
+    const HttpHeaders &headers,
+    const HttpParams &params,
+    const std::string &body,
+    bool ssl_validate,
+    const std::string &client_cer,
+    const std::string &client_key)
 {
     CURL *curl = NULL;
-    std::string buffer;
+    curl_slist *hlist = NULL;
+    long http_code = 0;
+    HttpHeaders out_headers;
+    std::string result_buffer;
+
     try {
         curl = curl_easy_init();
         if (!curl)
             throw HttpClientError("curl_easy_init() failed");
         DBG_LOG("http_post: method=" + method + ", uri=" + uri);
+
+        // calculate and set the URI
+        std::string params_str = serialize_params(curl, params);
         std::string fixed_uri = uri;
-        std::string body;
-        auto i = params.begin(), iend = params.end();
-        for (bool item0 = true; i != iend; ++i, item0 = false) {
-            if (!item0)
-                body += "&";
-            char *output = curl_easy_escape(curl, i->first.c_str(), i->first.size());
-            if (output) {
-                body += output;
-                curl_free(output);
-            }
-            body += "=";
-            output = curl_easy_escape(curl, i->second.c_str(), i->second.size());
-            if (output) {
-                body += output;
-                curl_free(output);
-            }
-        }
-        if (method != "POST") {
-            if (body.find('?') == std::string::npos)
-                fixed_uri += "?" + body;
+        if (!params_str.empty() && method == "GET") {
+            if (fixed_uri.find('?') == std::string::npos)
+                fixed_uri += "?" + params_str;
             else
-                fixed_uri += "&" + body;
-            body = "";
+                fixed_uri += "&" + params_str;
         }
         CURLcode res = curl_easy_setopt(curl, CURLOPT_URL, fixed_uri.c_str());
         if (res != CURLE_OK)
             throw HttpClientError(
                 "curl_easy_setopt(curl, CURLOPT_URL, uri) failed: " +
                 std::string(curl_easy_strerror(res)));
-        if (method == "POST") {
-            res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+
+        // set the body if necessary
+        std::string request_body = body;
+        if (request_body.empty() && !params_str.empty() && method == "POST") {
+            request_body = params_str;
+        }
+        if (!request_body.empty()) {
+            res = curl_easy_setopt(curl, CURLOPT_COPYPOSTFIELDS, request_body.c_str());
             if (res != CURLE_OK)
                 throw HttpClientError(
-                    "curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body) failed: " +
+                    "curl_easy_setopt(curl, CURLOPT_COPYPOSTFIELDS, body) failed: " +
                     std::string(curl_easy_strerror(res)));
         }
-        // curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+        // set custom headers if necessary
+        if (headers.size()) {
+            hlist = fill_headers(curl, headers);
+            res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hlist);
+            if (res != CURLE_OK)
+                throw HttpClientError(
+                    "curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hlist) failed: " +
+                    std::string(curl_easy_strerror(res)));
+        }
+
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
+
         curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
         if (timeout > 0)
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
-        /* Set body extractor */
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+
+        // set client certificate
+        if (!client_cer.empty()) {
+            curl_easy_setopt(curl, CURLOPT_SSLCERT, client_cer.c_str());
+            curl_easy_setopt(curl, CURLOPT_SSLKEY, client_key.c_str());
+        }
+
+        if (!ssl_validate) {
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+        }
+
+        // set headers extractor function
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &out_headers);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
+
+        // set body extractor function
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_buffer);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writer);
-        /* Perform the request, res will get the return code */
+
+        // perform the request, res will get the return code
         res = curl_easy_perform(curl);
-        /* Check for errors */
         if (res != CURLE_OK)
             throw HttpClientError(
                 "curl_easy_perform(\"" + uri + "\") failed: " +
                 std::string(curl_easy_strerror(res)));
+
+        // extract HTTP code
+        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        if (res != CURLE_OK)
+            throw HttpClientError(
+                "curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, ...) failed: " +
+                std::string(curl_easy_strerror(res)));
+
+        // clean up
+        if (hlist)
+            curl_slist_free_all(hlist);
         curl_easy_cleanup(curl);
     }
     catch (...) {
+        // clean up on exception
+        if (hlist)
+            curl_slist_free_all(hlist);
         if (curl)
             curl_easy_cleanup(curl);
         throw;
     }
-    return buffer;
+    std::string reason_phrase = "SomeDesc";
+    auto rp = out_headers.find("X-ReasonPhrase");
+    if (out_headers.end() != rp)
+        reason_phrase = rp->second;
+    return boost::make_tuple(http_code, reason_phrase, result_buffer, out_headers);
 }
 
 // vim:ts=4:sts=4:sw=4:et:

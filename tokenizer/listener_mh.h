@@ -8,63 +8,53 @@
 
 #include "app_class.h"
 #include "servant_utils.h"
+#include "http_post.h"
 #include "micro_http.h"
 
 inline
-const std::string extract_body(web::http::http_response &response,
-                               Yb::ILogger &logger)
+const HttpHeaders convert_headers(const HttpMessage &req)
 {
-    auto body_task = response.extract_string();
-    if (body_task.wait() != pplx::completed)
-        throw ::RunTimeError("pplx: body_task.wait() failed");
-    return body_task.get();
-}
-
-inline
-const web::http::http_headers convert_headers(const HttpHeaders &req)
-{
-    web::http::http_headers result;
-    for (const auto &p : req.get_headers()) {
-        result[p.first] = p.second;
-    }
+    HttpHeaders result;
+    auto i = req.get_headers().begin(), iend = req.get_headers().end();
+    for (; i != iend; ++i)
+        result[i->first] = i->second;
     return result;
 }
 
 inline
-void dump_nested_response(web::http::http_response &nested_response,
-                          const std::string &body,
+void dump_nested_response(const HttpResponse &nested_response,
                           Yb::ILogger &logger)
 {
     Yb::ILogger::Ptr nest_logger(logger.new_logger("nested").release());
-    nest_logger->debug(Yb::to_string(nested_response.status_code()) +
-                        " " + nested_response.reason_phrase());
-    for (const auto &p : nested_response.headers()) {
-        nest_logger->debug(p.first + ": " + p.second);
+    nest_logger->debug(Yb::to_string(nested_response.get<0>()
+            + " " + nested_response.get<1>()));
+    auto i = nested_response.get<3>().begin(),
+         iend = nested_response.get<3>().end();
+    for (; i != iend; ++i) {
+        nest_logger->debug(i->first + ": " + i->second);
     }
-    nest_logger->debug("body: " + body);
+    nest_logger->debug("body: " + nested_response.get<2>());
 }
 
 inline
-const HttpHeaders convert_response(pplx::task<web::http::http_response> &task,
+const HttpMessage convert_response(const HttpResponse &nested_response,
                                    Yb::ILogger &logger)
 {
-    if (task.wait() != pplx::completed)
-        throw ::RunTimeError("pplx: task.wait() failed");
-    web::http::http_response nested_response = task.get();
-    HttpHeaders response(10, nested_response.status_code(),
-            nested_response.reason_phrase());
-    for (const auto &p : nested_response.headers()) {
-        response.set_header(p.first, p.second);
+    HttpMessage response(10, nested_response.get<0>(),
+            nested_response.get<1>());
+    auto i = nested_response.get<3>().begin(),
+         iend = nested_response.get<3>().end();
+    for (; i != iend; ++i) {
+        response.set_header(i->first, i->second);
     }
-    std::string body = extract_body(nested_response, logger);
-    dump_nested_response(nested_response, body, logger);
-    response.set_response_body(body);
+    dump_nested_response(nested_response, logger);
+    response.set_response_body(nested_response.get<2>());
     return response;
 }
 
 inline
-const HttpHeaders proxy_any(Yb::ILogger &logger,
-                            const HttpHeaders &request,
+const HttpMessage proxy_any(Yb::ILogger &logger,
+                            const HttpMessage &request,
                             const std::string &target_uri,
                             const std::string &client_cert = "",
                             const std::string &client_privkey = "",
@@ -72,15 +62,8 @@ const HttpHeaders proxy_any(Yb::ILogger &logger,
                             ParamsProcessor pproc = NULL)
 {
     logger.info("proxy pass to " + target_uri);
-
-    web::http::client::http_client_config client_config;
-    if (!client_cert.empty())
-        client_config.set_client_certificate(client_cert);
-    if (!client_privkey.empty())
-        client_config.set_client_private_key(client_privkey);
-
     // TODO: turn on validation in production code!
-    client_config.set_validate_certificates(false);
+    bool ssl_validate = false;
 
     std::string target_uri_fixed = target_uri;
     std::string body_fixed = request.get_body();
@@ -99,14 +82,18 @@ const HttpHeaders proxy_any(Yb::ILogger &logger,
         }
     }
 
-    web::http::client::http_client client(target_uri_fixed, client_config);
-    web::http::http_request nested_request(
-            request.get_method() == "GET"?
-            web::http::methods::GET: web::http::methods::POST);
-    nested_request.headers() = convert_headers(request);
-    nested_request.set_body(body_fixed);
-    auto task = client.request(nested_request);
-    return convert_response(task, logger);
+    HttpResponse resp = http_post(
+        target_uri_fixed,
+        &logger,
+        30.0,
+        request.get_method(),
+        convert_headers(request),
+        HttpParams(),
+        body_fixed,
+        ssl_validate,
+        client_cert,
+        client_privkey);
+    return convert_response(resp, logger);
 }
 
 typedef XmlHttpWrapper CardProxyHttpWrapper;

@@ -1,7 +1,5 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include <cstring>
-#include <pplx/pplx.h>
-#include <cpprest/http_client.h>
 #include <util/string_utils.h>
 
 #ifdef VAULT_DEBUG_API
@@ -25,7 +23,7 @@ Yb::ElementTree::ElementPtr ping(
 
 #define CFG_VALUE(x) theApp::instance().cfg().get_value(x)
 
-const HttpHeaders bind_card(Yb::ILogger &logger, const HttpHeaders &request)
+const HttpMessage bind_card(Yb::ILogger &logger, const HttpMessage &request)
 {
     return proxy_any(
             logger, request, CFG_VALUE("bind_card_url"),
@@ -33,8 +31,8 @@ const HttpHeaders bind_card(Yb::ILogger &logger, const HttpHeaders &request)
             bind_card__fix_json, NULL);
 }
 
-const HttpHeaders supply_payment_data(Yb::ILogger &logger,
-                                      const HttpHeaders &request)
+const HttpMessage supply_payment_data(Yb::ILogger &logger,
+                                      const HttpMessage &request)
 {
     auto uri = CFG_VALUE("bind_card_url");
     uri = uri.substr(0, uri.size() - std::strlen("/bind_card"));
@@ -45,7 +43,7 @@ const HttpHeaders supply_payment_data(Yb::ILogger &logger,
             bind_card__fix_json, NULL);
 }
 
-const HttpHeaders authorize(Yb::ILogger &logger, const HttpHeaders &request)
+const HttpMessage authorize(Yb::ILogger &logger, const HttpMessage &request)
 {
     return proxy_any(
             logger, request, CFG_VALUE("authorize_url"),
@@ -54,7 +52,7 @@ const HttpHeaders authorize(Yb::ILogger &logger, const HttpHeaders &request)
             NULL, authorize__fix_params);
 }
 
-const HttpHeaders start_payment(Yb::ILogger &logger, const HttpHeaders &request)
+const HttpMessage start_payment(Yb::ILogger &logger, const HttpMessage &request)
 {
     return proxy_any(
             logger, request, CFG_VALUE("start_payment_url"),
@@ -62,8 +60,8 @@ const HttpHeaders start_payment(Yb::ILogger &logger, const HttpHeaders &request)
             NULL, start_payment__fix_params);
 }
 
-const HttpHeaders proxy_host2host_ym_api(Yb::ILogger &logger,
-                                         const HttpHeaders &request,
+const HttpMessage proxy_host2host_ym_api(Yb::ILogger &logger,
+                                         const HttpMessage &request,
                                          const std::string &method)
 {
     auto host2host_uri = CFG_VALUE("authorize_url");
@@ -78,17 +76,17 @@ const HttpHeaders proxy_host2host_ym_api(Yb::ILogger &logger,
             NULL, NULL);
 }
 
-const HttpHeaders status(Yb::ILogger &logger, const HttpHeaders &request)
+const HttpMessage status(Yb::ILogger &logger, const HttpMessage &request)
 {
     return proxy_host2host_ym_api(logger, request, "status");
 }
 
-const HttpHeaders cancel(Yb::ILogger &logger, const HttpHeaders &request)
+const HttpMessage cancel(Yb::ILogger &logger, const HttpMessage &request)
 {
     return proxy_host2host_ym_api(logger, request, "cancel");
 }
 
-const HttpHeaders clear(Yb::ILogger &logger, const HttpHeaders &request)
+const HttpMessage clear(Yb::ILogger &logger, const HttpMessage &request)
 {
     return proxy_host2host_ym_api(logger, request, "clear");
 }

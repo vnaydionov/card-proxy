@@ -49,7 +49,7 @@ const std::string uri_decode(const std::string &s)
 
 const std::string serialize_params(const Yb::StringDict &params)
 {
-    return HttpHeaders::serialize_params(params);
+    return HttpMessage::serialize_params(params);
 }
 
 const std::string dict2str(const Yb::StringDict &params)
@@ -113,8 +113,8 @@ std::string XmlHttpWrapper::dump_result(Yb::ElementTree::ElementPtr res)
     return res_str;
 }
 
-const HttpHeaders XmlHttpWrapper::try_call(TimerGuard &t,
-                                           const HttpHeaders &request, int n)
+const HttpMessage XmlHttpWrapper::try_call(TimerGuard &t,
+                                           const HttpMessage &request, int n)
 {
     logger_->info("Method " + NARROW(name_) +
                   std::string(n? " re": " ") + "started.");
@@ -131,14 +131,14 @@ const HttpHeaders XmlHttpWrapper::try_call(TimerGuard &t,
         if (theApp::instance().uses_db())
             session->commit();
         // form the reply
-        HttpHeaders response(10, 200, _T("OK"));
+        HttpMessage response(10, 200, _T("OK"));
         response.set_response_body(dump_result(res), _T("application/xml"));
         t.set_ok();
         return response;
     }
     else
     {
-        HttpHeaders response = g_(*logger_, request);
+        HttpMessage response = g_(*logger_, request);
         t.set_ok();
         return response;
     }
@@ -158,7 +158,7 @@ XmlHttpWrapper::XmlHttpWrapper(const Yb::String &name, PlainHttpHandler g,
     , default_status_(default_status), f_(NULL), g_(g)
 {}
 
-const HttpHeaders XmlHttpWrapper::operator() (const HttpHeaders &request)
+const HttpMessage XmlHttpWrapper::operator() (const HttpMessage &request)
 {
     logger_.reset(theApp::instance().new_logger(
                 f_? _T("invoker_xml"): _T("invoker_plain")).release());
@@ -175,19 +175,19 @@ const HttpHeaders XmlHttpWrapper::operator() (const HttpHeaders &request)
     }
     catch (const ApiResult &ex) {
         t.set_ok();
-        HttpHeaders response(10, 200, _T("OK"));
+        HttpMessage response(10, 200, _T("OK"));
         response.set_response_body(dump_result(ex.result()), cont_type);
         return response;
     }
     catch (const std::exception &ex) {
         logger_->error(std::string("exception: ") + ex.what());
-        HttpHeaders response(10, 500, _T("Internal error"));
+        HttpMessage response(10, 500, _T("Internal error"));
         response.set_response_body(dump_result(mk_resp(default_status_)), cont_type);
         return response;
     }
     catch (...) {
         logger_->error("unknown exception");
-        HttpHeaders response(10, 500, _T("Internal error"));
+        HttpMessage response(10, 500, _T("Internal error"));
         response.set_response_body(dump_result(mk_resp(default_status_)), cont_type);
         return response;
     }

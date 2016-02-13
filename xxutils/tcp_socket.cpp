@@ -82,6 +82,7 @@ TcpSocket::bind(const string &ip_addr, int port)
 {
     create_if_needed();
     struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr(ip_addr.c_str());
     addr.sin_port = htons(port);

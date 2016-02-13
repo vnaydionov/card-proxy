@@ -2,7 +2,6 @@
 include_directories (
     ${BOOST_INCLUDEDIR}
     ${YBORM_INCLUDES}
-    ${CPPREST_INCLUDES}
     ${PROJECT_SOURCE_DIR}/xxutils
     ${PROJECT_SOURCE_DIR}/xxcommon
     ${CMAKE_CURRENT_BINARY_DIR}/../xxcommon)
@@ -18,8 +17,7 @@ add_executable (card_proxy_tokenizer
 
 target_link_libraries (
     card_proxy_tokenizer xxcommon xxutils crypto ssl
-    ${YBORM_LIB} ${YBUTIL_LIB} ${YB_BOOST_LIBS} ${CURL_LIBRARIES}
-    ${CPPREST_LIB})
+    ${YBORM_LIB} ${YBUTIL_LIB} ${YB_BOOST_LIBS} ${CURL_LIBRARIES} ${JSONC_LIB})
 
 install (TARGETS card_proxy_tokenizer DESTINATION bin)
 install (PROGRAMS card_proxy_tokenizer-ping card_proxy_tokenizer-restarter

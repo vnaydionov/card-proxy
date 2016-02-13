@@ -55,8 +55,8 @@ public:
     Yb::ElementTree::ElementPtr result() const { return p_; }
 };
 
-typedef const HttpHeaders (*PlainHttpHandler)(
-        Yb::ILogger &logger, const HttpHeaders &request);
+typedef const HttpMessage (*PlainHttpHandler)(
+        Yb::ILogger &logger, const HttpMessage &request);
 
 typedef Yb::ElementTree::ElementPtr (*XmlHttpHandler)(
         Yb::Session &session, Yb::ILogger &logger,
@@ -71,8 +71,8 @@ class XmlHttpWrapper
 
     std::string dump_result(Yb::ElementTree::ElementPtr res);
 
-    const HttpHeaders try_call(TimerGuard &t,
-                               const HttpHeaders &request, int n);
+    const HttpMessage try_call(TimerGuard &t,
+                               const HttpMessage &request, int n);
 
 public:
     XmlHttpWrapper(): f_(NULL), g_(NULL) {}
@@ -88,7 +88,7 @@ public:
     const Yb::String &name() const { return name_; }
     const Yb::String &prefix() const { return prefix_; }
 
-    const HttpHeaders operator() (const HttpHeaders &request);
+    const HttpMessage operator() (const HttpMessage &request);
 };
 
 #define WRAP(prefix, func) XmlHttpWrapper(_T(#func), func, prefix)
