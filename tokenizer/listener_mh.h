@@ -62,6 +62,7 @@ const HttpMessage proxy_any(Yb::ILogger &logger,
                             ParamsProcessor pproc = NULL)
 {
     logger.info("proxy pass to " + target_uri);
+
     // TODO: turn on validation in production code!
     bool ssl_validate = false;
 

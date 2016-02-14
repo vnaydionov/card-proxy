@@ -50,13 +50,18 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         const HttpParams &params,
         const std::string &http_method)
 {
+    // TODO: turn on validation in production code!
+    bool ssl_validate = false;
+
     HttpResponse resp = http_post(
         peer_uri + path_prefix_ + method,
         NULL,
         peer_timeout_,
         http_method,
         HttpHeaders(),
-        params);
+        params,
+        "",
+        ssl_validate);
     if (resp.get<0>() != 200)
         throw ::RunTimeError("call_peer: not HTTP 200");
     const std::string &body = resp.get<2>();
