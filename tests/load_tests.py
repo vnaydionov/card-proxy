@@ -16,7 +16,7 @@ log = logger.get_logger()
 
 
 HTTP_METHOD = 'POST'
-SERVER_URI = 'http://localhost:17117/debug_api'
+SERVER_URI = 'http://localhost:17117/'
 
 
 def wrapped_call_proxy(method, *args):
@@ -127,28 +127,28 @@ class Worker(Process):
     def scenario(self):
         self.sleep()
         card_data = generate_random_card_data(mode='full')
-        status, resp, exec_time = wrapped_call_proxy('get_token', card_data)
-        self.send_result('get_token', status, resp, exec_time)
+        status, resp, exec_time = wrapped_call_proxy('tokenize_card', card_data)
+        self.send_result('tokenize_card', status, resp, exec_time)
         if status != 'success':
-            log.debug('Error raised in get_token')
+            log.debug('Error raised in tokenize_card')
             return
         card_token = get_resp_field(resp, 'card_token')
         cvn_token = get_resp_field(resp, 'cvn_token')
         if not card_token:
-            log.debug('Cant find card token in get_token response!')
+            log.debug('Cant find card token in tokenize_card response!')
             return
         if not cvn_token:
-            log.debug('Cant find cvn token in get_token response!')
+            log.debug('Cant find cvn token in tokenize_card response!')
             return
-        status, resp, exec_time = wrapped_call_proxy('get_card',
+        status, resp, exec_time = wrapped_call_proxy('detokenize_card',
                                                      card_token, cvn_token)
-        self.send_result('get_card', status, resp, exec_time)
+        self.send_result('detokenize_card', status, resp, exec_time)
         if status != 'success':
-            log.debug('Error raised in get_card')
+            log.debug('Error raised in detokenize_card')
             return
-        status, resp, exec_time = wrapped_call_proxy('remove_card_data',
+        status, resp, exec_time = wrapped_call_proxy('remove_card',
                                                      card_token, cvn_token)
-        self.send_result('remove_card_data', status, resp, exec_time)
+        self.send_result('remove_card', status, resp, exec_time)
         if status != 'success':
             log.debug('Error raised in remove_card')
 

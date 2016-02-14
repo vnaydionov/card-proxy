@@ -93,7 +93,7 @@ Yb::ElementTree::ElementPtr dek_status(
     return resp;
 }
 
-Yb::ElementTree::ElementPtr get_token(
+Yb::ElementTree::ElementPtr tokenize_card(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
@@ -121,7 +121,7 @@ Yb::ElementTree::ElementPtr get_token(
     return resp;
 }
 
-Yb::ElementTree::ElementPtr get_card(
+Yb::ElementTree::ElementPtr detokenize_card(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
@@ -129,7 +129,7 @@ Yb::ElementTree::ElementPtr get_card(
     std::string card_token, cvn_token;
     try {
         card_token = params["card_token"];
-        cvn_token = params["cvn_token"];
+        cvn_token = params.get("cvn_token", "");
     }
     catch (const Yb::KeyError &) {
     }
@@ -148,45 +148,12 @@ Yb::ElementTree::ElementPtr remove_card(
 {
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
     CardCrypter card_crypter(theApp::instance().cfg(), logger, session);
-    std::string card_token = params["card_token"];
-    card_crypter.remove_data_token(card_token);
+    std::string card_token = params.get("card_token", "");
+    if (!card_token.empty())
+        card_crypter.remove_data_token(card_token);
     std::string cvn_token = params.get("cvn_token", "");
     if (!cvn_token.empty())
         card_crypter.remove_data_token(cvn_token);
-    return resp;
-}
-
-Yb::ElementTree::ElementPtr remove_incoming_request(
-        Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    Yb::ElementTree::ElementPtr resp = mk_resp("success");
-    CardCrypter card_crypter(theApp::instance().cfg(), logger, session);
-    std::string token = params["token"];
-    card_crypter.remove_data_token(token);
-    return resp;
-}
-
-Yb::ElementTree::ElementPtr get_master_key(
-        Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    Yb::ElementTree::ElementPtr resp = mk_resp("success");
-    TokenizerConfig &tcfg(theTokenizerConfig::instance().refresh());
-    std::string master_key = tcfg.get_active_master_key();
-    resp->sub_element("master_key", master_key);
-    return resp;
-}
-
-Yb::ElementTree::ElementPtr set_master_key(
-        Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    Yb::ElementTree::ElementPtr resp = mk_resp("success");
-    CardCrypter card_crypter(theApp::instance().cfg(), logger, session);
-    std::string new_key = params["key"];
-    //card_crypter.change_master_key(new_key);
-    YB_ASSERT(false);
     return resp;
 }
 
@@ -206,14 +173,14 @@ Yb::ElementTree::ElementPtr run_load_scenario(
             params["card_holder"] = card_data.card_holder;
             params["pan"] = card_data.pan;
             params["cvn"] = card_data.cvn;
-            Yb::ElementTree::ElementPtr r = get_token(session, logger, params);
+            Yb::ElementTree::ElementPtr r = tokenize_card(session, logger, params);
             std::string card_token = r->find_first("card_data/card_token")->get_text();
             std::string cvn_token = r->find_first("card_data/cvn_token")->get_text();
             YB_ASSERT(!card_token.empty() && !cvn_token.empty());
             Yb::StringDict params2;
             params2["card_token"] = card_token;
             params2["cvn_token"] = cvn_token;
-            r = get_card(session, logger, params2);
+            r = detokenize_card(session, logger, params2);
             YB_ASSERT(r->find_first("card_data/pan")->get_text() == card_data.pan);
             YB_ASSERT(r->find_first("card_data/expire_month")->get_text() == card_data.format_month());
             r = remove_card(session, logger, params2);

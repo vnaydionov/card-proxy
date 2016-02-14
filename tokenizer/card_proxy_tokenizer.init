@@ -13,7 +13,7 @@ log_info () {
 
 kill_running () {
     SIG=$1
-    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT$" | grep -v grep | awk '{print$2}'`
+    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
     if [ "x$RUNNING" != "x" ] ; then
         echo "Sending $SIG..."
         kill -$SIG $RUNNING

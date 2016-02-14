@@ -13,6 +13,8 @@
 
 #include "domain/DataToken.h"
 
+#define TOKENIZER_CONFIG_SINGLETON
+
 typedef std::map<std::string, std::string> ConfigMap;
 typedef std::map<int, std::string> VersionMap;
 
@@ -63,7 +65,7 @@ class TokenizerConfig
     TokenizerConfig(const TokenizerConfig &);
     TokenizerConfig &operator=(const TokenizerConfig &);
 public:
-    TokenizerConfig();
+    TokenizerConfig(bool hmac_needed = true);
 
     const std::string get_xml_config_key(const std::string &config_key) const;
     const std::string get_db_config_key(const std::string &config_key) const;
@@ -84,11 +86,13 @@ public:
     const std::vector<int> get_hmac_versions() const;
 
     time_t get_ts() const { return ts_; }
-    void reload();
+    void reload(bool hmac_needed = true);
     TokenizerConfig &refresh();
 };
 
+#ifdef TOKENIZER_CONFIG_SINGLETON
 typedef Yb::SingletonHolder<TokenizerConfig> theTokenizerConfig;
+#endif
 
 
 class Tokenizer
@@ -116,11 +120,18 @@ public:
                                  int kek_version);
 
 private:
+    IConfig &config_;
     Yb::ILogger::Ptr logger_;
     Yb::Session &session_;
+#ifdef TOKENIZER_CONFIG_SINGLETON
     TokenizerConfig &tokenizer_config_;
-    int kek_version_;
-    DEKPool dek_pool_;
+#else
+    std::auto_ptr<TokenizerConfig> tokenizer_config_;
+#endif
+    std::auto_ptr<DEKPool> dek_pool_;
+
+    TokenizerConfig &tokenizer_config(bool hmac_needed = true);
+    DEKPool &dek_pool();
 
     Domain::DataToken do_tokenize(const std::string &plain_text,
                                   const Yb::DateTime &finish_ts,

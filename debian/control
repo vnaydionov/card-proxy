@@ -6,7 +6,7 @@ Build-Depends:
  debhelper,
  dh-buildinfo,
  cdbs (>= 0.4.69~),
- devscripts, cmake, g++ (>= 4.8), libcpprest-dev (>= 2.6), libyborm-dev (>= 0.4.7-fix7)
+ devscripts, cmake, g++ (>= 4.4), libcurl-dev, libjson-c-dev, libyborm-dev (>= 0.4.7-fix7)
 Standards-Version: 3.7.3
 Homepage: https://github.com/vnaydionov/card-proxy
 

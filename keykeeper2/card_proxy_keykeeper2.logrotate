@@ -1,4 +1,4 @@
-/var/log/cpr_keykeeper/key_keeper2.log {
+/var/log/cpr_keykeeper/card_proxy_keykeeper2.log {
     daily
     nocompress
     notifempty
@@ -8,8 +8,8 @@
     missingok
     postrotate
         python -c 'import random, time; time.sleep(random.random() * 180)'
-        service key-keeper2 restart
-        LOG_NAME=key_keeper2.log
+        service card_proxy_keykeeper2 restart
+        LOG_NAME=card_proxy_keykeeper2.log
         SUFFIX=`date '+%F'`
         mkdir -p /var/log/cpr_keykeeper/arc
         chown cpr_keykeeper:root /var/log/cpr_keykeeper/arc

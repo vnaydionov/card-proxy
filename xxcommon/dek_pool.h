@@ -18,7 +18,7 @@ public:
     int min_active_dek_count() const { return min_active_dek_count_; }
 
     const DEKPoolStatus get_status();
-    Domain::DataKey generate_new_data_key();
+    Domain::DataKey generate_new_data_key(bool is_hmac = 0);
     Domain::DataKey get_active_data_key();
 
 private:

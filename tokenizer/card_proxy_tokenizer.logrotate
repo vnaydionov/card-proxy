@@ -1,4 +1,4 @@
-/var/log/cpr_tokenizer/card_proxy.log {
+/var/log/cpr_tokenizer/card_proxy_tokenizer.log {
     daily
     nocompress
     notifempty
@@ -8,8 +8,8 @@
     missingok
     postrotate
         python -c 'import random, time; time.sleep(random.random() * 180)'
-        service card-proxy restart
-        LOG_NAME=card_proxy.log
+        service card_proxy_tokenizer restart
+        LOG_NAME=card_proxy_tokenizer.log
         SUFFIX=`date '+%F'`
         mkdir -p /var/log/cpr_tokenizer/arc
         chown cpr_tokenizer:root /var/log/cpr_tokenizer/arc

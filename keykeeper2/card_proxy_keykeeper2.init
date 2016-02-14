@@ -13,7 +13,7 @@ log_info () {
 
 kill_running () {
     SIG=$1
-    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT$" | grep -v grep | awk '{print$2}'`
+    RUNNING=`ps -Ao user:20,pid,command:100 | grep "^$CP_USER .*$SERVANT" | grep -v grep | awk '{print$2}'`
     if [ "x$RUNNING" != "x" ] ; then
         echo "Sending $SIG..."
         kill -$SIG $RUNNING
@@ -58,7 +58,8 @@ if [ "$MODE" = "stop" ] || [ "$MODE" = "restart" ] || [ "$MODE" = "start" ] ; th
 fi
 
 if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
-    echo "Starting..."
+    python -c 'import os,time; d=ord(os.urandom(1)) * 7. / 256; print "Starting in %.3f sec" % d; time.sleep(d)'
+    #echo "Starting..."
     touch "$LOG_FILE"
     chown "$CP_USER:$CP_USER" "$LOG_FILE"
     su $CP_USER -c "setsid \

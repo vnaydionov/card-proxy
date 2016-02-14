@@ -88,6 +88,8 @@ class CardProxyWebApi(object):
         self.method = method
 
     def try_call(self, uri, user_data=None):
+        log.debug('Connect to [%s]...', uri)
+        log.debug('Data: [%s]', repr(user_data))
         if self.method == 'POST':
             if not user_data:
                 user_data = 'random_trash_for_post'
@@ -99,27 +101,33 @@ class CardProxyWebApi(object):
         else:
             raise RuntimeError('Invalid method [%s]' % self.method)
         resp_msg = resp.read()
+        log.debug('Response [%s]...', resp_msg)
         resp.close()
         return resp_msg
 
     @response_wrapper
     def debug_method(self):
-        target_uri = self.server_uri + '/debug_method'
+        target_uri = self.server_uri + 'debug_api/debug_method'
         return self.try_call(target_uri)
 
     @response_wrapper
     def dek_status(self):
-        target_uri = self.server_uri + '/dek_status'
+        target_uri = self.server_uri + 'debug_api/dek_status'
         return self.try_call(target_uri)
 
     @response_wrapper
-    def get_token(self, card_data):
+    def check_kek(self):
+        target_uri = self.server_uri + 'ping/check_kek'
+        return self.try_call(target_uri)
+
+    @response_wrapper
+    def tokenize_card(self, card_data):
         uri_params = urllib.urlencode(card_data.to_dict())
-        target_uri = self.server_uri + '/get_token'
+        target_uri = self.server_uri + 'debug_api/tokenize_card'
         return self.try_call(target_uri, uri_params)
 
     @response_wrapper
-    def get_card(self, card_token=None, cvn_token=None):
+    def detokenize_card(self, card_token=None, cvn_token=None):
         params = {}
         if card_token:
             params['card_token'] = card_token
@@ -128,11 +136,11 @@ class CardProxyWebApi(object):
         if not params.items():
             raise RuntimeError()
         uri_params = urllib.urlencode(params)
-        target_uri = self.server_uri + '/get_card'
+        target_uri = self.server_uri + 'debug_api/detokenize_card'
         return self.try_call(target_uri, uri_params)
 
     @response_wrapper
-    def remove_card_data(self, card_token=None, cvn_token=None):
+    def remove_card(self, card_token=None, cvn_token=None):
         params = {}
         if card_token:
             params['card_token'] = card_token
@@ -141,7 +149,7 @@ class CardProxyWebApi(object):
         if not params.items():
             raise RuntimeError()
         uri_params = urllib.urlencode(params)
-        target_uri = self.server_uri + '/remove_card'
+        target_uri = self.server_uri + 'debug_api/remove_card'
         return self.try_call(target_uri, uri_params)
 
 
@@ -150,7 +158,7 @@ def call_proxy(server_uri, method_name, http_method, *params):
     if hasattr(web_api, method_name):
         api_method = getattr(web_api, method_name)
     else:
-        log.debug('Method not found in CardProxyWebApi')
+        log.debug('Method not found in CardProxyWebApi: [%s]', method_name)
         return
     log.debug('Calling [CardProxy.%s] with params [%s]...',
               method_name, params)

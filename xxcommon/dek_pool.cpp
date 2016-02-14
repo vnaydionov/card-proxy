@@ -29,13 +29,7 @@ const DEKPoolStatus DEKPool::get_status() {
 Domain::DataKey DEKPool::get_active_data_key() {
     while (true) {
         generate_enough_deks();  // generate some if necessary
-        // the more used DEKs are found in the "upper" half of the list,
-        // they get chosen twice as likely as DEKs from the "lower" half
-        int half_size = active_deks_.size() / 2;
-        bool upper_half = (rand() % 3) > 0;
-        int choice = upper_half ? ((rand() % (active_deks_.size() - half_size))
-                                   + half_size)
-                                : (rand() % half_size);
+        int choice = rand() % active_deks_.size();
         Domain::DataKey dek = Yb::lock_and_refresh(session_, active_deks_[choice]);
         if (dek.counter < dek.max_counter && dek.finish_ts > Yb::now()) {
             session_.debug("selected DEK: " + Yb::to_string(dek.id.value()));
@@ -53,7 +47,6 @@ Domain::DataKey::ResultSet DEKPool::query_active_deks() {
     return Yb::query<Domain::DataKey>(session_)
         .filter_by(Domain::DataKey::c.counter < Domain::DataKey::c.max_counter)
         .filter_by(Domain::DataKey::c.finish_ts > Yb::now())
-        .order_by(Domain::DataKey::c.counter)
         .all();
 }
 
@@ -71,27 +64,32 @@ void DEKPool::generate_enough_deks() {
         int unused_count = get_unused_count(active_deks_);
         if (unused_count >= min_active_dek_count_)
             break;
-        int new_data_keys_needed = (min_active_dek_count_ - unused_count
-                + dek_use_count_ - 1) / dek_use_count_;
-        for (int i = 0; i < new_data_keys_needed; ++i)
-            generate_new_data_key();  // don't flush
+        generate_new_data_key();
+        generate_new_data_key();
         session_.flush();
         fill_active_deks();
+        break;
     }
 }
 
-Domain::DataKey DEKPool::generate_new_data_key() {
+Domain::DataKey DEKPool::generate_new_data_key(bool is_hmac) {
     Domain::DataKey data_key;
-    std::string encoded_dek;
     std::string dek_value = generate_random_bytes(32);
     AESCrypter aes_crypter(master_key_);
-    encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
+    std::string encoded_dek = encode_base64(aes_crypter.encrypt(dek_value));
     data_key.start_ts = Yb::now();
-    data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
-            dek_usage_period_ * 24 * 3600);
+    if (is_hmac) {
+        data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
+                366 * 24 * 3600);
+        data_key.max_counter = 0;
+    }
+    else {
+        data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
+                dek_usage_period_ * 24 * 3600);
+        data_key.max_counter = dek_use_count();
+    }
     data_key.dek_crypted = encoded_dek;
     data_key.kek_version = kek_version_;
-    data_key.max_counter = dek_use_count();
     data_key.counter = 0;
     data_key.save(session_);
     return data_key;

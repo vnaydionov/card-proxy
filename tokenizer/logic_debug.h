@@ -23,12 +23,9 @@ Yb::ElementTree::ElementPtr name( \
 
 DECL_DEBG_METHOD(debug_method);
 DECL_DEBG_METHOD(dek_status);
-DECL_DEBG_METHOD(get_token);
-DECL_DEBG_METHOD(get_card);
+DECL_DEBG_METHOD(tokenize_card);
+DECL_DEBG_METHOD(detokenize_card);
 DECL_DEBG_METHOD(remove_card);
-DECL_DEBG_METHOD(remove_incoming_request);
-DECL_DEBG_METHOD(get_master_key);
-DECL_DEBG_METHOD(set_master_key);
 DECL_DEBG_METHOD(run_load_scenario);
 
 #endif // CARD_PROXY__LOGIC_DEBUG_H

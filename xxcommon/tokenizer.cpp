@@ -71,7 +71,7 @@ const std::string
 }
 
 void KeyKeeperAPI::send_key_to_server(const std::string &key,
-                                         int kek_version)
+                                      int kek_version)
 {
     double key_keeper_timeout = timeout_;
     std::string key_keeper_uri = uri_;
@@ -138,6 +138,15 @@ const ConfigMap
     return cf;
 }
 
+static const std::string decode_part(const std::string &s, int part_n)
+{
+    const std::string kek_n = string_from_hexstring(s, HEX_NOSPACES);
+    if (kek_n.size() != 32)
+        throw ::RunTimeError("invalid KEK" + Yb::to_string(part_n) +
+                             " size: " + Yb::to_string(kek_n.size()));
+    return kek_n;
+}
+
 const VersionMap
     TokenizerConfig::assemble_master_keys(
             Yb::ILogger &logger, IConfig &config,
@@ -155,28 +164,17 @@ const VersionMap
                 id.size() - prefix.size() - suffix.size());
         try {
             logger.debug("assembling master key ver" + ver_str);
-            const std::string kek3 = string_from_hexstring(
-                    i->second, HEX_NOSPACES);
-            if (kek3.size() != 32)
-                throw ::RunTimeError("invalid KEK3 size: " +
-                        Yb::to_string(kek3.size()));
+            const std::string kek3 = decode_part(i->second, 3);
             int ver = boost::lexical_cast<int>(ver_str);
-            const std::string kek1 = string_from_hexstring(
-                    kk_api.get_key_by_version(ver), HEX_NOSPACES);
-            if (kek1.size() != 32)
-                throw ::RunTimeError("invalid KEK1 size: " +
-                        Yb::to_string(kek1.size()));
+            const std::string kek1 = decode_part(
+                    kk_api.get_key_by_version(ver), 1);
             ConfigMap::const_iterator j = xml_params.find(
                     prefix + ver_str + "_PART2");
             if (xml_params.end() == j)
                 throw ::RunTimeError("can't access KEK part2");
-            const std::string kek2 = string_from_hexstring(
-                    j->second, HEX_NOSPACES);
-            if (kek2.size() != 32)
-                throw ::RunTimeError("invalid KEK2 size: " +
-                        Yb::to_string(kek2.size()));
-            std::string kek(32, ' ');
-            for (int k = 0; k < 32; ++k)
+            const std::string kek2 = decode_part(j->second, 2);
+            std::string kek(kek1.size(), ' ');
+            for (size_t k = 0; k < kek1.size(); ++k)
                 kek[k] = kek1[k] ^ kek2[k] ^ kek3[k];
             mk[ver] = sha256_digest(kek);
             logger.info("master key ver" + ver_str + " assembled OK");
@@ -227,10 +225,10 @@ const VersionMap
     return hk;
 }
 
-TokenizerConfig::TokenizerConfig()
+TokenizerConfig::TokenizerConfig(bool hmac_needed)
     : ts_(0)
 {
-    reload();
+    reload(hmac_needed);
 }
 
 const std::string
@@ -308,14 +306,16 @@ const std::vector<int> TokenizerConfig::get_hmac_versions() const
     return versions;
 }
 
-void TokenizerConfig::reload()
+void TokenizerConfig::reload(bool hmac_needed)
 {
     Yb::ILogger::Ptr logger(
             theApp::instance().new_logger("tokenizer_config").release());
-    logger->info("reloading");
+    if (hmac_needed)
+        logger->info("reloading");
+    else
+        logger->info("reloading (no HMAC keys)");
 
     IConfig &config(theApp::instance().cfg());
-    config.reload();
     ConfigMap xml_params(load_config_from_xml(config));
 
     std::auto_ptr<Yb::Session> session(
@@ -325,8 +325,10 @@ void TokenizerConfig::reload()
     VersionMap master_keys(assemble_master_keys(
             *logger, config, xml_params, db_params));
 
-    VersionMap hmac_keys(load_hmac_keys(
-            *logger, db_params, *session, master_keys));
+    VersionMap hmac_keys;
+    if (hmac_needed)
+        hmac_keys = load_hmac_keys(
+                *logger, db_params, *session, master_keys);
     session.reset(NULL);
 
     Yb::ScopedLock lock(mux_);
@@ -342,6 +344,8 @@ TokenizerConfig &TokenizerConfig::refresh()
     time_t now = time(NULL);
     if (now - ts_ > 15) {
         ts_ = now;
+        IConfig &config(theApp::instance().cfg());
+        config.reload();
         reload();
     }
     return *this;
@@ -350,19 +354,19 @@ TokenizerConfig &TokenizerConfig::refresh()
 
 Tokenizer::Tokenizer(IConfig &config, Yb::ILogger &logger,
                      Yb::Session &session)
-    : logger_(logger.new_logger("tokenizer").release())
+    : config_(config)
+    , logger_(logger.new_logger("tokenizer").release())
     , session_(session)
+#ifdef TOKENIZER_CONFIG_SINGLETON
     , tokenizer_config_(theTokenizerConfig::instance().refresh())
-    , kek_version_(tokenizer_config_.get_active_master_key_version())
-    , dek_pool_(config, *logger_, session,
-                tokenizer_config_.get_master_key(kek_version_), kek_version_)
+#endif
 {}
 
 const std::string Tokenizer::search(const std::string &plain_text)
 {
     std::string result;
     const std::vector<int> hmac_versions
-        = tokenizer_config_.get_hmac_versions();
+        = tokenizer_config().get_hmac_versions();
     auto i = hmac_versions.begin(), iend = hmac_versions.end();
     for (; i != iend; ++i) {
         auto hmac_version = *i;
@@ -396,7 +400,7 @@ const std::string Tokenizer::tokenize(const std::string &plain_text,
         if (!result.empty())
             return result;
     }
-    int hmac_version = tokenizer_config_.get_active_hmac_key_version();
+    int hmac_version = tokenizer_config().get_active_hmac_key_version();
     std::string hmac_digest;
     if (deduplicate) {
         hmac_digest = count_hmac(plain_text, hmac_version);
@@ -423,6 +427,7 @@ const std::string Tokenizer::detokenize(const std::string &token_string)
     catch (const Yb::NoDataFound &) {
         throw TokenNotFound();
     }
+    tokenizer_config(false);
     std::string dek = decode_dek(data_token.dek->dek_crypted,
                                  data_token.dek->kek_version);
     return bcd_decode(decode_data(dek, data_token.data_crypted));
@@ -474,7 +479,7 @@ const std::string Tokenizer::encode_dek(const std::string &dek,
                                         int kek_version)
 {
     return encode_data(
-            tokenizer_config_.get_master_key(kek_version),
+            tokenizer_config().get_master_key(kek_version),
             dek);
 }
 
@@ -482,8 +487,32 @@ const std::string Tokenizer::decode_dek(const std::string &dek_crypted,
                                         int kek_version)
 {
     return decode_data(
-            tokenizer_config_.get_master_key(kek_version),
+            tokenizer_config().get_master_key(kek_version),
             dek_crypted);
+}
+
+TokenizerConfig &Tokenizer::tokenizer_config(bool hmac_needed)
+{
+#ifdef TOKENIZER_CONFIG_SINGLETON
+    return tokenizer_config_;
+#else
+    if (tokenizer_config_.get())
+        return *tokenizer_config_;
+    tokenizer_config_.reset(new TokenizerConfig(hmac_needed));
+    return *tokenizer_config_;
+#endif
+}
+
+DEKPool &Tokenizer::dek_pool()
+{
+    if (dek_pool_.get())
+        return *dek_pool_;
+    TokenizerConfig &cfg = tokenizer_config();
+    int kek_version = cfg.get_active_master_key_version();
+    dek_pool_.reset(new DEKPool(config_, *logger_, session_,
+                                cfg.get_master_key(kek_version),
+                                kek_version));
+    return *dek_pool_;
 }
 
 Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
@@ -494,7 +523,7 @@ Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
     Domain::DataToken data_token;
     data_token.finish_ts = finish_ts;
     data_token.token_string = generate_token_string();
-    Domain::DataKey data_key = dek_pool_.get_active_data_key();
+    Domain::DataKey data_key = dek_pool().get_active_data_key();
     std::string dek = decode_dek(data_key.dek_crypted, data_key.kek_version);
     data_token.data_crypted = encode_data(dek, bcd_encode(plain_text));
     data_token.dek = Domain::DataKey::Holder(data_key);
@@ -510,7 +539,7 @@ Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
 const std::string Tokenizer::count_hmac(const std::string &plain_text,
                                         int hmac_version)
 {
-    std::string hk = tokenizer_config_.get_hmac_key(hmac_version);
+    std::string hk = tokenizer_config().get_hmac_key(hmac_version);
     return encode_base64(sha256_digest(hk + ":" + plain_text));
 }
 

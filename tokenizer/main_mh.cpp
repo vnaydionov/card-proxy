@@ -105,12 +105,9 @@ int main(int argc, char *argv[])
         // debug methods
         WRAP(dbg_prefix, debug_method),
         WRAP(dbg_prefix, dek_status),
-        WRAP(dbg_prefix, get_token),
-        WRAP(dbg_prefix, get_card),
+        WRAP(dbg_prefix, tokenize_card),
+        WRAP(dbg_prefix, detokenize_card),
         WRAP(dbg_prefix, remove_card),
-        WRAP(dbg_prefix, remove_incoming_request),
-        WRAP(dbg_prefix, set_master_key),
-        WRAP(dbg_prefix, get_master_key),
         WRAP(dbg_prefix, run_load_scenario),
 #endif
         // proxy methods
