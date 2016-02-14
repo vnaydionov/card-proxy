@@ -82,7 +82,11 @@ Yb::ElementTree::ElementPtr dek_status(
         const Yb::StringDict &params)
 {
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
+#ifdef TOKENIZER_CONFIG_SINGLETON
     TokenizerConfig &tcfg(theTokenizerConfig::instance().refresh());
+#else
+    TokenizerConfig tcfg;
+#endif
     DEKPool dek_pool(theApp::instance().cfg(), logger, session,
                      tcfg.get_active_master_key(),
                      tcfg.get_active_master_key_version());
