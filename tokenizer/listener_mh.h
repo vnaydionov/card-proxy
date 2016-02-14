@@ -26,8 +26,8 @@ void dump_nested_response(const HttpResponse &nested_response,
                           Yb::ILogger &logger)
 {
     Yb::ILogger::Ptr nest_logger(logger.new_logger("nested").release());
-    nest_logger->debug(Yb::to_string(nested_response.get<0>()
-            + " " + nested_response.get<1>()));
+    nest_logger->debug(Yb::to_string(nested_response.get<0>())
+            + " " + nested_response.get<1>());
     auto i = nested_response.get<3>().begin(),
          iend = nested_response.get<3>().end();
     for (; i != iend; ++i) {
@@ -82,12 +82,14 @@ const HttpMessage proxy_any(Yb::ILogger &logger,
         }
     }
 
+    HttpHeaders nested_req_headers = convert_headers(request);
+    nested_req_headers["Content-Length"] = Yb::to_string(body_fixed.size());
     HttpResponse resp = http_post(
         target_uri_fixed,
         &logger,
         30.0,
         request.get_method(),
-        convert_headers(request),
+        nested_req_headers,
         HttpParams(),
         body_fixed,
         ssl_validate,

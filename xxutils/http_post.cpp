@@ -206,8 +206,10 @@ const HttpResponse http_post(const std::string &uri,
     }
     std::string reason_phrase = "SomeDesc";
     auto rp = out_headers.find("X-ReasonPhrase");
-    if (out_headers.end() != rp)
+    if (out_headers.end() != rp) {
         reason_phrase = rp->second;
+        out_headers.erase(rp);
+    }
     return boost::make_tuple(http_code, reason_phrase, result_buffer, out_headers);
 }
 
