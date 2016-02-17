@@ -23,7 +23,7 @@ def log_func_context(func):
 
 class TestBaseWebApi(unittest.TestCase):
     '''
-        get_token, get_card, remove_card, etc.
+        tokenize_card, detokenize_card, remove_card, etc.
     '''
     # TODO add error test
     def __init__(self, *args, **kwargs):
@@ -99,10 +99,10 @@ class TestBaseWebApi(unittest.TestCase):
         self.assertFalse(get_resp_field(resp, 'pan'))
 
     @log_func_context
-    def _test_get_token_multiple_duplicate_get(self):
+    def test_get_token_multiple_duplicate_get(self):
         card_data = generate_random_card_data(mode='without_cvn')
         status, resp, f_time = call_proxy(self.server_uri,
-                                          'get_token', 'GET', card_data)
+                                          'tokenize_card', 'GET', card_data)
         orig_pan = card_data.pan
         orig_card_token = get_resp_field(resp, 'card_token')
         for _ in range(10):
@@ -110,20 +110,20 @@ class TestBaseWebApi(unittest.TestCase):
                 + orig_pan[12:]
             card_data.pan = new_pan
             status, resp, f_time = call_proxy(self.server_uri,
-                                              'get_token', 'GET', card_data)
+                                              'tokenize_card', 'GET', card_data)
             dup_card_token = get_resp_field(resp, 'card_token')
             self.assertTrue(orig_card_token != dup_card_token)
         card_data.pan = orig_pan
         status, resp, f_time = call_proxy(self.server_uri,
-                                          'get_token', 'GET', card_data)
+                                          'tokenize_card', 'GET', card_data)
         orig_dup_card_token = get_resp_field(resp, 'card_token')
         self.assertEqual(orig_card_token, orig_dup_card_token)
 
     @log_func_context
-    def _test_get_token_multiple_duplicate_post(self):
+    def test_get_token_multiple_duplicate_post(self):
         card_data = generate_random_card_data(mode='without_cvn')
         status, resp, f_time = call_proxy(self.server_uri,
-                                          'get_token', 'POST', card_data)
+                                          'tokenize_card', 'POST', card_data)
         orig_pan = card_data.pan
         orig_card_token = get_resp_field(resp, 'card_token')
         for _ in range(10):
@@ -131,12 +131,12 @@ class TestBaseWebApi(unittest.TestCase):
                 + orig_pan[12:]
             card_data.pan = new_pan
             status, resp, f_time = call_proxy(self.server_uri,
-                                              'get_token', 'POST', card_data)
+                                              'tokenize_card', 'POST', card_data)
             dup_card_token = get_resp_field(resp, 'card_token')
             self.assertTrue(orig_card_token != dup_card_token)
         card_data.pan = orig_pan
         status, resp, f_time = call_proxy(self.server_uri,
-                                          'get_token', 'POST', card_data)
+                                          'tokenize_card', 'POST', card_data)
         orig_dup_card_token = get_resp_field(resp, 'card_token')
         self.assertEqual(orig_card_token, orig_dup_card_token)
 

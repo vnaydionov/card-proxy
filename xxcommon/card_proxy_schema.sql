@@ -9,7 +9,7 @@ CREATE TABLE t_config (
 
 CREATE TABLE t_data_token (
     id BIGINT NOT NULL AUTO_INCREMENT,
-    finish_ts TIMESTAMP NOT NULL,
+    finish_ts DATETIME NOT NULL,
     token_string VARCHAR(32) NOT NULL,
     data_crypted VARCHAR(25) NOT NULL,
     dek_id BIGINT NOT NULL,
@@ -20,8 +20,8 @@ CREATE TABLE t_data_token (
 
 CREATE TABLE t_dek (
     id BIGINT NOT NULL AUTO_INCREMENT,
-    start_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    finish_ts TIMESTAMP NOT NULL,
+    start_ts DATETIME NOT NULL,
+    finish_ts DATETIME NOT NULL,
     dek_crypted VARCHAR(94) NOT NULL,
     kek_version INT NOT NULL,
     max_counter BIGINT NOT NULL DEFAULT 0,
