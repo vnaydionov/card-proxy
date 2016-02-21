@@ -1,10 +1,13 @@
 <?xml version="1.0"?>
 <Config>
+    <Log level="INFO">syslog</Log>
+    <!--
     <Log level="DEBUG">/var/log/cpr_keykeeper/card_proxy_keykeeper2.log</Log>
+    -->
     <LogLevel>
-        yb.sql: DEBUG,
         micro_http: INFO,
-        method_wrapper: INFO,
+        invoker_xml: INFO,
+        http_post: INFO,
     </LogLevel>
 
     <HttpListener>
@@ -20,4 +23,4 @@
         <Peer2>https://node2.cluster:15117/</Peer2>
         <Peer3>https://node3.cluster:15117/</Peer3>
     </Peers>
-</Config> 
+</Config>

@@ -3,7 +3,9 @@
 #include <util/string_utils.h>
 #include <curl/curl.h>
 
-#define DBG_LOG(s) do{ if (logger) logger->debug(s); }while(0)
+#define LOG_DEBUG(s) do{ if (logger) logger->debug(s); }while(0)
+#define LOG_INFO(s) do{ if (logger) logger->info(s); }while(0)
+#define LOG_ERROR(s) do{ if (logger) logger->error(s); }while(0)
 
 HttpClientError::HttpClientError(const std::string &msg):
     runtime_error(msg)
@@ -111,10 +113,11 @@ const HttpResponse http_post(const std::string &uri,
         curl = curl_easy_init();
         if (!curl)
             throw HttpClientError("curl_easy_init() failed");
-        DBG_LOG("http_post: method=" + method + ", uri=" + uri);
+        LOG_INFO("method: " + method + ", uri: " + uri);
 
         // calculate and set the URI
         std::string params_str = serialize_params(curl, params);
+        LOG_DEBUG("sending parameters: " + params_str);
         std::string fixed_uri = uri;
         if (!params_str.empty() && method == "GET") {
             if (fixed_uri.find('?') == std::string::npos)
@@ -210,6 +213,11 @@ const HttpResponse http_post(const std::string &uri,
         reason_phrase = rp->second;
         out_headers.erase(rp);
     }
+    LOG_INFO("HTTP " + Yb::to_string(http_code) +
+             " " + reason_phrase + " (body size: " +
+             Yb::to_string(result_buffer.size()) +
+             ")");
+    LOG_DEBUG("response body: " + result_buffer);
     return boost::make_tuple(http_code, reason_phrase, result_buffer, out_headers);
 }
 

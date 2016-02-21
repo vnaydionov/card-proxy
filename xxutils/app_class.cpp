@@ -2,9 +2,38 @@
 #include <syslog.h>
 #include <fstream>
 #include <stdexcept>
+#include <boost/regex.hpp>
 #include <util/string_utils.h>
 #include <orm/domain_object.h>
 #include "utils.h"
+
+const std::string filter_log_msg(const std::string &msg)
+{
+    static const boost::regex cn_re(
+            "([^\\d])([45]\\d{5})(\\d{6,9})(\\d{4})([^\\d])");
+    static const std::string obf_fmt("\\1\\2****\\4\\5");
+    std::string fixed_msg = " " + msg + " ";
+    while (true) {
+        const std::string orig_msg = fixed_msg;
+        fixed_msg = boost::regex_replace(
+                fixed_msg, cn_re, obf_fmt,
+                boost::match_default | boost::format_perl);
+        if (fixed_msg == orig_msg)
+            break;
+    }
+    static const boost::regex key_re(
+            "([^0-9a-fA-F])([0-9a-fA-F]{8})([0-9a-fA-F]{48})([0-9a-fA-F]{8})([^0-9a-fA-F])");
+    static const std::string obfk_fmt("\\1\\2....\\4\\5");
+    while (true) {
+        const std::string orig_msg = fixed_msg;
+        fixed_msg = boost::regex_replace(
+                fixed_msg, key_re, obfk_fmt,
+                boost::match_default | boost::format_perl);
+        if (fixed_msg == orig_msg)
+            break;
+    }
+    return fixed_msg.substr(1, fixed_msg.size() - 2);
+}
 
 using namespace std;
 
@@ -47,7 +76,7 @@ void SyslogAppender::really_append(const Yb::LogRecord &rec)
     std::ostringstream msg;
     msg << "T" << rec.get_tid() << " "
         << rec.get_component() << ": "
-        << rec.get_msg();
+        << filter_log_msg(rec.get_msg());
     ::syslog(priority, fmt_string_escape(msg.str()).c_str());
 }
 

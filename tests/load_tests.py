@@ -9,7 +9,8 @@ from bisect import insort
 from multiprocessing import Process, Queue, Event
 from Queue import Empty
 
-from proxy_web_api import get_resp_field, call_proxy, generate_random_card_data
+from utils import generate_random_card_data
+from proxy_web_api import get_resp_field, call_proxy
 import logger
 
 log = logger.get_logger()

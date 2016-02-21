@@ -10,6 +10,8 @@
 #include <orm/data_object.h>
 #include "conf_reader.h"
 
+const std::string filter_log_msg(const std::string &msg);
+
 class SyslogAppender: public Yb::ILogAppender
 {
     static char process_name[100];

@@ -10,9 +10,14 @@ Build-Depends:
 Standards-Version: 3.7.3
 Homepage: https://github.com/vnaydionov/card-proxy
 
+Package: card-proxy-service
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, python2.7, python-support
+Description: Service scripts for pinger/restarter/init scripts
+
 Package: card-proxy-tokenizer
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
 Description: This is a HTTP proxy-server that stores the payment card data
  sent by a user from a WEB-form or a mobile application in a secure card vault.
  On receival of the card data the proxy passes to the upstream only an opaque
@@ -22,7 +27,7 @@ Description: This is a HTTP proxy-server that stores the payment card data
 
 Package: card-proxy-keykeeper2
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
 Description: This is a simple HTTP server that keeps a portion of a key in memory,
  automatically sharing the information between the specified peers.
 

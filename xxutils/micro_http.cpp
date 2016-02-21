@@ -78,7 +78,7 @@ HttpServerBase::process_client_request(SOCKET cl_s)
     try {
         // read request header
         string buf = cl_sock.readline();
-        logger->debug(buf);
+        logger->debug(NARROW(trim_trailing_space(WIDEN(buf))));
         // parse request line
         Strings head_parts;
         split_str_by_chars(WIDEN(buf), _T(" \t\r\n"), head_parts);

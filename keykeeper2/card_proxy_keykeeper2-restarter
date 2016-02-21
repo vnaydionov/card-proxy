@@ -1,53 +1,5 @@
 #!/bin/sh
 
-SELF="$0"
-SERVANT=$(basename "$SELF" | sed 's/-restarter//' | sed 's/-/_/')
-PINGER="$1"
-BIN="$2"
-shift
-shift
-DELAY=2
+. /usr/share/card_proxy_service/functions.sh
 
-cd /var/tmp
-
-log_info () {
-    DT=`date '+%Y-%m-%d %H:%M:%S'`
-    MSG="$1"
-    echo "[$DT] <$SELF> info: $MSG"
-}
-
-trap "echo SIGHUP received" HUP
-
-log_info "BIN=$BIN"
-log_info "PINGER=$PINGER"
-
-CFG_FILE="/etc/$SERVANT/$SERVANT.cfg.xml"
-log_info "CFG_FILE=$CFG_FILE"
-
-while [ 1 = 1 ] ; do
-    export CONFIG_FILE="$CFG_FILE"
-    "$BIN" "$@" &
-    PID=$!
-    while [ 1 = 1 ] ; do
-        if kill -0 $PID > /dev/null 2> /dev/null ; then
-            #log_info "Process \"$BIN\" ($PID) still exists."
-            if ! "$PINGER" ; then
-                log_info "Process \"$BIN\" ($PID) does not respond, trying again in 2 sec."
-                sleep 2
-                if ! "$PINGER" ; then
-                    log_info "Process \"$BIN\" ($PID) is stalled, killing it."
-                    kill -9 $PID > /dev/null 2> /dev/null
-                fi
-            else
-                sleep 2
-            fi
-        else
-            wait $PID
-            RC=$?
-            log_info "Process \"$BIN\" ($PID) exited with code $RC. Sleep for $DELAY sec before restart."
-            break
-        fi
-    done
-    sleep "$DELAY"
-done
-
+servant_restarter "$0" "$1" "$2"

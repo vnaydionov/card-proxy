@@ -7,6 +7,7 @@
 #include "aes_crypter.h"
 #include "catch.hpp"
 #include "utils.h"
+#include "app_class.h"
 
 #define B64_TESTS       50
 #define BCD_TESTS       50
@@ -338,5 +339,37 @@ TEST_CASE( "Testing PAN normalization", "[full][normalize]" ) {
     }
 }
 
+TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
+    SECTION( "testing PAN filtering" ) {
+        CHECK("3455667711223344" == filter_log_msg("3455667711223344"));
+        CHECK("445566****3344" == filter_log_msg("4455667711223344"));
+        CHECK("6455667711223344" == filter_log_msg("6455667711223344"));
+        CHECK("556677****3344" == filter_log_msg("5566778811223344"));
+        CHECK("556677****3344" == filter_log_msg("55667788111223344"));
+        CHECK("556677****3344" == filter_log_msg("556677881111223344"));
+        CHECK("556677****3344" == filter_log_msg("5566778811111223344"));
+        CHECK("55667788111111223344" == filter_log_msg("55667788111111223344"));
+        CHECK("556677****3344 " == filter_log_msg("5566778811223344 "));
+        CHECK(" 556677****3344" == filter_log_msg(" 5566778811223344"));
+        CHECK("556677****3344,445566****3344"
+                == filter_log_msg("5566778811223344,4455667711223344"));
+    }
+    SECTION( "testing Key filtering" ) {
+        CHECK("65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c50" == filter_log_msg(
+                    "65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c50"));
+        CHECK("65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c" == filter_log_msg(
+                    "65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c"));
+        CHECK("65e84be3....e02337c5" == filter_log_msg(
+                    "65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c5"));
+        CHECK("65E84BE3....E02337C5" == filter_log_msg(
+                    "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5"));
+        CHECK(",65E84BE3....E02337C5" == filter_log_msg(
+                    ",65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5"));
+        CHECK("65E84BE3....E02337C5," == filter_log_msg(
+                    "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5,"));
+        CHECK("65E84BE3....E02337C5,8588310a....c54581cd" == filter_log_msg(
+                    "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5,8588310a98676af6e22563c1559e1ae20f85950792bdcd0c8f334867c54581cd"));
+    }
+}
 
 // vim:ts=4:sts=4:sw=4:et:

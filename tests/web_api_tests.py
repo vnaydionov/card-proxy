@@ -4,8 +4,8 @@ import os
 import sys
 import unittest
 
-from proxy_web_api import get_resp_field, call_proxy, generate_random_card_data, \
-        generate_random_number
+from proxy_web_api import get_resp_field, call_proxy
+from utils import generate_random_card_data, generate_random_number
 import logger
 
 log = logger.get_logger('web_api_tests.log')
@@ -100,45 +100,41 @@ class TestBaseWebApi(unittest.TestCase):
 
     @log_func_context
     def test_get_token_multiple_duplicate_get(self):
-        card_data = generate_random_card_data(mode='without_cvn')
+        card_data = generate_random_card_data(mode='full')
+        orig_pan = card_data.pan
+        orig_cvn = card_data.cvn
         status, resp, f_time = call_proxy(self.server_uri,
                                           'tokenize_card', 'GET', card_data)
-        orig_pan = card_data.pan
         orig_card_token = get_resp_field(resp, 'card_token')
-        for _ in range(10):
-            new_pan = orig_pan[:6] + generate_random_number(6) \
-                + orig_pan[12:]
-            card_data.pan = new_pan
+        orig_cvn_token = get_resp_field(resp, 'cvn_token')
+        for _ in range(5):
+            card_data.pan = orig_pan
+            card_data.cvn = orig_cvn
             status, resp, f_time = call_proxy(self.server_uri,
                                               'tokenize_card', 'GET', card_data)
             dup_card_token = get_resp_field(resp, 'card_token')
-            self.assertTrue(orig_card_token != dup_card_token)
-        card_data.pan = orig_pan
-        status, resp, f_time = call_proxy(self.server_uri,
-                                          'tokenize_card', 'GET', card_data)
-        orig_dup_card_token = get_resp_field(resp, 'card_token')
-        self.assertEqual(orig_card_token, orig_dup_card_token)
+            dup_cvn_token = get_resp_field(resp, 'cvn_token')
+            self.assertEqual(orig_card_token, dup_card_token)
+            self.assertNotEqual(orig_cvn_token, dup_cvn_token)
 
     @log_func_context
     def test_get_token_multiple_duplicate_post(self):
-        card_data = generate_random_card_data(mode='without_cvn')
+        card_data = generate_random_card_data(mode='full')
+        orig_pan = card_data.pan
+        orig_cvn = card_data.cvn
         status, resp, f_time = call_proxy(self.server_uri,
                                           'tokenize_card', 'POST', card_data)
-        orig_pan = card_data.pan
         orig_card_token = get_resp_field(resp, 'card_token')
-        for _ in range(10):
-            new_pan = orig_pan[:6] + generate_random_number(6) \
-                + orig_pan[12:]
-            card_data.pan = new_pan
+        orig_cvn_token = get_resp_field(resp, 'cvn_token')
+        for _ in range(5):
+            card_data.pan = orig_pan
+            card_data.cvn = orig_cvn
             status, resp, f_time = call_proxy(self.server_uri,
                                               'tokenize_card', 'POST', card_data)
             dup_card_token = get_resp_field(resp, 'card_token')
-            self.assertTrue(orig_card_token != dup_card_token)
-        card_data.pan = orig_pan
-        status, resp, f_time = call_proxy(self.server_uri,
-                                          'tokenize_card', 'POST', card_data)
-        orig_dup_card_token = get_resp_field(resp, 'card_token')
-        self.assertEqual(orig_card_token, orig_dup_card_token)
+            dup_cvn_token = get_resp_field(resp, 'cvn_token')
+            self.assertEqual(orig_card_token, dup_card_token)
+            self.assertNotEqual(orig_cvn_token, dup_cvn_token)
 
     @log_func_context
     def test_get_card_get(self):

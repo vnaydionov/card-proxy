@@ -1,6 +1,8 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "key_keeper_logic.h"
 #include "utils.h"
+#include "app_class.h"
+#include <boost/regex.hpp>
 
 #include <util/util_config.h>
 #if defined(YBUTIL_WINDOWS)
@@ -9,6 +11,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #endif
+
+static const boost::regex id_fmt("\\w{1,40}");
+static const boost::regex data_fmt("[\x20-\x7F]{0,2000}");
+static const boost::regex fmt_re("id_(\\d{1,9})");
 
 Yb::LongInt _get_random()
 {
@@ -48,14 +54,17 @@ const std::string KeyKeeper::format_ts(double ts)
 KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         const std::string &method,
         const HttpParams &params,
-        const std::string &http_method)
+        const std::string &http_method,
+        bool parse_items)
 {
     // TODO: turn on validation in production code!
     bool ssl_validate = false;
 
+    Yb::Logger::Ptr http_logger(
+            theApp::instance().new_logger("http_post").release());
     HttpResponse resp = http_post(
         peer_uri + path_prefix_ + method,
-        NULL,
+        http_logger.get(),
         peer_timeout_,
         http_method,
         HttpHeaders(),
@@ -70,17 +79,19 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         throw ::RunTimeError("call_peer: not success");
     std::string app_id = root->find_first("app_id")->get_text();
     Storage storage;
-    auto items_node = root->find_first("items");
-    auto item_nodes = items_node->find_children("item");
-    for (auto i = item_nodes->begin(), iend = item_nodes->end();
-            i != iend; ++i)
-    {
-        auto &node = *i;
-        const std::string &id = node->attrib_["id"];
-        Info info(node->attrib_["data"],
-                boost::lexical_cast<double>(node->attrib_["create_ts"]),
-                boost::lexical_cast<double>(node->attrib_["update_ts"]));
-        storage[id] = info;
+    if (parse_items) {
+        auto items_node = root->find_first("items");
+        auto item_nodes = items_node->find_children("item");
+        for (auto i = item_nodes->begin(), iend = item_nodes->end();
+             i != iend; ++i)
+        {
+            auto &node = *i;
+            const std::string &id = node->attrib_["id"];
+            Info info(node->attrib_["data"],
+                    boost::lexical_cast<double>(node->attrib_["create_ts"]),
+                    boost::lexical_cast<double>(node->attrib_["update_ts"]));
+            storage[id] = info;
+        }
     }
     return std::make_pair(app_id, storage);
 }
@@ -135,7 +146,7 @@ void KeyKeeper::push_to_peers()
     {
         try {
             const auto &peer_uri = *i;
-            call_peer(peer_uri, "write", params);
+            call_peer(peer_uri, "write", params, "POST", false);
         }
         catch (const std::exception &e) {
             log_->error("push_to_peers: " + std::string(e.what()));
@@ -201,6 +212,24 @@ void KeyKeeper::update_data_if_needed()
     }
 }
 
+const std::vector<int>
+    KeyKeeper::find_id_versions(const Yb::StringDict &params)
+{
+    std::vector<int> versions;
+    if (params.find("id") != params.end())
+        versions.push_back(-1);
+    auto i = params.begin(), iend = params.end();
+    for (; i != iend; ++i) {
+        boost::smatch r;
+        if (regex_match(i->first, r, fmt_re))
+            versions.push_back(
+                    boost::lexical_cast<int>(
+                        std::string(r[1].first, r[1].second)
+                        ));
+    }
+    return versions;
+}
+
 KeyKeeper::KeyKeeper(IConfig &cfg, Yb::ILogger &log)
 {
     app_key_ = Yb::to_string(_get_random());
@@ -256,26 +285,27 @@ Yb::ElementTree::ElementPtr KeyKeeper::write(const Yb::StringDict &params, bool 
         Yb::ScopedLock lock(mutex_);
         storage = storage_;
     }
-    for (int i = -1; i < 100; ++i) {
+    const std::vector<int> id_versions = find_id_versions(params);
+    auto i = id_versions.begin(), iend = id_versions.end();
+    for (; i != iend; ++i) {
         std::string suffix;
-        if (i >= 0)
-            suffix = "_" + Yb::to_string(i);
-        if (params.find("id" + suffix) == params.end())
-            continue;
-        const auto &id = params.find("id" + suffix)->second;
-        for (auto i = id.begin(), iend = id.end(); i != iend; ++i) {
-            YB_ASSERT(('0' <= *i && *i <= '9') ||
-                      ('a' <= *i && *i <= 'z') ||
-                      ('A' <= *i && *i <= 'Z') || (*i == '_'));
-        }
-        YB_ASSERT(params.find("data" + suffix) != params.end());
-        const auto &data = params.find("data" + suffix)->second;
-        for (auto i = data.begin(), iend = data.end(); i != iend; ++i) {
-            YB_ASSERT(0x20 <= *i && *i <= 0x7E);
-        }
-        YB_ASSERT(params.find("create_ts" + suffix) != params.end());
-        double create_ts = boost::lexical_cast<double>(
-                params.find("create_ts" + suffix)->second);
+        if (*i >= 0)
+            suffix = "_" + Yb::to_string(*i);
+
+        auto j = params.find("id" + suffix);
+        YB_ASSERT(j != params.end());
+        const auto &id = j->second;
+        YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
+
+        j = params.find("data" + suffix);
+        YB_ASSERT(j != params.end());
+        const auto &data = j->second;
+        YB_ASSERT(regex_match(data, data_fmt, boost::format_perl));
+
+        j = params.find("create_ts" + suffix);
+        YB_ASSERT(j != params.end());
+        double create_ts = boost::lexical_cast<double>(j->second);
+
         storage[id] = Info(data, create_ts);
     }
     {
@@ -288,6 +318,16 @@ Yb::ElementTree::ElementPtr KeyKeeper::write(const Yb::StringDict &params, bool 
 
 Yb::ElementTree::ElementPtr KeyKeeper::set(const Yb::StringDict &params)
 {
+    auto j = params.find("id");
+    YB_ASSERT(j != params.end());
+    const auto &id = j->second;
+    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
+
+    j = params.find("data");
+    YB_ASSERT(j != params.end());
+    const auto &data = j->second;
+    YB_ASSERT(regex_match(data, data_fmt, boost::format_perl));
+
     Yb::StringDict fixed_params = params;
     fixed_params["create_ts"] = format_ts(get_time());
     write(fixed_params, true);
@@ -297,8 +337,11 @@ Yb::ElementTree::ElementPtr KeyKeeper::set(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyKeeper::unset(const Yb::StringDict &params)
 {
-    YB_ASSERT(params.find("id") != params.end());
-    const auto &id = params.find("id")->second;
+    auto j = params.find("id");
+    YB_ASSERT(j != params.end());
+    const auto &id = j->second;
+    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
+
     YB_ASSERT(storage_.find(id) != storage_.end());
     Yb::ScopedLock lock(mutex_);
     storage_.erase(storage_.find(id));
@@ -308,8 +351,11 @@ Yb::ElementTree::ElementPtr KeyKeeper::unset(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyKeeper::cleanup(const Yb::StringDict &params)
 {
-    YB_ASSERT(params.find("id") != params.end());
-    const auto &id = params.find("id")->second;
+    auto j = params.find("id");
+    YB_ASSERT(j != params.end());
+    const auto &id = j->second;
+    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
+
     YB_ASSERT(storage_.find(id) != storage_.end());
     Yb::ScopedLock lock(mutex_);
     Storage new_storage;
