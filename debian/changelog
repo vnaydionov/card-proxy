@@ -1,3 +1,26 @@
+card-proxy (0.5.4) unstable; urgency=low
+
+  * Filter PANs and encryption keys from logging
+  * Unify start scripts: move common shell code to functions.sh
+  * Adjust keykeeper2 logging
+  * Uncomment deduplication tests
+  * Add initial keys for bootstrap
+  * Fix column type TIMESTAMP to DATETIME
+  * Turn off ssl_validate for a while in http_post
+  * http_post: pass reason phrase correctly
+  * proxy_any: fix logging reason phrase and passing Content-Length
+  * CWE-457: tcp_socket.cpp:138; CWE-252: tcp_socket.cpp:90
+  * Add missing #ifdef
+  * Non-greedy DEK generation
+  * Optimize config loader
+  * Use CURL for HTTP client in proxy
+  * Use libjson-c for parsing JSON
+  * Fix Coverity warning, add Coverity badge
+  * Little fix to DEKPool
+  * Move tokenizer common logic to xxcommon library
+
+ -- Vaclav Naydionov (linux rulez) <vaclav@yandex.ru>  Sun, 21 Feb 2016 17:58:37 +0300
+
 card-proxy (0.5.2) unstable; urgency=low
 
   * remove key_keeper, CB listener, rename files. 
