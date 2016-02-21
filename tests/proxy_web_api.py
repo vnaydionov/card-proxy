@@ -58,7 +58,7 @@ class CardProxyWebApi(object):
 
     @response_wrapper
     def check_kek(self):
-        target_uri = self.server_uri + 'ping/check_kek'
+        target_uri = self.server_uri + 'service/check_kek'
         return self.try_call(target_uri)
 
     @response_wrapper

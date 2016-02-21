@@ -21,6 +21,27 @@ Yb::ElementTree::ElementPtr ping(
     return resp;
 }
 
+Yb::ElementTree::ElementPtr check_kek(
+        Yb::Session &session, Yb::ILogger &logger,
+        const Yb::StringDict &params)
+{
+    Yb::ElementTree::ElementPtr resp = mk_resp("success");
+#ifdef TOKENIZER_CONFIG_SINGLETON
+    TokenizerConfig &tcfg(theTokenizerConfig::instance().refresh());
+#else
+    TokenizerConfig tcfg;
+#endif
+    std::string ver = params.get("kek_version", "");
+    int kek_version = -1;
+    if (ver.empty())
+        kek_version = tcfg.get_active_master_key_version();
+    else
+        kek_version = boost::lexical_cast<int>(ver);
+    resp->sub_element("check_kek",
+            tcfg.is_kek_valid(kek_version)? "true": "false");
+    return resp;
+}
+
 #define CFG_VALUE(x) theApp::instance().cfg().get_value(x)
 
 const HttpMessage bind_card(Yb::ILogger &logger, const HttpMessage &request)
@@ -95,12 +116,13 @@ const HttpMessage clear(Yb::ILogger &logger, const HttpMessage &request)
 int main(int argc, char *argv[])
 {
     const std::string dbg_prefix = "/debug_api/";
-    const std::string ping_prefix = "/";
+    const std::string ping_prefix = "/service/";
     const std::string inbound_prefix = "/cp/inbound/";
     const std::string outbound_prefix = "/cp/outbound/";
     CardProxyHttpWrapper handlers[] = {
         // service methods
         WRAP(ping_prefix, ping),
+        WRAP(ping_prefix, check_kek),
 #ifdef VAULT_DEBUG_API
         // debug methods
         WRAP(dbg_prefix, debug_method),

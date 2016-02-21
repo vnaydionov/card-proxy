@@ -3,6 +3,8 @@
 #define CARD_PROXY__TOKENIZER_H
 
 #include <string>
+#include <algorithm>
+#include <boost/tuple/tuple.hpp>
 #include <util/data_types.h>
 #include <util/singleton.h>
 #include <orm/data_object.h>
@@ -17,26 +19,37 @@
 
 typedef std::map<std::string, std::string> ConfigMap;
 typedef std::map<int, std::string> VersionMap;
+typedef std::map<int, bool> CheckMap;
 
+
+boost::tuple<std::string, double, int> get_keykeeper_controller(
+        IConfig &config);
 
 class KeyKeeperAPI
 {
-    ConfigMap cached_;
-    IConfig *config_;
-    Yb::ILogger *logger_;
-    double timeout_;
-    std::string uri_;
 public:
-    explicit KeyKeeperAPI(IConfig &config, Yb::ILogger *logger = NULL)
-        : config_(&config), logger_(logger), timeout_(0)
-    {}
-    KeyKeeperAPI(const std::string &uri, double timeout,
+    KeyKeeperAPI(const std::string &uri, double timeout, int part,
                  Yb::ILogger *logger = NULL)
-        : config_(NULL), logger_(logger), timeout_(timeout), uri_(uri)
-    {}
+        : logger_(logger), uri_(uri), timeout_(timeout), part_(part)
+    {
+        YB_ASSERT(!uri_.empty());
+        YB_ASSERT(part_ == 1 || part_ == 2);
+    }
     const std::string recv_key_from_server(int kek_version);
-    const std::string get_key_by_version(int kek_version);
+    const std::string &get_key_by_version(int kek_version);
     void send_key_to_server(const std::string &key, int kek_version);
+    void cleanup(int kek_version);
+
+private:
+    ConfigMap cached_;
+    Yb::ILogger *logger_;
+    std::string uri_;
+    double timeout_;
+    int part_;
+
+    const std::string get_target_id(int kek_version) const;
+    void validate_status(int status) const;
+    void validate_body(const std::string &body) const;
 };
 
 
@@ -44,18 +57,37 @@ class TokenizerConfig
 {
     ConfigMap xml_params_;
     ConfigMap db_params_;
+    VersionMap master_key_parts1_;
+    VersionMap master_key_parts2_;
+    VersionMap master_key_parts3_;
     VersionMap master_keys_;
+    CheckMap valid_master_keys_;
     VersionMap hmac_keys_;
 
     mutable Yb::Mutex mux_;
     time_t ts_;
 
     static const ConfigMap load_config_from_xml(IConfig &config);
-    static const ConfigMap load_config_from_db(Yb::Session &session);
 
-    static const VersionMap assemble_master_keys(
-            Yb::ILogger &logger, IConfig &config,
-            const ConfigMap &xml_params, const ConfigMap &db_params);
+    static const ConfigMap load_config_from_db(
+            Yb::Session &session);
+
+    static void assemble_master_keys(
+            Yb::ILogger &logger,
+            IConfig &config,
+            const ConfigMap &xml_params,
+            const ConfigMap &db_params,
+            VersionMap &master_key_parts1,
+            VersionMap &master_key_parts2,
+            VersionMap &master_key_parts3,
+            VersionMap &master_keys,
+            CheckMap &valid_master_keys);
+
+    static bool check_kek(
+            Yb::ILogger &logger,
+            int kek_version,
+            const std::string &master_key,
+            const ConfigMap &db_params);
 
     static const VersionMap load_hmac_keys(
             Yb::ILogger &logger, const ConfigMap &db_params,
@@ -88,6 +120,16 @@ public:
     time_t get_ts() const { return ts_; }
     void reload(bool hmac_needed = true);
     TokenizerConfig &refresh();
+
+    const std::string &get_master_key_component(
+            int version, int part) const;
+    int get_current_version() const;
+    const std::vector<int> get_versions(bool include_incomplete = true) const;
+    bool is_kek_valid(int version) const;
+    bool is_kek_part_checked(int version, int part) const;
+    bool is_version_checked(int version) const;
+    int get_last_version() const;
+    int get_switch_version() const;
 };
 
 #ifdef TOKENIZER_CONFIG_SINGLETON

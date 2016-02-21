@@ -46,6 +46,7 @@ class TestBaseWebApi(unittest.TestCase):
     def test_check_kek_get(self):
         status, resp, f_time = call_proxy(self.server_uri,
                                           'check_kek', 'GET')
+        self.assertEqual('true', get_resp_field(resp, 'check_kek'))
         self.assertEqual(status, 'success')
 
     @log_func_context

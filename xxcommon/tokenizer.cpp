@@ -16,30 +16,35 @@ using Yb::StrUtils::starts_with;
 using Yb::StrUtils::ends_with;
 
 
+boost::tuple<std::string, double, int> get_keykeeper_controller(
+        IConfig &config)
+{
+    std::string uri = config.get_value("KeyKeeper2/URL");
+    double timeout =
+        config.get_value_as_int("KeyKeeper2/Timeout")/1000.;
+    int part = 1;
+    return boost::make_tuple(uri, timeout, part);
+}
+
+
 const std::string
     KeyKeeperAPI::recv_key_from_server(int kek_version)
 {
     double key_keeper_timeout = timeout_;
     std::string key_keeper_uri = uri_;
-    if (config_) {
-        key_keeper_timeout =
-            config_->get_value_as_int("KeyKeeper2/Timeout")/1000.;
-        key_keeper_uri = config_->get_value("KeyKeeper2/URL");
-    }
-    std::string target_id =
-        "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
+    std::string target_id = get_target_id(kek_version);
     HttpResponse resp = http_post(key_keeper_uri + "get",
                                   logger_,
                                   key_keeper_timeout,
                                   "GET");
-    if (resp.get<0>() != 200)
-        throw ::RunTimeError("recv_key_from_server: not HTTP 200");
+    validate_status(resp.get<0>());
     const std::string &body = resp.get<2>();
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("recv_key_from_server: not success");
     std::string result;
     bool found = false;
+    const std::string suffix = "_PART" + Yb::to_string(part_);
     auto items_node = root->find_first("items");
     auto item_nodes = items_node->find_children("item");
     auto i = item_nodes->begin(), iend = item_nodes->end();
@@ -47,7 +52,7 @@ const std::string
         auto &node = *i;
         const std::string &id = node->attrib_["id"];
         cached_[id] = node->attrib_["data"];
-        if (!starts_with(id, "KEK_VER") || !ends_with(id, "_PART1"))
+        if (!starts_with(id, "KEK_VER") || !ends_with(id, suffix))
             continue;
         if (kek_version < 0 || id == target_id) {
             result = node->attrib_["data"];
@@ -59,14 +64,15 @@ const std::string
     return result;
 }
 
-const std::string
+const std::string &
     KeyKeeperAPI::get_key_by_version(int kek_version)
 {
-    std::string target_id =
-        "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
+    std::string target_id = get_target_id(kek_version);
     auto i = cached_.find(target_id);
-    if (cached_.end() == i)
-        return recv_key_from_server(kek_version);
+    if (cached_.end() == i) {
+        recv_key_from_server(kek_version);
+        i = cached_.find(target_id);
+    }
     return i->second;
 }
 
@@ -75,14 +81,9 @@ void KeyKeeperAPI::send_key_to_server(const std::string &key,
 {
     double key_keeper_timeout = timeout_;
     std::string key_keeper_uri = uri_;
-    if (config_) {
-        key_keeper_timeout =
-            config_->get_value_as_int("KeyKeeper2/Timeout")/1000.;
-        key_keeper_uri = config_->get_value("KeyKeeper2/URL");
-    }
     if (kek_version < 0)
         kek_version = 0;
-    std::string target_id = "KEK_VER" + Yb::to_string(kek_version) + "_PART1";
+    std::string target_id = get_target_id(kek_version);
     HttpParams params;
     params["id"] = target_id;
     params["data"] = key;
@@ -92,12 +93,46 @@ void KeyKeeperAPI::send_key_to_server(const std::string &key,
                                   "POST",
                                   HttpHeaders(),
                                   params);
-    if (resp.get<0>() != 200)
-        throw ::RunTimeError("recv_key_from_server: not HTTP 200");
-    const std::string &body = resp.get<2>();
+    validate_status(resp.get<0>());
+    validate_body(resp.get<2>());
+}
+
+void KeyKeeperAPI::cleanup(int kek_version)
+{
+    double key_keeper_timeout = timeout_;
+    std::string key_keeper_uri = uri_;
+    if (kek_version < 0)
+        kek_version = 0;
+    std::string target_id = get_target_id(kek_version);
+    HttpParams params;
+    params["id"] = target_id;
+    HttpResponse resp = http_post(key_keeper_uri + "cleanup",
+                                  logger_,
+                                  key_keeper_timeout,
+                                  "POST",
+                                  HttpHeaders(),
+                                  params);
+    validate_status(resp.get<0>());
+    validate_body(resp.get<2>());
+}
+
+const std::string KeyKeeperAPI::get_target_id(int kek_version) const
+{
+    return "KEK_VER" + Yb::to_string(kek_version)
+        + "_PART" + Yb::to_string(part_);
+}
+
+void KeyKeeperAPI::validate_status(int status) const
+{
+    if (status != 200)
+        throw ::RunTimeError("KeyKeeperAPI: not HTTP 200");
+}
+
+void KeyKeeperAPI::validate_body(const std::string &body) const
+{
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
-        throw ::RunTimeError("send_key_to_server: not success");
+        throw ::RunTimeError("KeyKeeperAPI: not success");
 }
 
 
@@ -128,7 +163,8 @@ const ConfigMap
         .filter_by(
                 Domain::Config::c.ckey.like_(Yb::ConstExpr("KEK%")) ||
                 Domain::Config::c.ckey.like_(Yb::ConstExpr("HMAC%")) ||
-                Domain::Config::c.ckey == "STATUS")
+                Domain::Config::c.ckey == "STATUS" ||
+                Domain::Config::c.ckey == "STATE_EXTENSION")
         .all();
     auto i = found_keys_rs.begin(), iend = found_keys_rs.end();
     for (; i != iend; ++i) {
@@ -147,13 +183,22 @@ static const std::string decode_part(const std::string &s, int part_n)
     return kek_n;
 }
 
-const VersionMap
-    TokenizerConfig::assemble_master_keys(
-            Yb::ILogger &logger, IConfig &config,
-            const ConfigMap &xml_params, const ConfigMap &db_params)
+void TokenizerConfig::assemble_master_keys(
+        Yb::ILogger &logger,
+        IConfig &config,
+        const ConfigMap &xml_params,
+        const ConfigMap &db_params,
+        VersionMap &master_key_parts1,
+        VersionMap &master_key_parts2,
+        VersionMap &master_key_parts3,
+        VersionMap &master_keys,
+        CheckMap &valid_master_keys)
 {
-    VersionMap mk;
-    KeyKeeperAPI kk_api(config, &logger);
+    VersionMap mk_parts1, mk_parts2, mk_parts3, mk;
+    CheckMap mk_valid;
+    auto kk_config = get_keykeeper_controller(config);
+    KeyKeeperAPI kk_api(kk_config.get<0>(), kk_config.get<1>(),
+                        kk_config.get<2>(), &logger);
     const std::string prefix = "KEK_VER", suffix = "_PART3";
     auto i = db_params.begin(), iend = db_params.end();
     for (; i != iend; ++i) {
@@ -164,27 +209,72 @@ const VersionMap
                 id.size() - prefix.size() - suffix.size());
         try {
             logger.debug("assembling master key ver" + ver_str);
-            const std::string kek3 = decode_part(i->second, 3);
+            const auto &kek3_hex = i->second;
+            const auto kek3 = decode_part(kek3_hex, 3);
             int ver = boost::lexical_cast<int>(ver_str);
-            const std::string kek1 = decode_part(
-                    kk_api.get_key_by_version(ver), 1);
-            ConfigMap::const_iterator j = xml_params.find(
-                    prefix + ver_str + "_PART2");
+            const auto &kek1_hex = kk_api.get_key_by_version(ver);
+            const auto kek1 = decode_part(kek1_hex, 1);
+            auto j = xml_params.find(prefix + ver_str + "_PART2");
             if (xml_params.end() == j)
                 throw ::RunTimeError("can't access KEK part2");
-            const std::string kek2 = decode_part(j->second, 2);
+            const auto &kek2_hex = j->second;
+            const auto kek2 = decode_part(kek2_hex, 2);
             std::string kek(kek1.size(), ' ');
             for (size_t k = 0; k < kek1.size(); ++k)
                 kek[k] = kek1[k] ^ kek2[k] ^ kek3[k];
-            mk[ver] = sha256_digest(kek);
+            auto master_key = sha256_digest(kek);
+            mk_parts1[ver] = kek1_hex;
+            mk_parts2[ver] = kek2_hex;
+            mk_parts3[ver] = kek3_hex;
+            mk[ver] = master_key;
             logger.info("master key ver" + ver_str + " assembled OK");
+            mk_valid[ver] = check_kek(logger,
+                    ver, master_key, db_params);
         }
         catch (const std::exception &e) {
-            logger.error("assembling master key ver" + ver_str + " failed: "
+            logger.error("assembling master key ver"
+                    + ver_str + " failed: "
                     + std::string(e.what()));
         }
     }
-    return mk;
+    std::swap(mk_parts1, master_key_parts1);
+    std::swap(mk_parts2, master_key_parts2);
+    std::swap(mk_parts3, master_key_parts3);
+    std::swap(mk, master_keys);
+    std::swap(mk_valid, valid_master_keys);
+}
+
+bool TokenizerConfig::check_kek(
+        Yb::ILogger &logger,
+        int kek_version,
+        const std::string &master_key,
+        const ConfigMap &db_params)
+{
+    AESCrypter aes_crypter(master_key);
+    bool result = false;
+    try {
+        auto i = db_params.find("KEK_CONTROL_PHRASE");
+        YB_ASSERT(db_params.end() != i);
+        const auto &control_phrase = i->second;
+        i = db_params.find(
+                "KEK_VER" + Yb::to_string(kek_version)
+                + "_CONTROL_CODE");
+        YB_ASSERT(db_params.end() != i);
+        const auto &control_code = i->second;
+        auto encrypted_phrase = encode_base64(
+                aes_crypter.encrypt(control_phrase));
+        result = encrypted_phrase == control_code;
+    }
+    catch (const std::exception &e) {
+        logger.error("failed to acquire required params: "
+                + std::string(e.what()));
+    }
+    if (!result)
+        logger.error("failed to validate KEK ver" +
+                Yb::to_string(kek_version));
+    else
+        logger.info("valid KEK ver" + Yb::to_string(kek_version));
+    return result;
 }
 
 const VersionMap
@@ -322,8 +412,14 @@ void TokenizerConfig::reload(bool hmac_needed)
             theApp::instance().new_session().release());
     ConfigMap db_params(load_config_from_db(*session));
 
-    VersionMap master_keys(assemble_master_keys(
-            *logger, config, xml_params, db_params));
+    VersionMap master_key_parts1, master_key_parts2,
+               master_key_parts3, master_keys;
+    CheckMap valid_master_keys;
+    assemble_master_keys(
+            *logger, config, xml_params, db_params,
+            master_key_parts1, master_key_parts2,
+            master_key_parts3, master_keys,
+            valid_master_keys);
 
     VersionMap hmac_keys;
     if (hmac_needed)
@@ -334,7 +430,11 @@ void TokenizerConfig::reload(bool hmac_needed)
     Yb::ScopedLock lock(mux_);
     std::swap(xml_params, xml_params_);
     std::swap(db_params, db_params_);
+    std::swap(master_key_parts1, master_key_parts1_);
+    std::swap(master_key_parts2, master_key_parts2_);
+    std::swap(master_key_parts3, master_key_parts3_);
     std::swap(master_keys, master_keys_);
+    std::swap(valid_master_keys, valid_master_keys_);
     std::swap(hmac_keys, hmac_keys_);
     ts_ = time(NULL);
 }
@@ -349,6 +449,80 @@ TokenizerConfig &TokenizerConfig::refresh()
         reload();
     }
     return *this;
+}
+
+const std::string &
+    TokenizerConfig::get_master_key_component(int version, int part) const
+{
+    const VersionMap *key_parts = &master_key_parts1_;
+    if (part == 2)
+        key_parts = &master_key_parts2_;
+    else if (part == 3)
+        key_parts = &master_key_parts3_;
+    auto i = key_parts->find(version);
+    YB_ASSERT(key_parts->end() != i);
+    return i->second;
+}
+
+int TokenizerConfig::get_current_version() const
+{
+    // deprecated
+    return get_active_master_key_version();
+}
+
+const std::vector<int>
+    TokenizerConfig::get_versions(bool include_incomplete) const
+{
+    // deprecated
+    std::vector<int> result;
+    for (auto i = valid_master_keys_.begin();
+            i != valid_master_keys_.end(); ++i)
+    {
+        if (i->second || include_incomplete)
+            result.push_back(i->first);
+    }
+    return result;
+}
+
+bool TokenizerConfig::is_kek_valid(int version) const
+{
+    auto i = valid_master_keys_.find(version);
+    if (i != valid_master_keys_.end())
+        return i->second;
+    return false;
+}
+
+bool TokenizerConfig::is_kek_part_checked(int version, int part) const
+{
+    const std::string key = "KEK_VER"
+        + Yb::to_string(version) + "_PART"
+        + Yb::to_string(part) + "_CHECK";
+    return get_db_config_key(key) == "1";
+}
+
+bool TokenizerConfig::is_version_checked(int version) const
+{
+    return is_kek_part_checked(version, 1)
+        && is_kek_part_checked(version, 2)
+        && is_kek_part_checked(version, 3);
+}
+
+int TokenizerConfig::get_last_version() const
+{
+    auto versions = get_versions();
+    auto i = std::max_element(versions.begin(), versions.end());
+    YB_ASSERT(versions.end() != i);
+    return *i;
+}
+
+int TokenizerConfig::get_switch_version() const
+{
+    const std::string key = "KEK_TARGET_VERSION";
+    int version = boost::lexical_cast<int>(get_db_config_key(key));
+    if (!is_version_checked(version))
+        throw ::RunTimeError("KEK version not confirmed: " +
+                Yb::to_string(version));
+    return version;
 }
 
 
