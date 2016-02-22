@@ -2,56 +2,56 @@
 #include "app_class.h"
 #include "micro_http.h"
 #include "servant_utils.h"
-#include "key_keeper_logic.h"
+#include "confpatch_logic.h"
 
 Yb::ElementTree::ElementPtr
 ping(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    key_keeper->get();
-    return key_keeper->mk_resp();
+    confpatch->get();
+    return confpatch->mk_resp();
 }
 
 Yb::ElementTree::ElementPtr
 read(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return key_keeper->read();
+    return confpatch->read();
 }
 
 Yb::ElementTree::ElementPtr
 get(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return key_keeper->get();
+    return confpatch->get();
 }
 
 Yb::ElementTree::ElementPtr
 write(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return key_keeper->write(params);
+    return confpatch->write(params);
 }
 
 Yb::ElementTree::ElementPtr
 set(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return key_keeper->set(params);
+    return confpatch->set(params);
 }
 
 Yb::ElementTree::ElementPtr
 unset(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return key_keeper->unset(params);
+    return confpatch->unset(params);
 }
 
 Yb::ElementTree::ElementPtr
 cleanup(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return key_keeper->cleanup(params);
+    return confpatch->cleanup(params);
 }
 
 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 {
     auto config_file = Yb::StrUtils::xgetenv("CONFIG_FILE");
     if (!config_file.size())
-        config_file = "/etc/card_proxy_keykeeper2/card_proxy_keykeeper2.cfg.xml";
+        config_file = "/etc/card_proxy_confpatch/card_proxy_confpatch.cfg.xml";
     Yb::ILogger::Ptr logger;
     try {
         theApp::instance().init(
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
         std::string listen_at = "http://" + bind_host + ":"
                 + Yb::to_string(bind_port) + "/";
         logger->error("listen at: " + listen_at);
-        key_keeper = new KeyKeeper(theApp::instance().cfg(), *logger);
+        confpatch = new ConfPatch(theApp::instance().cfg(), *logger);
         const std::string prefix = "/" + theApp::instance().cfg()
             .get_value("HttpListener/Prefix");
         XmlHttpWrapper handlers_array[] = {

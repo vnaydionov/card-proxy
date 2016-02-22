@@ -2,4 +2,4 @@
 
 . /usr/share/card_proxy_service/functions.sh
 
-servant_init $0 $1 cpr_keykeeper RND
+servant_init $0 $1 cpr_confpatch 0

@@ -1,6 +1,6 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
-#ifndef CARD_PROXY__KEY_KEEPER_LOGIC_H
-#define CARD_PROXY__KEY_KEEPER_LOGIC_H
+#ifndef CARD_PROXY__CONF_PATCH_LOGIC_H
+#define CARD_PROXY__CONF_PATCH_LOGIC_H
 
 #include <string>
 #include <map>
@@ -13,10 +13,10 @@
 Yb::LongInt _get_random();
 double get_time();
 
-class KeyKeeper
+class ConfPatch
 {
-    KeyKeeper(const KeyKeeper &);
-    KeyKeeper &operator=(const KeyKeeper &);
+    ConfPatch(const ConfPatch &);
+    ConfPatch &operator=(const ConfPatch &);
 
     std::string app_key_, app_id_;
 
@@ -62,7 +62,7 @@ class KeyKeeper
     const std::vector<int> find_id_versions(const Yb::StringDict &params);
 
 public:
-    KeyKeeper(IConfig &cfg, Yb::ILogger &log);
+    ConfPatch(IConfig &cfg, Yb::ILogger &log);
     Yb::ElementTree::ElementPtr mk_resp(const std::string &status = "success");
     Yb::ElementTree::ElementPtr read();
     Yb::ElementTree::ElementPtr get();
@@ -72,7 +72,7 @@ public:
     Yb::ElementTree::ElementPtr cleanup(const Yb::StringDict &params);
 };
 
-extern KeyKeeper *key_keeper;
+extern ConfPatch *confpatch;
 
-#endif // CARD_PROXY__KEY_KEEPER_LOGIC_H
+#endif // CARD_PROXY__CONF_PATCH_LOGIC_H
 // vim:ts=4:sts=4:sw=4:et:

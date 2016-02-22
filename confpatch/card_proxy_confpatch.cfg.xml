@@ -2,7 +2,7 @@
 <Config>
     <Log level="INFO">syslog</Log>
     <!--
-    <Log level="DEBUG">/var/log/cpr_keykeeper/card_proxy_keykeeper2.log</Log>
+    <Log level="DEBUG">/var/log/cpr_confpatch/card_proxy_confpatch.log</Log>
     -->
     <LogLevel>
         micro_http: INFO,
@@ -13,7 +13,7 @@
     <HttpListener>
         <Port>15017</Port>
         <Host>127.0.0.1</Host>
-        <Prefix>key_keeper2/</Prefix>
+        <Prefix>confpatch/</Prefix>
     </HttpListener>
 
     <Peers>

@@ -1,5 +1,5 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
-#include "key_keeper_logic.h"
+#include "confpatch_logic.h"
 #include "utils.h"
 #include "app_class.h"
 #include <boost/regex.hpp>
@@ -44,14 +44,14 @@ double get_time()
     return Yb::get_cur_time_millisec()/1000.;
 }
 
-const std::string KeyKeeper::format_ts(double ts)
+const std::string ConfPatch::format_ts(double ts)
 {
     char buf[40];
     sprintf(buf, "%.3lf", ts);
     return std::string(buf);
 }
 
-KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
+ConfPatch::PeerData ConfPatch::call_peer(const std::string &peer_uri,
         const std::string &method,
         const HttpParams &params,
         const std::string &http_method,
@@ -96,12 +96,12 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
     return std::make_pair(app_id, storage);
 }
 
-KeyKeeper::PeerData KeyKeeper::read_peer(const std::string &peer_uri)
+ConfPatch::PeerData ConfPatch::read_peer(const std::string &peer_uri)
 {
     return call_peer(peer_uri, "read", HttpParams(), "GET");
 }
 
-void KeyKeeper::apply_update(const KeyKeeper::PeerData &peer_data)
+void ConfPatch::apply_update(const ConfPatch::PeerData &peer_data)
 {
     Yb::ScopedLock lock(mutex_);
     for (auto i = peer_data.second.begin(), iend = peer_data.second.end();
@@ -119,7 +119,7 @@ void KeyKeeper::apply_update(const KeyKeeper::PeerData &peer_data)
     }
 }
 
-void KeyKeeper::push_to_peers()
+void ConfPatch::push_to_peers()
 {
     std::vector<std::string> peer_uris;
     Storage storage;
@@ -154,7 +154,7 @@ void KeyKeeper::push_to_peers()
     }
 }
 
-void KeyKeeper::fetch_data()
+void ConfPatch::fetch_data()
 {
     std::vector<std::string> peer_uris, self_uris;
     {
@@ -204,7 +204,7 @@ void KeyKeeper::fetch_data()
     }
 }
 
-void KeyKeeper::update_data_if_needed()
+void ConfPatch::update_data_if_needed()
 {
     if (get_time() - last_fetch_time_ >= refresh_interval_) {
         last_fetch_time_ = get_time();
@@ -213,7 +213,7 @@ void KeyKeeper::update_data_if_needed()
 }
 
 const std::vector<int>
-    KeyKeeper::find_id_versions(const Yb::StringDict &params)
+    ConfPatch::find_id_versions(const Yb::StringDict &params)
 {
     std::vector<int> versions;
     if (params.find("id") != params.end())
@@ -230,7 +230,7 @@ const std::vector<int>
     return versions;
 }
 
-KeyKeeper::KeyKeeper(IConfig &cfg, Yb::ILogger &log)
+ConfPatch::ConfPatch(IConfig &cfg, Yb::ILogger &log)
 {
     app_key_ = Yb::to_string(_get_random());
     app_id_ = Yb::to_string(_get_random());
@@ -243,10 +243,10 @@ KeyKeeper::KeyKeeper(IConfig &cfg, Yb::ILogger &log)
         if (cfg.has_key(key))
             peer_uris_.push_back(cfg.get_value(key));
     }
-    log_.reset(log.new_logger("key_keeper").release());
+    log_.reset(log.new_logger("confpatch").release());
 }
 
-Yb::ElementTree::ElementPtr KeyKeeper::mk_resp(const std::string &status)
+Yb::ElementTree::ElementPtr ConfPatch::mk_resp(const std::string &status)
 {
     auto root = Yb::ElementTree::new_element("result");
     root->sub_element("status", status);
@@ -254,7 +254,7 @@ Yb::ElementTree::ElementPtr KeyKeeper::mk_resp(const std::string &status)
     return root;
 }
 
-Yb::ElementTree::ElementPtr KeyKeeper::read()
+Yb::ElementTree::ElementPtr ConfPatch::read()
 {
     auto resp = mk_resp();
     auto items_node = resp->sub_element("items");
@@ -271,13 +271,13 @@ Yb::ElementTree::ElementPtr KeyKeeper::read()
     return resp;
 }
 
-Yb::ElementTree::ElementPtr KeyKeeper::get()
+Yb::ElementTree::ElementPtr ConfPatch::get()
 {
     update_data_if_needed();
     return read();
 }
 
-Yb::ElementTree::ElementPtr KeyKeeper::write(const Yb::StringDict &params, bool update)
+Yb::ElementTree::ElementPtr ConfPatch::write(const Yb::StringDict &params, bool update)
 {
     Storage storage;
     if (update)
@@ -316,7 +316,7 @@ Yb::ElementTree::ElementPtr KeyKeeper::write(const Yb::StringDict &params, bool 
 }
 
 
-Yb::ElementTree::ElementPtr KeyKeeper::set(const Yb::StringDict &params)
+Yb::ElementTree::ElementPtr ConfPatch::set(const Yb::StringDict &params)
 {
     auto j = params.find("id");
     YB_ASSERT(j != params.end());
@@ -335,7 +335,7 @@ Yb::ElementTree::ElementPtr KeyKeeper::set(const Yb::StringDict &params)
     return mk_resp();
 }
 
-Yb::ElementTree::ElementPtr KeyKeeper::unset(const Yb::StringDict &params)
+Yb::ElementTree::ElementPtr ConfPatch::unset(const Yb::StringDict &params)
 {
     auto j = params.find("id");
     YB_ASSERT(j != params.end());
@@ -349,7 +349,7 @@ Yb::ElementTree::ElementPtr KeyKeeper::unset(const Yb::StringDict &params)
     return mk_resp();
 }
 
-Yb::ElementTree::ElementPtr KeyKeeper::cleanup(const Yb::StringDict &params)
+Yb::ElementTree::ElementPtr ConfPatch::cleanup(const Yb::StringDict &params)
 {
     auto j = params.find("id");
     YB_ASSERT(j != params.end());
@@ -365,6 +365,6 @@ Yb::ElementTree::ElementPtr KeyKeeper::cleanup(const Yb::StringDict &params)
     return mk_resp();
 }
 
-KeyKeeper *key_keeper = NULL;
+ConfPatch *confpatch = NULL;
 
 // vim:ts=4:sts=4:sw=4:et:

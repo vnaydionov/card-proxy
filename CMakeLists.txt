@@ -73,9 +73,10 @@ ENDIF ()
 
 add_subdirectory (service)
 add_subdirectory (xxutils)
+add_subdirectory (keykeeper2)
+add_subdirectory (confpatch)
 add_subdirectory (xxcommon)
 add_subdirectory (tokenizer)
-add_subdirectory (keykeeper2)
 
 install (FILES LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
 

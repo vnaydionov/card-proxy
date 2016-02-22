@@ -6,12 +6,12 @@ include_directories (
     ${PROJECT_SOURCE_DIR}/xxutils
     )
 
-add_executable (card_proxy_keykeeper2
-    key_keeper2.cpp
-    key_keeper_logic.cpp
+add_executable (card_proxy_confpatch
+    confpatch.cpp
+    confpatch_logic.cpp
     )
 
-target_link_libraries (card_proxy_keykeeper2
+target_link_libraries (card_proxy_confpatch
     xxutils
     crypto
     ssl
@@ -21,15 +21,15 @@ target_link_libraries (card_proxy_keykeeper2
     ${YB_BOOST_LIBS}
     )
 
-install (TARGETS card_proxy_keykeeper2 DESTINATION bin)
-install (PROGRAMS card_proxy_keykeeper2-ping card_proxy_keykeeper2-restarter
+install (TARGETS card_proxy_confpatch DESTINATION bin)
+install (PROGRAMS card_proxy_confpatch-ping card_proxy_confpatch-restarter
          DESTINATION bin)
-install (FILES card_proxy_keykeeper2.cfg.xml
-         DESTINATION etc/card_proxy_keykeeper2)
-install (PROGRAMS card_proxy_keykeeper2.init
-         DESTINATION etc/init.d RENAME card_proxy_keykeeper2)
-install (FILES card_proxy_keykeeper2.logrotate
-         DESTINATION etc/logrotate.d RENAME card_proxy_keykeeper2)
-install (FILES card_proxy_keykeeper2.nginx DESTINATION etc/nginx/sites-available
-         RENAME 10-card_proxy_keykeeper2)
+install (FILES card_proxy_confpatch.cfg.xml
+         DESTINATION etc/card_proxy_confpatch)
+install (PROGRAMS card_proxy_confpatch.init
+         DESTINATION etc/init.d RENAME card_proxy_confpatch)
+install (FILES card_proxy_confpatch.logrotate
+         DESTINATION etc/logrotate.d RENAME card_proxy_confpatch)
+install (FILES card_proxy_confpatch.nginx DESTINATION etc/nginx/sites-available
+         RENAME 10-card_proxy_confpatch)
 
