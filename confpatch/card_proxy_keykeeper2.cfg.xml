@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Config>
+    <Log level="INFO">syslog</Log>
+    <!--
+    <Log level="DEBUG">/var/log/cpr_keykeeper/card_proxy_keykeeper2.log</Log>
+    -->
+    <LogLevel>
+        micro_http: INFO,
+        invoker_xml: INFO,
+        http_post: INFO,
+    </LogLevel>
+
+    <HttpListener>
+        <Port>15017</Port>
+        <Host>127.0.0.1</Host>
+        <Prefix>key_keeper2/</Prefix>
+    </HttpListener>
+
+    <Peers>
+        <Timeout>1200</Timeout>
+        <RefreshInterval>5000</RefreshInterval>
+        <Peer1>https://node1.cluster:15117/</Peer1>
+        <Peer2>https://node2.cluster:15117/</Peer2>
+        <Peer3>https://node3.cluster:15117/</Peer3>
+    </Peers>
+</Config>

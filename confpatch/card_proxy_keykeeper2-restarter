@@ -1,0 +1,5 @@
+#!/bin/sh
+
+. /usr/share/card_proxy_service/functions.sh
+
+servant_restarter "$0" "$1" "$2"
