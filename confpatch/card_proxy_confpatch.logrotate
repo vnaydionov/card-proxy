@@ -7,7 +7,6 @@
     create
     missingok
     postrotate
-        python -c 'import random, time; time.sleep(random.random() * 180)'
         service card_proxy_confpatch restart
         LOG_NAME=card_proxy_confpatch.log
         SUFFIX=`date '+%F'`

@@ -1,24 +1,24 @@
 #!/bin/bash
 
-CP_USER="cpr_keykeeper"
+CP_USER="cpr_confpatch"
 
 case "$1" in
     "configure")
         grep -q "^$CP_USER:" /etc/passwd || ( \
-            adduser --gecos 'CardProxy.KeyKeeper' --disabled-password $CP_USER ; \
+            adduser --gecos 'CardProxy.ConfPatch' --disabled-password $CP_USER ; \
             mkdir -p /var/run/$CP_USER /var/log/$CP_USER ; \
             chown $CP_USER:root /var/log/$CP_USER /var/run/$CP_USER )
 
-        ln -s ../sites-available/10-card_proxy_keykeeper2 /etc/nginx/sites-enabled
+        ln -s ../sites-available/10-card_proxy_confpatch /etc/nginx/sites-enabled
         service nginx restart
-        service card_proxy_keykeeper2 restart
+        service card_proxy_confpatch restart
 
-        update-rc.d card_proxy_keykeeper2 defaults
+        update-rc.d card_proxy_confpatch defaults
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")
 
-        service card_proxy_keykeeper2 restart
+        service card_proxy_confpatch restart
 
         ;;
 

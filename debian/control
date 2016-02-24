@@ -31,3 +31,9 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
 Description: This is a simple HTTP server that keeps a portion of a key in memory,
  automatically sharing the information between the specified peers.
 
+Package: card-proxy-confpatch
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
+Description: This is a simple HTTP server that helps to maintain XML configs,
+ allowing to change the portions of confuguration files used by servants.
+

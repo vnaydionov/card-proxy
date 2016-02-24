@@ -218,19 +218,13 @@ servant_stop () {
 }
 
 servant_start () {
-    # input vars: RND_DELAY LOG_FILE CP_USER SERVANT
+    # input vars: LOG_FILE CP_USER SERVANT
     local RESTARTER
     local PINGER
     local SERVANT_BIN
     local CNT
 
-    if [ "$RND_DELAY" = "Y" ] ; then
-        python -c 'import os,time; d=ord(os.urandom(1)) * 7. / 256; \
-                   print "Starting in %.3f sec" % d; time.sleep(d)'
-    else
-        echo "Starting..."
-    fi
-
+    echo "Starting..."
     touch "$LOG_FILE"
     chown "$CP_USER:$CP_USER" "$LOG_FILE"
     
@@ -275,6 +269,11 @@ servant_init () {
     fi
     log_info "SERVANT=$SERVANT"
     log_info "MODE=$MODE"
+
+    if [ "$MODE" = "restart" ] && [ "$RND_DELAY" = "Y" ] ; then
+        python -c 'import os,time; d=ord(os.urandom(1)) * 7. / 256; \
+                   print "Random delay for %.3f sec" % d; time.sleep(d)'
+    fi
 
     if [ "$MODE" = "reload" ] ; then
         servant_reload

@@ -7,20 +7,12 @@
     <LogLevel>
         micro_http: INFO,
         invoker_xml: INFO,
-        http_post: INFO,
     </LogLevel>
 
     <HttpListener>
-        <Port>15017</Port>
+        <Port>15018</Port>
         <Host>127.0.0.1</Host>
         <Prefix>confpatch/</Prefix>
     </HttpListener>
 
-    <Peers>
-        <Timeout>1200</Timeout>
-        <RefreshInterval>5000</RefreshInterval>
-        <Peer1>https://node1.cluster:15117/</Peer1>
-        <Peer2>https://node2.cluster:15117/</Peer2>
-        <Peer3>https://node3.cluster:15117/</Peer3>
-    </Peers>
 </Config>

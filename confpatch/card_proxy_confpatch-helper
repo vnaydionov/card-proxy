@@ -1,0 +1,10 @@
+#!/bin/sh
+
+SERVANT="$1"
+CONF_PATH="$2"
+TEMP_NAME="$3"
+
+sudo cp "$TEMP_NAME" "$CONF_PATH" &&
+sudo service "$SERVANT" restart
+exit $?
+

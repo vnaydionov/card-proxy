@@ -1,0 +1,2 @@
+
+cpr_confpatch ALL= (root) NOPASSWD: /usr/bin/card_proxy_confpatch-helper

@@ -1,0 +1,5 @@
+usr/bin/card_proxy_confpatch*
+usr/etc/card_proxy_confpatch
+usr/etc/init.d/card_proxy_confpatch
+usr/etc/logrotate.d/card_proxy_confpatch
+usr/etc/nginx/sites-available/10-card_proxy_confpatch

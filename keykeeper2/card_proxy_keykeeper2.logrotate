@@ -7,7 +7,6 @@
     create
     missingok
     postrotate
-        python -c 'import random, time; time.sleep(random.random() * 180)'
         service card_proxy_keykeeper2 restart
         LOG_NAME=card_proxy_keykeeper2.log
         SUFFIX=`date '+%F'`

@@ -8,50 +8,35 @@ Yb::ElementTree::ElementPtr
 ping(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    confpatch->get();
-    return confpatch->mk_resp();
-}
-
-Yb::ElementTree::ElementPtr
-read(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return confpatch->read();
+    return ConfPatch(theApp::instance().cfg(), logger).mk_resp();
 }
 
 Yb::ElementTree::ElementPtr
 get(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return confpatch->get();
-}
-
-Yb::ElementTree::ElementPtr
-write(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return confpatch->write(params);
+    return ConfPatch(theApp::instance().cfg(), logger).get();
 }
 
 Yb::ElementTree::ElementPtr
 set(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return confpatch->set(params);
+    return ConfPatch(theApp::instance().cfg(), logger).set(params);
 }
 
 Yb::ElementTree::ElementPtr
 unset(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return confpatch->unset(params);
+    return ConfPatch(theApp::instance().cfg(), logger).unset(params);
 }
 
 Yb::ElementTree::ElementPtr
 cleanup(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    return confpatch->cleanup(params);
+    return ConfPatch(theApp::instance().cfg(), logger).cleanup(params);
 }
 
 
@@ -79,14 +64,11 @@ int main(int argc, char *argv[])
         std::string listen_at = "http://" + bind_host + ":"
                 + Yb::to_string(bind_port) + "/";
         logger->error("listen at: " + listen_at);
-        confpatch = new ConfPatch(theApp::instance().cfg(), *logger);
         const std::string prefix = "/" + theApp::instance().cfg()
             .get_value("HttpListener/Prefix");
         XmlHttpWrapper handlers_array[] = {
             WRAP("/", ping),
-            WRAP(prefix, read),
             WRAP(prefix, get),
-            WRAP(prefix, write),
             WRAP(prefix, set),
             WRAP(prefix, unset),
             WRAP(prefix, cleanup),
