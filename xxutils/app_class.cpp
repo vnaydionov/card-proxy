@@ -9,25 +9,33 @@
 
 const std::string filter_log_msg(const std::string &msg)
 {
-    static const boost::regex cn_re(
-            "([^\\d])([45]\\d{5})(\\d{6,9})(\\d{4})([^\\d])");
-    static const std::string obf_fmt("\\1\\2****\\4\\5");
+    static const boost::regex *cn_re = NULL;
+    if (!cn_re)
+        cn_re = new boost::regex("([^\\d])([45]\\d{5})(\\d{6,9})(\\d{4})([^\\d])");
+    static const std::string *obf_fmt = NULL;
+    if (!obf_fmt)
+        obf_fmt = new std::string("\\1\\2****\\4\\5");
+    static const boost::regex *key_re = NULL;
+    if (!key_re)
+        key_re = new boost::regex(
+            "([^0-9a-fA-F])([0-9a-fA-F]{8})([0-9a-fA-F]{48})([0-9a-fA-F]{8})([^0-9a-fA-F])");
+    static const std::string *obfk_fmt = NULL;
+    if (!obfk_fmt)
+        obfk_fmt = new std::string("\\1\\2....\\4\\5");
+
     std::string fixed_msg = " " + msg + " ";
     while (true) {
         const std::string orig_msg = fixed_msg;
         fixed_msg = boost::regex_replace(
-                fixed_msg, cn_re, obf_fmt,
+                fixed_msg, *cn_re, *obf_fmt,
                 boost::match_default | boost::format_perl);
         if (fixed_msg == orig_msg)
             break;
     }
-    static const boost::regex key_re(
-            "([^0-9a-fA-F])([0-9a-fA-F]{8})([0-9a-fA-F]{48})([0-9a-fA-F]{8})([^0-9a-fA-F])");
-    static const std::string obfk_fmt("\\1\\2....\\4\\5");
     while (true) {
         const std::string orig_msg = fixed_msg;
         fixed_msg = boost::regex_replace(
-                fixed_msg, key_re, obfk_fmt,
+                fixed_msg, *key_re, *obfk_fmt,
                 boost::match_default | boost::format_perl);
         if (fixed_msg == orig_msg)
             break;

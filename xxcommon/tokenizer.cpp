@@ -54,7 +54,7 @@ const std::string
         cached_[id] = node->attrib_["data"];
         if (!starts_with(id, "KEK_VER") || !ends_with(id, suffix))
             continue;
-        if (kek_version < 0 || id == target_id) {
+        if (id == target_id) {
             result = node->attrib_["data"];
             found = true;
         }

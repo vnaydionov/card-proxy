@@ -190,6 +190,7 @@ void KeyKeeper::fetch_data()
         }
         self_uris_str = "[" + self_uris_str + "]";
         log_->info("Excluded URIs: " + self_uris_str);
+
         Yb::ScopedLock lock(mutex_);
         std::vector<std::string> new_peer_uris;
         for (auto i = peer_uris.begin(), iend = peer_uris.end();
@@ -343,8 +344,10 @@ Yb::ElementTree::ElementPtr KeyKeeper::unset(const Yb::StringDict &params)
     YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
 
     YB_ASSERT(storage_.find(id) != storage_.end());
-    Yb::ScopedLock lock(mutex_);
-    storage_.erase(storage_.find(id));
+    {
+        Yb::ScopedLock lock(mutex_);
+        storage_.erase(storage_.find(id));
+    }
     push_to_peers();
     return mk_resp();
 }
@@ -357,10 +360,12 @@ Yb::ElementTree::ElementPtr KeyKeeper::cleanup(const Yb::StringDict &params)
     YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
 
     YB_ASSERT(storage_.find(id) != storage_.end());
-    Yb::ScopedLock lock(mutex_);
-    Storage new_storage;
-    new_storage[id] = storage_[id];
-    std::swap(new_storage, storage_);
+    {
+        Yb::ScopedLock lock(mutex_);
+        Storage new_storage;
+        new_storage[id] = storage_[id];
+        std::swap(new_storage, storage_);
+    }
     push_to_peers();
     return mk_resp();
 }
