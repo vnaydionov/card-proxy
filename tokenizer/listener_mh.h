@@ -84,7 +84,6 @@ const HttpMessage proxy_any(Yb::ILogger &logger,
     }
 
     HttpHeaders nested_req_headers = convert_headers(request);
-    nested_req_headers["Content-Length"] = Yb::to_string(body_fixed.size());
     HttpResponse resp = http_post(
         target_uri_fixed,
         &logger,
