@@ -47,6 +47,7 @@ debian/*.substvars
 debian/card-proxy-service
 debian/card-proxy-keykeeper2
 debian/card-proxy-confpatch
+debian/card-proxy-keyapi
 debian/card-proxy-tokenizer
 debian/files
 debian/tmp

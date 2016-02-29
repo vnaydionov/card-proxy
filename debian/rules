@@ -34,10 +34,12 @@ override_dh_installdocs:
 TOKENIZER_DIR=debian/card-proxy-tokenizer
 KEYKEEPER2_DIR=debian/card-proxy-keykeeper2
 CONFPATCH_DIR=debian/card-proxy-confpatch
+KEYAPI_DIR=debian/card-proxy-keyapi
 
 override_dh_install:
 	dh_install
 	mv $(TOKENIZER_DIR)/usr/etc $(TOKENIZER_DIR)
 	mv $(KEYKEEPER2_DIR)/usr/etc $(KEYKEEPER2_DIR)
 	mv $(CONFPATCH_DIR)/usr/etc $(CONFPATCH_DIR)
+	mv $(KEYAPI_DIR)/usr/etc $(KEYAPI_DIR)
 

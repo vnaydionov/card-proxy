@@ -77,6 +77,7 @@ add_subdirectory (keykeeper2)
 add_subdirectory (confpatch)
 add_subdirectory (xxcommon)
 add_subdirectory (tokenizer)
+add_subdirectory (keyapi)
 
 install (FILES LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
 

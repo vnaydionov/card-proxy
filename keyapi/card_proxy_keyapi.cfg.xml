@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<Config>
+    <Log level="INFO">syslog</Log>
+    <!--
+    <Log level="DEBUG">/var/log/cpr_keyapi/card_proxy_keyapi.log</Log>
+    -->
+    <LogLevel>
+        micro_http: INFO,
+        invoker_xml: INFO,
+        yb.sql: INFO,
+    </LogLevel>
+
+    <HttpListener>
+        <Port>15019</Port>
+        <Host>127.0.0.1</Host>
+        <Prefix>keyapi/</Prefix>
+    </HttpListener>
+
+    <DbBackend id="card_proxy_db" type="mysql+soci">
+        <Host>127.0.0.1</Host>
+        <Port>3306</Port>
+        <DB>card_proxy_db</DB>
+        <User>card_proxy_user</User>
+        <Pass>card_proxy_pass</Pass>
+    </DbBackend>
+
+    <KeyKeeper2>
+        <URL>http://127.0.0.1:15017/key_keeper2/</URL>
+        <Timeout>2500</Timeout>
+    </KeyKeeper2>
+
+    <ConfPatch>
+        <URL>http://127.0.0.1:15018/conf_patch/</URL>
+        <Timeout>60000</Timeout>
+    </ConfPatch>
+
+</Config>

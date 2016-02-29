@@ -1,0 +1,18 @@
+/var/log/cpr_keyapi/card_proxy_keyapi.log {
+    daily
+    nocompress
+    notifempty
+    start 1
+    rotate 1
+    create
+    missingok
+    postrotate
+        service card_proxy_keyapi restart
+        LOG_NAME=card_proxy_keyapi.log
+        SUFFIX=`date '+%F'`
+        mkdir -p /var/log/cpr_keyapi/arc
+        chown cpr_keyapi:root /var/log/cpr_keyapi/arc
+        mv /var/log/cpr_keyapi/$LOG_NAME.1 /var/log/cpr_keyapi/arc/$LOG_NAME.$SUFFIX
+        bzip2 /var/log/cpr_keyapi/arc/$LOG_NAME.$SUFFIX
+    endscript
+}

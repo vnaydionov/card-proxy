@@ -37,3 +37,9 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
 Description: This is a simple HTTP server that helps to maintain XML configs,
  allowing to change the portions of confuguration files used by servants.
 
+Package: card-proxy-keyapi
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
+Description: The key management server implements a HTTP API.
+ Most methods are authenticated by passing an existing part of KEK of some version.
+
