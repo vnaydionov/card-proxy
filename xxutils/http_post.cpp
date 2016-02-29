@@ -67,17 +67,31 @@ static const std::string serialize_params(CURL *curl, const HttpParams &params)
     return result;
 }
 
-static curl_slist *fill_headers(CURL *curl, const HttpHeaders &headers)
+static curl_slist *fill_headers(CURL *curl, const HttpHeaders &headers,
+                                int content_length)
 {
+    using Yb::StrUtils::str_to_lower;
+
     if (!headers.size())
         return NULL;
     curl_slist *hlist = NULL;
     try {
         auto i = headers.begin(), iend = headers.end();
         for (; i != iend; ++i) {
+            if (str_to_lower(i->first) == "content-length")
+                continue;
             curl_slist *new_hlist = curl_slist_append(
                 hlist,
                 (i->first + ": " + i->second).c_str()
+            );
+            if (!new_hlist)
+                throw HttpClientError("curl_slist_append() failed!");
+            hlist = new_hlist;
+        }
+        if (content_length) {
+            curl_slist *new_hlist = curl_slist_append(
+                hlist,
+                ("Content-Length: " + Yb::to_string(content_length)).c_str()
             );
             if (!new_hlist)
                 throw HttpClientError("curl_slist_append() failed!");
@@ -136,7 +150,8 @@ const HttpResponse http_post(const std::string &uri,
         if (request_body.empty() && !params_str.empty() && method == "POST") {
             request_body = params_str;
         }
-        if (!request_body.empty()) {
+        int content_length = request_body.size();
+        if (content_length) {
             res = curl_easy_setopt(curl, CURLOPT_COPYPOSTFIELDS, request_body.c_str());
             if (res != CURLE_OK)
                 throw HttpClientError(
@@ -145,8 +160,8 @@ const HttpResponse http_post(const std::string &uri,
         }
 
         // set custom headers if necessary
-        if (headers.size()) {
-            hlist = fill_headers(curl, headers);
+        if (headers.size() || content_length) {
+            hlist = fill_headers(curl, headers, content_length);
             res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hlist);
             if (res != CURLE_OK)
                 throw HttpClientError(

@@ -4,10 +4,13 @@
 #include <utility>
 #include <vector>
 
-#include "aes_crypter.h"
 #include "catch.hpp"
+
+#include "aes_crypter.h"
 #include "utils.h"
 #include "app_class.h"
+
+#include "card_crypter.h"
 
 #define B64_TESTS       50
 #define BCD_TESTS       50
