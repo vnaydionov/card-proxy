@@ -31,10 +31,6 @@ std::string generate_random_number(size_t length);
 std::string generate_random_string(size_t length);
 std::string generate_random_hex_string(size_t length);
 
-std::string mask_pan(const std::string &pan);
-std::string normalize_pan(const std::string &pan);
-int normalize_year(int year);
-
 const std::string read_file(const std::string &file_name);
 const std::string get_process_name();
 const std::string fmt_string_escape(const std::string &s);

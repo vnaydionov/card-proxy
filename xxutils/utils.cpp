@@ -237,34 +237,6 @@ std::string generate_random_hex_string(size_t length)
     return string_to_hexstring(rand_bytes, HEX_NOSPACES).substr(0, length);
 }
 
-std::string mask_pan(const std::string &pan)
-{
-    if (pan.size() < 13 || pan.size() > 20)
-        throw RunTimeError("Strange PAN length: " + Yb::to_string(pan.size()));
-    return pan.substr(0, 6) + std::string(pan.size() - 10, '*') + pan.substr(pan.size() - 4);
-}
-
-std::string normalize_pan(const std::string &pan)
-{
-    std::string r;
-    r.reserve(pan.size());
-    for (size_t i = 0; i < pan.size(); ++i) {
-        const unsigned char c = (unsigned char )pan[i];
-        if (c >= '0' && c <= '9')
-            r += c;
-        else if (!std::strchr(" \t\n\r", c))
-            throw RunTimeError("Wrong character in PAN: " + Yb::to_string((int )c));
-    }
-    return r;
-}
-
-int normalize_year(int year)
-{
-    if (year && year < 2000)
-        return 2000 + year;
-    return year;
-}
-
 const std::string read_file(const std::string &file_name)
 {
     std::ifstream inp(file_name.c_str());

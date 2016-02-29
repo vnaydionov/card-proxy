@@ -4,6 +4,10 @@
 
 #include "tokenizer.h"
 
+std::string mask_pan(const std::string &pan);
+std::string normalize_pan(const std::string &pan);
+int normalize_year(int year);
+
 /* The following fields are recognized:
  * pan, expire_year, expire_month, card_holder, cvn.
  *
