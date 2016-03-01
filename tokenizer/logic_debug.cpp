@@ -69,6 +69,8 @@ void write_card_data_to_xml(const CardData &card_data,
     }
 }
 
+namespace LogicDebug {
+
 Yb::ElementTree::ElementPtr debug_method(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
@@ -202,4 +204,5 @@ Yb::ElementTree::ElementPtr run_load_scenario(
     return resp;
 }
 
+} // LogicDebug
 // vim:ts=4:sts=4:sw=4:et:

@@ -13,7 +13,8 @@ if (USE_VAULT_DEBUG_API)
 endif ()
 
 add_executable (card_proxy_tokenizer
-    ${LOGIC_DEBUG_CPP} logic_token.cpp main_mh.cpp)
+    ${LOGIC_DEBUG_CPP} processors.cpp proxy_any.cpp
+    logic_service.cpp logic_inb.cpp logic_outb.cpp servant.cpp)
 
 target_link_libraries (
     card_proxy_tokenizer xxcommon xxutils crypto ssl

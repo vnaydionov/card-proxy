@@ -126,7 +126,7 @@ restarter_loop () {
     local TS0
     local SPENT
     while [ 1 = 1 ] ; do
-        export YANDEX_XML_CONFIG="$CFG_FILE"
+        export CONFIG_FILE="$CFG_FILE"
         "$BIN" $BIN_PARAMS &
         PID=$!
         TS0=$(date '+%s')

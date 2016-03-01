@@ -21,12 +21,16 @@ Yb::ElementTree::ElementPtr name( \
         Yb::Session &session, Yb::ILogger &logger, \
         const Yb::StringDict &params)
 
+namespace LogicDebug {
+
 DECL_DEBG_METHOD(debug_method);
 DECL_DEBG_METHOD(dek_status);
 DECL_DEBG_METHOD(tokenize_card);
 DECL_DEBG_METHOD(detokenize_card);
 DECL_DEBG_METHOD(remove_card);
 DECL_DEBG_METHOD(run_load_scenario);
+
+} // LogicDebug
 
 #endif // CARD_PROXY__LOGIC_DEBUG_H
 // vim:ts=4:sts=4:sw=4:et:
