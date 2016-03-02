@@ -209,47 +209,53 @@ Yb::ElementTree::ElementPtr KeyAPI::process_cmd(
 }
 
 
-const std::string get_config_param(Yb::Session &session, const std::string &key)
+
+KeyAPI::KeyAPI(IConfig &cfg, Yb::ILogger &log, Yb::Session &session)
+    : log_(log.new_logger("keyapi").release())
+    , session_(session)
+{}
+
+const std::string KeyAPI::get_config_param(const std::string &key)
 {
-    auto rec = Yb::query<Domain::Config>(session)
+    auto rec = Yb::query<Domain::Config>(session_)
         .filter_by(Domain::Config::c.ckey == key)
         .one();
     return rec.cvalue;
 }
 
-void set_config_param(Yb::Session &session, const std::string &key,
-        const std::string &value)
+void KeyAPI::set_config_param(const std::string &key, const std::string &value)
 {
     Domain::Config rec;
     try {
-        rec = Yb::query<Domain::Config>(session)
+        rec = Yb::query<Domain::Config>(session_)
             .filter_by(Domain::Config::c.ckey == key)
             .one();
     }
     catch (const Yb::NoDataFound &) {
         rec.ckey = key;
-        rec.save(session);
+        rec.save(session_);
     }
     rec.cvalue = value;
-    session.flush();
+    session_.flush();
 }
 
-const std::string get_state(Yb::Session &session)
+const std::string KeyAPI::get_state()
 {
-    return get_config_param(session, "STATE");
+    return get_config_param("STATE");
 }
 
-void set_state(Yb::Session &session, const std::string &state)
+void KeyAPI::set_state(const std::string &state)
 {
-    set_config_param(session, "STATE", state);
+    set_config_param("STATE", state);
 }
 
-std::pair<int, int> kek_auth(const std::string &mode, const std::string &password)
+std::pair<int, int> KeyAPI::kek_auth(const std::string &mode,
+        const std::string &password, int kek_version)
 {
     YB_ASSERT(password.size() == 64);
-    YB_ASSERT(mode == "CURRENT" && mode == "LAST" && mode == "TARGET");
+    YB_ASSERT(mode == "CURRENT" || mode == "LAST" ||
+              mode == "TARGET" || mode == "CUSTOM");
     TokenizerConfig tcfg;
-    int kek_version;
     if (mode == "CURRENT")
         kek_version = tcfg.get_current_version();
     else if (mode == "LAST")
@@ -262,12 +268,6 @@ std::pair<int, int> kek_auth(const std::string &mode, const std::string &passwor
     }
     return std::make_pair(kek_version, 0);
 }
-
-
-KeyAPI::KeyAPI(IConfig &cfg, Yb::ILogger &log, Yb::Session &session)
-    : log_(log.new_logger("keyapi").release())
-    , session_(session)
-{}
 
 Yb::ElementTree::ElementPtr KeyAPI::mk_resp(const std::string &status)
 {
@@ -284,38 +284,68 @@ Yb::ElementTree::ElementPtr KeyAPI::generate_kek(const Yb::StringDict &params)
 Yb::ElementTree::ElementPtr KeyAPI::get_component(const Yb::StringDict &params)
 {
     auto password = params.get("password", "");
+    auto want_kek_version_str = params.get("version", "");
     auto r = kek_auth("CURRENT", password);
     int kek_version = r.first;
     YB_ASSERT(kek_version >= 0);
     int part_n = r.second;
     YB_ASSERT(part_n >= 1 && part_n <= 3);
     TokenizerConfig tcfg;
-    int target_kek_version = tcfg.get_switch_version();
+    int want_kek_version = -1;
+    if (!want_kek_version_str.empty())
+        want_kek_version = boost::lexical_cast<int>(want_kek_version_str);
+    else
+        want_kek_version = tcfg.get_last_version();
     auto resp = mk_resp();
-    resp->sub_element("version", Yb::to_string(target_kek_version));
+    resp->sub_element("version", Yb::to_string(kek_version));
+    resp->sub_element("part", Yb::to_string(part_n));
+    resp->sub_element("show_version", Yb::to_string(want_kek_version));
     resp->sub_element("component",
-            tcfg.get_master_key_component(target_kek_version, part_n));
+            tcfg.get_master_key_component(want_kek_version, part_n));
     return resp;
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::confirm_component(const Yb::StringDict &params)
 {
-    auto j = params.find("id");
-    YB_ASSERT(j != params.end());
-    const auto &id = j->second;
-    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
-
-    return mk_resp();
+    auto password = params.get("password", "");
+    auto want_kek_version_str = params.get("version", "");
+    std::string mode = "LAST";
+    int want_kek_version = -1;
+    if (!want_kek_version_str.empty()) {
+        mode = "CUSTOM";
+        want_kek_version = boost::lexical_cast<int>(want_kek_version_str);
+    }
+    auto r = kek_auth(mode, password, want_kek_version);
+    int kek_version = r.first;
+    YB_ASSERT(kek_version >= 0);
+    int part_n = r.second;
+    YB_ASSERT(part_n >= 1 && part_n <= 3);
+    set_config_param("KEK_VER" + Yb::to_string(kek_version) +
+            "_PART" + Yb::to_string(part_n) + "_CHECK", "1");
+    auto resp = mk_resp();
+    resp->sub_element("version", Yb::to_string(kek_version));
+    resp->sub_element("part", Yb::to_string(part_n));
+    return resp;
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::reset_target_version(const Yb::StringDict &params)
 {
-    auto j = params.find("id");
-    YB_ASSERT(j != params.end());
-    const auto &id = j->second;
-    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
-
-    return mk_resp();
+    auto password = params.get("password", "");
+    int want_kek_version = boost::lexical_cast<int>(params.get("version", ""));
+    auto r = kek_auth("CURRENT", password);
+    int kek_version = r.first;
+    YB_ASSERT(kek_version >= 0);
+    int part_n = r.second;
+    YB_ASSERT(part_n >= 1 && part_n <= 3);
+    TokenizerConfig tcfg;
+    YB_ASSERT(tcfg.is_kek_valid(want_kek_version));
+    YB_ASSERT(tcfg.is_version_checked(want_kek_version));
+    set_config_param("KEK_TARGET_VERSION", Yb::to_string(want_kek_version));
+    auto resp = mk_resp();
+    resp->sub_element("version", Yb::to_string(kek_version));
+    resp->sub_element("part", Yb::to_string(part_n));
+    resp->sub_element("target_version", Yb::to_string(want_kek_version));
+    return resp;
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::cleanup(const Yb::StringDict &params)

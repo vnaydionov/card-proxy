@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<Config>
+<Config xmlns:xi="http://www.w3.org/2001/XInclude">
     <Log level="INFO">syslog</Log>
     <!--
     <Log level="DEBUG">/var/log/cpr_keyapi/card_proxy_keyapi.log</Log>
@@ -23,6 +23,8 @@
         <User>card_proxy_user</User>
         <Pass>card_proxy_pass</Pass>
     </DbBackend>
+
+    <xi:include href="/etc/card_proxy_common/key_settings.cfg.xml" />
 
     <KeyKeeper2>
         <URL>http://127.0.0.1:15017/key_keeper2/</URL>

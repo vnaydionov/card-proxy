@@ -11,7 +11,7 @@
 #include "conf_reader.h"
 #include "http_post.h"
 
-class KeyAPI
+class KeyAPI: private Yb::NonCopyable
 {
     Yb::Logger::Ptr log_;
     Yb::Session &session_;
@@ -36,11 +36,18 @@ class KeyAPI
         const std::string &id,
         const std::string &data);
 
-    KeyAPI(const KeyAPI &);
-    KeyAPI &operator=(const KeyAPI &);
 
 public:
     KeyAPI(IConfig &cfg, Yb::ILogger &log, Yb::Session &session);
+
+    const std::string get_config_param(const std::string &key);
+    void set_config_param(const std::string &key, const std::string &value);
+    const std::string get_state();
+    void set_state(const std::string &state);
+
+    std::pair<int, int> kek_auth(const std::string &mode,
+            const std::string &password, int kek_version = -1);
+
     Yb::ElementTree::ElementPtr mk_resp(
             const std::string &status = "success");
     Yb::ElementTree::ElementPtr generate_kek(const Yb::StringDict &params);
