@@ -10,7 +10,7 @@ add_executable (core_tests core_tests.cpp)
 
 target_link_libraries (core_tests xxcommon xxutils crypto ssl
                        ${YBORM_LIB} ${YBUTIL_LIB} ${YB_BOOST_LIBS}
-                       ${CURL_LIBRARIES})
+                       ${CURL_LIBRARIES} ${JSONC_LIB})
 
 add_executable (test_trans test_trans.cpp)
 

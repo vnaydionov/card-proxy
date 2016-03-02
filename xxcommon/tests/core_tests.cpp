@@ -9,6 +9,7 @@
 #include "aes_crypter.h"
 #include "utils.h"
 #include "app_class.h"
+#include "json_object.h"
 
 #include "card_crypter.h"
 
@@ -372,6 +373,47 @@ TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
                     "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5,"));
         CHECK("65E84BE3....E02337C5,8588310a....c54581cd" == filter_log_msg(
                     "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5,8588310a98676af6e22563c1559e1ae20f85950792bdcd0c8f334867c54581cd"));
+    }
+}
+
+TEST_CASE( "Some tests for JSON", "[full][json]" ) {
+    SECTION( "check ownership passing" ) {
+        JsonObject o = JsonObject::new_object();
+        CHECK( o.owns() );
+        JsonObject p = o;
+        CHECK( p.owns() );
+        CHECK( !o.owns() );
+        JsonObject q(p.get(), false);
+        CHECK( !q.owns() );
+        q = p;
+        CHECK( q.owns() );
+        CHECK( !p.owns() );
+    }
+    SECTION( "parsing JSON" ) {
+        JsonObject o = JsonObject::parse(
+                "{\"hello\": \"1\", \"world\": 2, \"xxx\": false, \"yyy\": 1.5}");
+        CHECK_THROWS( o.get_str_field("hell") );
+        CHECK_THROWS( o.get_str_field("world") );
+        CHECK("1" == o.get_str_field("hello"));
+        CHECK("s:1" == o.get_typed_field("hello"));
+        CHECK("i:2" == o.get_typed_field("world"));
+        CHECK("b:false" == o.get_typed_field("xxx"));
+        CHECK("f:1.5" == o.get_typed_field("yyy"));
+    }
+    SECTION( "crafting JSON" ) {
+        CHECK_THROWS( JsonObject(NULL, true) );
+        JsonObject o = JsonObject::new_object();
+        o.add_str_field("aaa", "qwerty");
+        o.add_typed_field("bbb", "s:asdfgh");
+        o.add_typed_field("ccc", "i:-100500");
+        o.add_typed_field("ddd", "b:true");
+        o.add_typed_field("eee", "f:3.14");
+        CHECK("{ \"aaa\": \"qwerty\", \"bbb\": \"asdfgh\", \"ccc\": -100500, "
+                "\"ddd\": true, \"eee\": 3.140000 }" == o.serialize());
+        o.delete_field("eee");
+        o.delete_field("bbb");
+        CHECK("{ \"aaa\": \"qwerty\", \"ccc\": -100500, "
+                "\"ddd\": true }" == o.serialize());
     }
 }
 
