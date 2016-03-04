@@ -1,5 +1,6 @@
 usr/bin/card_proxy_tokenizer*
 usr/etc/card_proxy_tokenizer
+usr/etc/card_proxy_common/key_settings*
 usr/etc/init.d/card_proxy_tokenizer
 usr/etc/logrotate.d/card_proxy_tokenizer
 usr/etc/nginx/sites-available/10-card_proxy_tokenizer
