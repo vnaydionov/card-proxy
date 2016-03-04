@@ -1,12 +1,12 @@
-#!/bin/bash
+#!/bin/sh
+
+. /usr/share/card_proxy_service/functions.sh
 
 case "$1" in
     "remove" | "purge" | "abort-install" | "disappear")
-        rm -f /etc/nginx/sites-enabled/10-card_proxy_keykeeper2
-        service nginx restart
+        disable_nginx_config card_proxy_keykeeper2
         service card_proxy_keykeeper2 stop
-
-        update-rc.d card_proxy_keykeeper2 remove
+        unregister_autostart card_proxy_keykeeper2
         ;;
 
     "upgrade" | "failed-upgrade" | "abort-upgrade")

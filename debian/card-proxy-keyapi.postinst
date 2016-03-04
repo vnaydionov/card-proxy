@@ -1,25 +1,17 @@
-#!/bin/bash
+#!/bin/sh
 
-CP_USER="cpr_keyapi"
+. /usr/share/card_proxy_service/functions.sh
 
 case "$1" in
     "configure")
-        grep -q "^$CP_USER:" /etc/passwd || ( \
-            adduser --gecos 'CardProxy.KeyAPI' --disabled-password $CP_USER ; \
-            mkdir -p /var/run/$CP_USER /var/log/$CP_USER ; \
-            chown $CP_USER:root /var/log/$CP_USER /var/run/$CP_USER )
-
-        ln -s ../sites-available/10-card_proxy_keyapi /etc/nginx/sites-enabled
-        service nginx restart
-        service card_proxy_keyapi restart
-
-        update-rc.d card_proxy_keyapi defaults
+        ensure_user_exists 'cpr_keyapi' 'CardProxy.KeyApi'
+        enable_nginx_config card_proxy_keyapi
+        perform_service_restart card_proxy_keyapi
+        register_autostart card_proxy_keyapi
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")
-
-        service card_proxy_keyapi restart
-
+        perform_service_restart card_proxy_keyapi
         ;;
 
     *) 

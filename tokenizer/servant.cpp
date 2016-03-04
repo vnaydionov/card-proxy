@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
 {
     const std::string dbg_prefix = "/debug_api/";
     const std::string ping_prefix = "/service/";
-    const std::string inbound_prefix = "/cp/inbound/";
-    const std::string outbound_prefix = "/cp/outbound/";
+    const std::string inbound_prefix = "/incoming/";
+    const std::string outbound_prefix = "/outgoing/";
     using namespace LogicService;
     using namespace LogicInbound;
     using namespace LogicOutbound;

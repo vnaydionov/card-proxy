@@ -67,7 +67,7 @@ struct CardData
         expire_month = xmonth;
     }
 
-    bool is_fake_card_trust() const {
+    bool is_fake_card() const {
         return (
             pan == "5555555555554444" ||
             pan == "5105105105105100" ||

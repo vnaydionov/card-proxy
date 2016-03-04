@@ -21,14 +21,23 @@ target_link_libraries (
     ${YBORM_LIB} ${YBUTIL_LIB} ${YB_BOOST_LIBS} ${CURL_LIBRARIES} ${JSONC_LIB})
 
 install (TARGETS card_proxy_tokenizer DESTINATION bin)
+
 install (PROGRAMS card_proxy_tokenizer-ping card_proxy_tokenizer-restarter
          DESTINATION bin)
-install (FILES key_settings.cfg.xml card_proxy_tokenizer.cfg.xml
+
+install (FILES card_proxy_tokenizer.cfg.xml
          DESTINATION etc/card_proxy_tokenizer)
+
+install (FILES key_settings.cfg.xml
+         DESTINATION etc/card_proxy_common
+         RENAME key_settings.cfg.xml.sample)
+
 install (PROGRAMS card_proxy_tokenizer.init
          DESTINATION etc/init.d RENAME card_proxy_tokenizer)
+
 install (FILES card_proxy_tokenizer.logrotate
          DESTINATION etc/logrotate.d RENAME card_proxy_tokenizer)
+
 install (FILES card_proxy_tokenizer.nginx DESTINATION etc/nginx/sites-available
          RENAME 10-card_proxy_tokenizer)
 

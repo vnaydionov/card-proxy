@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<Config>
+<Config xmlns:xi="http://www.w3.org/2001/XInclude">
     <Log level="INFO">syslog</Log>
     <!--
     <Log level="DEBUG">/var/log/cpr_confpatch/card_proxy_confpatch.log</Log>

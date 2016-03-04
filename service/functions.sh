@@ -3,6 +3,11 @@
 # NOTE: keep the code 'dash' compatible
 
 CFG_PREFIX="/etc"
+PROXY_COMMON="${CFG_PREFIX}/card_proxy_common"
+
+# "Y" or "N"
+ENABLE_SERVICE_RESTART="Y"
+ENABLE_NGINX_CONFIG="Y"
 
 log_message () {
     # input vars: LOG_MODE SCRIPT_TAG
@@ -285,6 +290,78 @@ servant_init () {
 
     if [ "$MODE" = "start" ] || [ "$MODE" = "restart" ] ; then
         servant_start
+    fi
+}
+
+ensure_user_exists () {
+    local CP_USER
+    local CP_GECOS
+    CP_USER="$1"
+    CP_GECOS="$2"
+    grep -q "^${CP_USER}:" '/etc/passwd' || ( \
+        adduser --gecos "$CP_GECOS" --disabled-password "$CP_USER" ; \
+        mkdir -p "/var/run/$CP_USER" "/var/log/$CP_USER" ; \
+        chown "${CP_USER}:root" "/var/log/$CP_USER" "/var/run/$CP_USER" )
+}
+
+process_sample_file () {
+    local FNAME
+    FNAME="$1"
+    if ! [ -r "$FNAME" ] ; then
+        cp "${FNAME}.sample" "$FNAME"
+    fi
+}
+
+update_python_support () {
+    local PKG_NAME
+    PKG_NAME="$1"
+    # python-support:
+    if which update-python-modules >/dev/null 2>&1; then
+        update-python-modules "${PKG_NAME}.public"
+    fi
+}
+
+register_autostart () {
+    local SERVICE
+    SERVICE="$1"
+    update-rc.d "$SERVICE" defaults
+}
+
+unregister_autostart () {
+    local SERVICE
+    SERVICE="$1"
+    update-rc.d "$SERVICE" remove
+}
+
+enable_nginx_config () {
+    local SERVICE
+    SERVICE="$1"
+    if [ "$ENABLE_NGINX_CONFIG" = "Y" ] ; then
+        ln -s "../sites-available/10-$SERVICE" '/etc/nginx/sites-enabled'
+        service nginx restart
+    else
+        echo "Nginx automatic configuration skipped." >&2
+    fi
+}
+
+disable_nginx_config () {
+    local SERVICE
+    SERVICE="$1"
+    if [ "$ENABLE_NGINX_CONFIG" = "Y" ] ; then
+        rm -f "/etc/nginx/sites-enabled/10-$SERVICE"
+        service nginx restart
+    else
+        echo "Nginx automatic configuration skipped." >&2
+    fi
+}
+
+perform_service_restart () {
+    local SERVICE
+    SERVICE="$1"
+    if [ "$ENABLE_SERVICE_RESTART" = "Y" ] ; then
+        service "$SERVICE" restart
+    else
+        echo "Service restart skipped." >&2
     fi
 }
 

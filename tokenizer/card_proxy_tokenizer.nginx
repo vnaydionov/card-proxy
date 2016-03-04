@@ -7,7 +7,22 @@ server {
 
     server_name $hostname;
 
-    location / {
+    location /incoming {
+        proxy_pass http://127.0.0.1:17117;
+        proxy_read_timeout 1200;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+server {
+    listen 17218 ssl;
+    listen [::]:17218 ssl;
+
+    include /etc/nginx/conf.d/00-ssl-default-config;
+
+    server_name $hostname;
+
+    location /outgoing {
         proxy_pass http://127.0.0.1:17117;
         proxy_read_timeout 1200;
         proxy_set_header X-Real-IP $remote_addr;

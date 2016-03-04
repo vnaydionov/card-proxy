@@ -14,10 +14,8 @@ const std::map<std::string, std::string> SERVANTS = {
     {"card_proxy_tokenizer",
      "/etc/card_proxy_common/key_settings.cfg.xml"},
 
-/*
     {"card_proxy_keyapi",
      "/etc/card_proxy_common/key_settings.cfg.xml"},
-*/
 };
 
 const std::string CONF_PATCH_HELPER =
@@ -214,6 +212,7 @@ Yb::ElementTree::ElementPtr ConfPatch::mk_resp(const std::string &status)
 {
     auto root = Yb::ElementTree::new_element("result");
     root->sub_element("status", status);
+    root->sub_element("ts", format_ts(get_time()));
     return root;
 }
 

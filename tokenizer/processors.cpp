@@ -23,7 +23,7 @@ static const Yb::StringDict fix_inbound_params(Yb::ILogger &logger,
                 params.get("cardholder", ""),
                 cvn);
         // perform the tokenization
-        if (!card_data.is_fake_card_trust()) {
+        if (!card_data.is_fake_card()) {
             std::auto_ptr<Yb::Session> session(theApp::instance().new_session());
             CardCrypter card_crypter(theApp::instance().cfg(), logger, *session);
             card_data = card_crypter.get_token(card_data);

@@ -19,24 +19,6 @@ class KeyAPI: private Yb::NonCopyable
     static double get_time();
     static const std::string format_ts(double ts);
 
-    void call_helper(
-        const std::string &servant,
-        const std::string &config_path,
-        const std::string &xml_s);
-
-    const std::string process_path(
-        const std::string &servant,
-        const std::string &config_path,
-        const std::string &mode,
-        const std::string &id,
-        const std::string &data);
-
-    Yb::ElementTree::ElementPtr process_cmd(
-        const std::string &cmd,
-        const std::string &id,
-        const std::string &data);
-
-
 public:
     KeyAPI(IConfig &cfg, Yb::ILogger &log, Yb::Session &session);
 

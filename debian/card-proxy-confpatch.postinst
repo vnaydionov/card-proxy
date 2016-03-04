@@ -1,26 +1,18 @@
-#!/bin/bash
+#!/bin/sh
 
-CP_USER="cpr_confpatch"
+. /usr/share/card_proxy_service/functions.sh
 
 case "$1" in
     "configure")
-        grep -q "^$CP_USER:" /etc/passwd || ( \
-            adduser --gecos 'CardProxy.ConfPatch' --disabled-password $CP_USER ; \
-            mkdir -p /var/run/$CP_USER /var/log/$CP_USER ; \
-            chown $CP_USER:root /var/log/$CP_USER /var/run/$CP_USER )
-
-        ln -s ../sites-available/10-card_proxy_confpatch /etc/nginx/sites-enabled
-        service nginx restart
+        ensure_user_exists 'cpr_confpatch' 'CardProxy.ConfPatch'
+        enable_nginx_config card_proxy_confpatch
         service sudo restart
-        service card_proxy_confpatch restart
-
-        update-rc.d card_proxy_confpatch defaults
+        perform_service_restart card_proxy_confpatch
+        register_autostart card_proxy_confpatch
         ;;
 
     "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")
-
-        service card_proxy_confpatch restart
-
+        perform_service_restart card_proxy_confpatch
         ;;
 
     *) 

@@ -32,7 +32,7 @@
         <Timeout>2500</Timeout>
     </KeyKeeper2>
 
-    <xi:include href="key_settings.cfg.xml" />
+    <xi:include href="/etc/card_proxy_common/key_settings.cfg.xml" />
 
     <Dek>
         <UseCount>10</UseCount>
@@ -40,11 +40,13 @@
         <UsagePeriod>100</UsagePeriod>
     </Dek>
 
-    <bind_card_url>http://appserv/api/bind</bind_card_url>
-    <start_payment_url>http://appserv/web/payment</start_payment_url>
-    <authorize_url>https://processing/api/authorize</authorize_url>
-    <authorize_url_cert>/etc/card_proxy/processing-client.cer</authorize_url_cert>
-    <authorize_url_key>/etc/card_proxy/processing-client.key</authorize_url_key>
+    <ProxyUrl>
+        <bind_card_url>http://appserv/api/bind</bind_card_url>
+        <start_payment_url>http://appserv/web/payment</start_payment_url>
+        <authorize_url>https://processing/api/authorize</authorize_url>
+        <authorize_url_cert>/etc/card_proxy/processing-client.cer</authorize_url_cert>
+        <authorize_url_key>/etc/card_proxy/processing-client.key</authorize_url_key>
+    </ProxyUrl>
 
 </Config>
 
