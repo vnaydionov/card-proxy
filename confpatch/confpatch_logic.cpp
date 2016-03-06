@@ -14,8 +14,10 @@ const std::map<std::string, std::string> SERVANTS = {
     {"card_proxy_tokenizer",
      "/etc/card_proxy_common/key_settings.cfg.xml"},
 
+/*
     {"card_proxy_keyapi",
      "/etc/card_proxy_common/key_settings.cfg.xml"},
+*/
 };
 
 const std::string CONF_PATCH_HELPER =
@@ -253,7 +255,7 @@ Yb::ElementTree::ElementPtr ConfPatch::cleanup(const Yb::StringDict &params)
     const auto &id = j->second;
     YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
 
-    return process_cmd("unset", id, "");
+    return process_cmd("cleanup", id, "");
 }
 
 // vim:ts=4:sts=4:sw=4:et:

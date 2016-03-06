@@ -5,7 +5,8 @@ import logging
 
 def config_logger(filename):
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
+    #log.setLevel(logging.DEBUG)
+    log.setLevel(logging.CRITICAL)
     fhandler = logging.FileHandler(filename)
     formatter = logging.Formatter(
         u'%(filename)s[LINE:%(lineno)d]# %(levelname)-8s '

@@ -36,7 +36,9 @@ const std::string
     HttpResponse resp = http_post(key_keeper_uri + "get",
                                   logger_,
                                   key_keeper_timeout,
-                                  "GET");
+                                  "GET",
+                                  HttpHeaders(), HttpParams(), "",
+                                  ssl_validate_cert_);
     validate_status(resp.get<0>());
     const std::string &body = resp.get<2>();
     auto root = Yb::ElementTree::parse(body);
@@ -92,7 +94,9 @@ void KeyKeeperAPI::send_key_to_server(const std::string &key,
                                   key_keeper_timeout,
                                   "POST",
                                   HttpHeaders(),
-                                  params);
+                                  params,
+                                  "",
+                                  ssl_validate_cert_);
     validate_status(resp.get<0>());
     validate_body(resp.get<2>());
 }
@@ -111,7 +115,30 @@ void KeyKeeperAPI::cleanup(int kek_version)
                                   key_keeper_timeout,
                                   "POST",
                                   HttpHeaders(),
-                                  params);
+                                  params,
+                                  "",
+                                  ssl_validate_cert_);
+    validate_status(resp.get<0>());
+    validate_body(resp.get<2>());
+}
+
+void KeyKeeperAPI::unset(int kek_version)
+{
+    double key_keeper_timeout = timeout_;
+    std::string key_keeper_uri = uri_;
+    if (kek_version < 0)
+        kek_version = 0;
+    std::string target_id = get_target_id(kek_version);
+    HttpParams params;
+    params["id"] = target_id;
+    HttpResponse resp = http_post(key_keeper_uri + "unset",
+                                  logger_,
+                                  key_keeper_timeout,
+                                  "POST",
+                                  HttpHeaders(),
+                                  params,
+                                  "",
+                                  ssl_validate_cert_);
     validate_status(resp.get<0>());
     validate_body(resp.get<2>());
 }
@@ -163,7 +190,7 @@ const ConfigMap
         .filter_by(
                 Domain::Config::c.ckey.like_(Yb::ConstExpr("KEK%")) ||
                 Domain::Config::c.ckey.like_(Yb::ConstExpr("HMAC%")) ||
-                Domain::Config::c.ckey == "STATUS" ||
+                Domain::Config::c.ckey == "STATE" ||
                 Domain::Config::c.ckey == "STATE_EXTENSION")
         .all();
     auto i = found_keys_rs.begin(), iend = found_keys_rs.end();
@@ -210,19 +237,13 @@ void TokenizerConfig::assemble_master_keys(
         try {
             logger.debug("assembling master key ver" + ver_str);
             const auto &kek3_hex = i->second;
-            const auto kek3 = decode_part(kek3_hex, 3);
             int ver = boost::lexical_cast<int>(ver_str);
             const auto &kek1_hex = kk_api.get_key_by_version(ver);
-            const auto kek1 = decode_part(kek1_hex, 1);
             auto j = xml_params.find(prefix + ver_str + "_PART2");
             if (xml_params.end() == j)
                 throw ::RunTimeError("can't access KEK part2");
             const auto &kek2_hex = j->second;
-            const auto kek2 = decode_part(kek2_hex, 2);
-            std::string kek(kek1.size(), ' ');
-            for (size_t k = 0; k < kek1.size(); ++k)
-                kek[k] = kek1[k] ^ kek2[k] ^ kek3[k];
-            auto master_key = sha256_digest(kek);
+            auto master_key = assemble_kek(kek1_hex, kek2_hex, kek3_hex);
             mk_parts1[ver] = kek1_hex;
             mk_parts2[ver] = kek2_hex;
             mk_parts3[ver] = kek3_hex;
@@ -319,6 +340,21 @@ TokenizerConfig::TokenizerConfig(bool hmac_needed)
     : ts_(0)
 {
     reload(hmac_needed);
+}
+
+const std::string TokenizerConfig::assemble_kek(
+        const std::string &kek1_hex,
+        const std::string &kek2_hex,
+        const std::string &kek3_hex)
+{
+    const auto kek1 = decode_part(kek1_hex, 1);
+    const auto kek2 = decode_part(kek2_hex, 2);
+    const auto kek3 = decode_part(kek3_hex, 3);
+    std::string kek(kek1.size(), ' ');
+    for (size_t i = 0; i < kek1.size(); ++i)
+        kek[i] = kek1[i] ^ kek2[i] ^ kek3[i];
+    auto master_key = sha256_digest(kek);
+    return master_key;
 }
 
 const std::string
@@ -439,10 +475,10 @@ void TokenizerConfig::reload(bool hmac_needed)
     ts_ = time(NULL);
 }
 
-TokenizerConfig &TokenizerConfig::refresh()
+TokenizerConfig &TokenizerConfig::refresh(bool force_refresh)
 {
     time_t now = time(NULL);
-    if (now - ts_ > 15) {
+    if (now - ts_ > 15 || force_refresh) {
         ts_ = now;
         IConfig &config(theApp::instance().cfg());
         config.reload();

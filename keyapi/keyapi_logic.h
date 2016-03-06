@@ -10,6 +10,7 @@
 #include <orm/data_object.h>
 #include "conf_reader.h"
 #include "http_post.h"
+#include "tokenizer.h"
 
 class KeyAPI: private Yb::NonCopyable
 {
@@ -24,10 +25,11 @@ public:
 
     const std::string get_config_param(const std::string &key);
     void set_config_param(const std::string &key, const std::string &value);
+    void unset_config_param(const std::string &key);
     const std::string get_state();
     void set_state(const std::string &state);
 
-    std::pair<int, int> kek_auth(const std::string &mode,
+    std::pair<int, int> kek_auth(TokenizerConfig &cfg, const std::string &mode,
             const std::string &password, int kek_version = -1);
 
     Yb::ElementTree::ElementPtr mk_resp(
@@ -36,9 +38,14 @@ public:
     Yb::ElementTree::ElementPtr get_component(const Yb::StringDict &params);
     Yb::ElementTree::ElementPtr confirm_component(const Yb::StringDict &params);
     Yb::ElementTree::ElementPtr reset_target_version(const Yb::StringDict &params);
+
+    void cleanup_kek(int kek_version);
     Yb::ElementTree::ElementPtr cleanup(const Yb::StringDict &params);
     Yb::ElementTree::ElementPtr reencrypt_deks(const Yb::StringDict &params);
     Yb::ElementTree::ElementPtr switch_kek(const Yb::StringDict &params);
+
+    const VersionMap get_kek_use_counts();
+    const VersionMap get_hmac_use_counts();
     Yb::ElementTree::ElementPtr status(const Yb::StringDict &params);
 };
 

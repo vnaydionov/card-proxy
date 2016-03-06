@@ -32,8 +32,10 @@
     </KeyKeeper2>
 
     <ConfPatch>
-        <URL>http://127.0.0.1:15018/conf_patch/</URL>
         <Timeout>60000</Timeout>
+        <URL1>https://node1.cluster:15118/confpatch/</URL1>
+        <URL2>https://node2.cluster:15118/confpatch/</URL2>
+        <URL3>https://node3.cluster:15118/confpatch/</URL3>
     </ConfPatch>
 
 </Config>

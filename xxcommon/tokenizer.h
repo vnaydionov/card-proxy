@@ -29,8 +29,9 @@ class KeyKeeperAPI
 {
 public:
     KeyKeeperAPI(const std::string &uri, double timeout, int part,
-                 Yb::ILogger *logger = NULL)
+                 Yb::ILogger *logger = NULL, bool ssl_validate_cert = true)
         : logger_(logger), uri_(uri), timeout_(timeout), part_(part)
+        , ssl_validate_cert_(ssl_validate_cert)
     {
         YB_ASSERT(!uri_.empty());
         YB_ASSERT(part_ == 1 || part_ == 2);
@@ -39,6 +40,7 @@ public:
     const std::string &get_key_by_version(int kek_version);
     void send_key_to_server(const std::string &key, int kek_version);
     void cleanup(int kek_version);
+    void unset(int kek_version);
 
 private:
     ConfigMap cached_;
@@ -46,6 +48,7 @@ private:
     std::string uri_;
     double timeout_;
     int part_;
+    bool ssl_validate_cert_;
 
     const std::string get_target_id(int kek_version) const;
     void validate_status(int status) const;
@@ -99,6 +102,11 @@ class TokenizerConfig
 public:
     TokenizerConfig(bool hmac_needed = true);
 
+    static const std::string assemble_kek(
+        const std::string &kek1_hex,
+        const std::string &kek2_hex,
+        const std::string &kek3_hex);
+
     const std::string get_xml_config_key(const std::string &config_key) const;
     const std::string get_db_config_key(const std::string &config_key) const;
 
@@ -119,7 +127,7 @@ public:
 
     time_t get_ts() const { return ts_; }
     void reload(bool hmac_needed = true);
-    TokenizerConfig &refresh();
+    TokenizerConfig &refresh(bool force_refresh = false);
 
     const std::string &get_master_key_component(
             int version, int part) const;
@@ -130,6 +138,7 @@ public:
     bool is_version_checked(int version) const;
     int get_last_version() const;
     int get_switch_version() const;
+
 };
 
 #ifdef TOKENIZER_CONFIG_SINGLETON
