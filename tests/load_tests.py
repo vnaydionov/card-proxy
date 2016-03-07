@@ -147,6 +147,8 @@ class Worker(Process):
         if status != 'success':
             log.debug('Error raised in detokenize_card')
             return
+
+        return # !!
         status, resp, exec_time = wrapped_call_proxy('remove_card',
                                                      card_token, cvn_token)
         self.send_result('remove_card', status, resp, exec_time)

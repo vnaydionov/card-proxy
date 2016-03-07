@@ -170,6 +170,8 @@ public:
     const std::string decode_dek(const std::string &dek_crypted,
                                  int kek_version);
 
+    static const std::string count_hmac(const std::string &plain_text,
+                                        const std::string &hmac_key);
 private:
     IConfig &config_;
     Yb::ILogger::Ptr logger_;

@@ -747,10 +747,16 @@ Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
 }
 
 const std::string Tokenizer::count_hmac(const std::string &plain_text,
+                                        const std::string &hmac_key)
+{
+    return encode_base64(sha256_digest(hmac_key + ":" + plain_text));
+}
+
+const std::string Tokenizer::count_hmac(const std::string &plain_text,
                                         int hmac_version)
 {
     std::string hk = tokenizer_config().get_hmac_key(hmac_version);
-    return encode_base64(sha256_digest(hk + ":" + plain_text));
+    return count_hmac(plain_text, hk);
 }
 
 // vim:ts=4:sts=4:sw=4:et:

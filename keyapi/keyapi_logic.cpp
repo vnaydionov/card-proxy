@@ -101,6 +101,34 @@ Yb::ElementTree::ElementPtr KeyAPI::mk_resp(const std::string &status)
     return root;
 }
 
+Yb::ElementTree::ElementPtr KeyAPI::generate_hmac(const Yb::StringDict &params)
+{
+    TokenizerConfig tcfg;
+    auto password = params.get("password", "");
+    auto r = kek_auth(tcfg, "CURRENT", password);
+    int kek_version = r.first;
+    YB_ASSERT(kek_version >= 0);
+    int part_n = r.second;
+    YB_ASSERT(part_n >= 1 && part_n <= 3);
+
+    const auto hmac_versions = tcfg.get_hmac_versions();
+    auto k = std::max_element(hmac_versions.begin(), hmac_versions.end());
+    YB_ASSERT(hmac_versions.end() != k);
+    int new_hmac_version = *k + 1;
+    const auto &master_key = tcfg.get_master_key(kek_version);
+    DEKPool dek_pool(theApp::instance().cfg(), *log_, session_,
+                     master_key, kek_version);
+    Domain::DataKey new_hmac_key = dek_pool.generate_new_data_key(true);
+    session_.flush();
+    set_config_param("HMAC_VER" + Yb::to_string(new_hmac_version)
+                     + "_ID", Yb::to_string(new_hmac_key.id.value()));
+    auto resp = mk_resp();
+    resp->sub_element("version", Yb::to_string(kek_version));
+    resp->sub_element("part", Yb::to_string(part_n));
+    resp->sub_element("new_hmac_version", Yb::to_string(new_hmac_version));
+    return resp;
+}
+
 Yb::ElementTree::ElementPtr KeyAPI::generate_kek(const Yb::StringDict &params)
 {
     TokenizerConfig tcfg;
@@ -154,7 +182,7 @@ Yb::ElementTree::ElementPtr KeyAPI::generate_kek(const Yb::StringDict &params)
     resp->sub_element("version", Yb::to_string(kek_version));
     resp->sub_element("part", Yb::to_string(part_n));
     resp->sub_element("new_version", Yb::to_string(new_kek_version));
-    return mk_resp();
+    return resp;
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::get_component(const Yb::StringDict &params)
@@ -298,16 +326,173 @@ Yb::ElementTree::ElementPtr KeyAPI::cleanup(const Yb::StringDict &params)
     }
     cleanup_kek(kek_version);
     tcfg.refresh(true);
+
+    int hmac_version = tcfg.get_active_hmac_key_version();
+    cmap = get_hmac_use_counts();
+    auto hmac_versions = tcfg.get_hmac_versions();
+    for (auto i = hmac_versions.begin(), iend = hmac_versions.end();
+            i != iend; ++i)
+    {
+        if (hmac_version == *i)
+            continue;
+        int use_count = 0;
+        auto j = cmap.find(*i);
+        if (j != cmap.end())
+            use_count = boost::lexical_cast<int>(j->second);
+        if (use_count > 0)
+            continue;
+        Yb::ElementTree::ElementPtr kek_node = purged_keys->sub_element("hmac");
+        kek_node->attrib_["version"] = Yb::to_string(*i);
+        std::string prefix = "HMAC_VER" + Yb::to_string(*i) + "_";
+        unset_config_param(prefix + "ID");
+        session_.flush();
+    }
     return resp;
+}
+
+void KeyAPI::rehash_token(TokenizerConfig &tcfg, int token_id, int target_hmac_version)
+{
+    std::auto_ptr<Yb::Session> session = theApp::instance().new_session();
+    typedef boost::tuple<Domain::DataToken, Domain::DataKey> Pair;
+    Pair data_pair = Yb::query<Pair>(session_)
+        .select_from<Domain::DataToken>()
+        .join<Domain::DataKey>()
+        .filter_by(Domain::DataToken::c.id == token_id)
+        .filter_by(Domain::DataToken::c.hmac_version != target_hmac_version)
+        .for_update()
+        .one();
+    Domain::DataToken &data_token = data_pair.get<0>();
+    Domain::DataKey &data_key = data_pair.get<1>();
+    auto master_key = tcfg.get_master_key(data_key.kek_version);
+    AESCrypter c1(master_key);
+    auto dek = c1.decrypt(decode_base64(data_key.dek_crypted));
+    AESCrypter c2(dek);
+    auto data = c2.decrypt(decode_base64(data_token.data_crypted));
+    auto new_hmac_key = tcfg.get_hmac_key(target_hmac_version);
+    data_token.hmac_digest = Tokenizer::count_hmac(data, new_hmac_key);
+    data_token.hmac_version = target_hmac_version;
+    session->commit();
+}
+
+Yb::ElementTree::ElementPtr KeyAPI::rehash_tokens(const Yb::StringDict &params)
+{
+    TokenizerConfig tcfg;
+    auto j = params.find("id_min");
+    YB_ASSERT(j != params.end());
+    const auto &id_min = j->second;
+    j = params.find("id_max");
+    YB_ASSERT(j != params.end());
+    const auto &id_max = j->second;
+    const auto hmac_versions = tcfg.get_hmac_versions();
+    auto k = std::max_element(hmac_versions.begin(), hmac_versions.end());
+    YB_ASSERT(hmac_versions.end() != k);
+    int target_hmac_version = *k;
+    auto rs = Yb::query<Domain::DataToken>(session_)
+        .filter_by(Domain::DataToken::c.hmac_version != target_hmac_version)
+        .filter_by(Domain::DataToken::c.id >= id_min)
+        .filter_by(Domain::DataToken::c.id <= id_max)
+        .all();
+    int converted = 0, failed = 0;
+    for (auto i = rs.begin(), iend = rs.end(); i != iend; ++i)
+    {
+        try {
+            rehash_token(tcfg, i->id, target_hmac_version);
+            ++converted;
+        }
+        catch (const std::exception &e) {
+            log_->error("Error while rehashing DataToken " + Yb::to_string(i->id.value()) +
+                        ": " + e.what());
+            ++failed;
+        }
+    }
+    auto resp = mk_resp();
+    resp->sub_element("target_hmac_version", Yb::to_string(target_hmac_version));
+    resp->sub_element("id_min", Yb::to_string(id_min));
+    resp->sub_element("id_max", Yb::to_string(id_max));
+    resp->sub_element("converted", Yb::to_string(converted));
+    resp->sub_element("failed", Yb::to_string(failed));
+    return resp;
+}
+
+void KeyAPI::reencrypt_dek(TokenizerConfig &tcfg, int dek_id, int target_kek_version)
+{
+    std::auto_ptr<Yb::Session> session = theApp::instance().new_session();
+    Domain::DataKey data_key = Yb::query<Domain::DataKey>(session_)
+        .filter_by(Domain::DataKey::c.id == dek_id)
+        .filter_by(Domain::DataKey::c.kek_version != target_kek_version)
+        .for_update()
+        .one();
+    auto old_master_key = tcfg.get_master_key(data_key.kek_version);
+    auto new_master_key = tcfg.get_master_key(target_kek_version);
+    AESCrypter c1(old_master_key);
+    auto dek = c1.decrypt(decode_base64(data_key.dek_crypted));
+    AESCrypter c2(new_master_key);
+    data_key.dek_crypted = encode_base64(c2.encrypt(dek));
+    data_key.kek_version = target_kek_version;
+    session->commit();
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::reencrypt_deks(const Yb::StringDict &params)
 {
-    auto j = params.find("id");
+    TokenizerConfig tcfg;
+    auto j = params.find("id_min");
     YB_ASSERT(j != params.end());
-    const auto &id = j->second;
+    const auto &id_min = j->second;
+    j = params.find("id_max");
+    YB_ASSERT(j != params.end());
+    const auto &id_max = j->second;
+    int target_kek_version = tcfg.get_switch_version();
+    auto rs = Yb::query<Domain::DataKey>(session_)
+        .filter_by(Domain::DataKey::c.kek_version != target_kek_version)
+        .filter_by(Domain::DataKey::c.id >= id_min)
+        .filter_by(Domain::DataKey::c.id <= id_max)
+        .all();
+    int converted = 0, failed = 0;
+    for (auto i = rs.begin(), iend = rs.end(); i != iend; ++i)
+    {
+        try {
+            reencrypt_dek(tcfg, i->id, target_kek_version);
+            ++converted;
+        }
+        catch (const std::exception &e) {
+            log_->error("Error while converting DEK " + Yb::to_string(i->id.value()) +
+                        ": " + e.what());
+            ++failed;
+        }
+    }
+    auto resp = mk_resp();
+    resp->sub_element("target_kek_version", Yb::to_string(target_kek_version));
+    resp->sub_element("id_min", Yb::to_string(id_min));
+    resp->sub_element("id_max", Yb::to_string(id_max));
+    resp->sub_element("converted", Yb::to_string(converted));
+    resp->sub_element("failed", Yb::to_string(failed));
+    return resp;
+}
 
-    return mk_resp();
+Yb::ElementTree::ElementPtr KeyAPI::switch_hmac(const Yb::StringDict &params)
+{
+    TokenizerConfig tcfg;
+    std::string mode = "CURRENT";
+    auto password = params.get("password", "");
+    auto r = kek_auth(tcfg, mode, password);
+    int kek_version = r.first;
+    YB_ASSERT(kek_version >= 0);
+    int part_n = r.second;
+    YB_ASSERT(part_n >= 1 && part_n <= 3);
+
+    const auto hmac_versions = tcfg.get_hmac_versions();
+    auto k = std::max_element(hmac_versions.begin(), hmac_versions.end());
+    YB_ASSERT(hmac_versions.end() != k);
+    int new_hmac_version = *k;
+    int old_hmac_version = tcfg.get_active_hmac_key_version();
+    YB_ASSERT(new_hmac_version != old_hmac_version);
+    set_config_param("HMAC_VERSION", Yb::to_string(new_hmac_version));
+    auto resp = mk_resp();
+    resp->sub_element("version", Yb::to_string(kek_version));
+    resp->sub_element("part", Yb::to_string(part_n));
+    resp->sub_element("old_hmac_version", Yb::to_string(old_hmac_version));
+    resp->sub_element("new_hmac_version", Yb::to_string(new_hmac_version));
+    return resp;
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::switch_kek(const Yb::StringDict &params)
@@ -378,6 +563,8 @@ Yb::ElementTree::ElementPtr KeyAPI::status(const Yb::StringDict &params)
     auto resp = mk_resp();
     resp->sub_element("keyapi_state",
         tcfg.get_db_config_key("STATE"));
+    resp->sub_element("hmac_version",
+        Yb::to_string(tcfg.get_active_hmac_key_version()));
     resp->sub_element("kek_version",
         Yb::to_string(tcfg.get_active_master_key_version()));
     try {

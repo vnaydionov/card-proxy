@@ -14,8 +14,9 @@ public:
             Yb::Session &session, const std::string &master_key,
             int kek_version);
 
-    int dek_use_count() const { return dek_use_count_; }
-    int min_active_dek_count() const { return min_active_dek_count_; }
+    int dek_use_count();
+    int min_active_dek_count();
+    int dek_usage_period();
 
     const DEKPoolStatus get_status();
     Domain::DataKey generate_new_data_key(bool is_hmac = 0);

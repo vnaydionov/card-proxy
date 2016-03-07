@@ -11,69 +11,26 @@ ping(Yb::Session &session, Yb::ILogger &logger,
     return KeyAPI(theApp::instance().cfg(), logger, session).mk_resp();
 }
 
-Yb::ElementTree::ElementPtr
-generate_kek(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).generate_kek(params);
+#define KEYAPI_METHOD(method) \
+Yb::ElementTree::ElementPtr \
+    method(Yb::Session &session, Yb::ILogger &logger, \
+        const Yb::StringDict &params) \
+{ \
+    return KeyAPI(theApp::instance().cfg(), \
+                  logger, session).method(params); \
 }
 
-Yb::ElementTree::ElementPtr
-get_component(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).get_component(params);
-}
-
-Yb::ElementTree::ElementPtr
-confirm_component(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).confirm_component(params);
-}
-
-Yb::ElementTree::ElementPtr
-reset_target_version(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).reset_target_version(params);
-}
-
-Yb::ElementTree::ElementPtr
-cleanup(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).cleanup(params);
-}
-
-Yb::ElementTree::ElementPtr
-reencrypt_deks(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).reencrypt_deks(params);
-}
-
-Yb::ElementTree::ElementPtr
-switch_kek(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).switch_kek(params);
-}
-
-Yb::ElementTree::ElementPtr
-status(Yb::Session &session, Yb::ILogger &logger,
-        const Yb::StringDict &params)
-{
-    return KeyAPI(theApp::instance().cfg(),
-                  logger, session).status(params);
-}
+KEYAPI_METHOD(generate_hmac)
+KEYAPI_METHOD(generate_kek)
+KEYAPI_METHOD(get_component)
+KEYAPI_METHOD(confirm_component)
+KEYAPI_METHOD(reset_target_version)
+KEYAPI_METHOD(cleanup)
+KEYAPI_METHOD(rehash_tokens)
+KEYAPI_METHOD(reencrypt_deks)
+KEYAPI_METHOD(switch_hmac)
+KEYAPI_METHOD(switch_kek)
+KEYAPI_METHOD(status)
 
 
 int main(int argc, char *argv[])
@@ -104,12 +61,15 @@ int main(int argc, char *argv[])
             .get_value("HttpListener/Prefix");
         XmlHttpWrapper handlers_array[] = {
             WRAP("/", ping),
+            WRAP(prefix, generate_hmac),
             WRAP(prefix, generate_kek),
             WRAP(prefix, get_component),
             WRAP(prefix, confirm_component),
             WRAP(prefix, reset_target_version),
             WRAP(prefix, cleanup),
+            WRAP(prefix, rehash_tokens),
             WRAP(prefix, reencrypt_deks),
+            WRAP(prefix, switch_hmac),
             WRAP(prefix, switch_kek),
             WRAP(prefix, status),
         };

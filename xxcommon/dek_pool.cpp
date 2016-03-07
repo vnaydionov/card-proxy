@@ -11,10 +11,31 @@ DEKPool::DEKPool(IConfig &config, Yb::ILogger &logger,
     , session_(session)
     , master_key_(master_key)
     , kek_version_(kek_version)
-    , dek_use_count_(config.get_value_as_int("Dek/UseCount"))
-    , min_active_dek_count_(config.get_value_as_int("Dek/MinActiveLimit"))
-    , dek_usage_period_(config.get_value_as_int("Dek/UsagePeriod"))
+    , dek_use_count_(-1)
+    , min_active_dek_count_(-1)
+    , dek_usage_period_(-1)
 {}
+
+int DEKPool::dek_use_count()
+{
+    if (-1 == dek_use_count_)
+        dek_use_count_ = config_.get_value_as_int("Dek/UseCount");
+    return dek_use_count_;
+}
+
+int DEKPool::min_active_dek_count()
+{
+    if (-1 == min_active_dek_count_)
+        min_active_dek_count_ = config_.get_value_as_int("Dek/MinActiveLimit");
+    return min_active_dek_count_;
+}
+
+int DEKPool::dek_usage_period()
+{
+    if (-1 == dek_usage_period_)
+        dek_usage_period_ = config_.get_value_as_int("Dek/UsagePeriod");
+    return dek_usage_period_;
+}
 
 const DEKPoolStatus DEKPool::get_status() {
     auto active_deks_rs = query_active_deks();
@@ -62,7 +83,7 @@ void DEKPool::generate_enough_deks() {
         fill_active_deks();
     while (true) {
         int unused_count = get_unused_count(active_deks_);
-        if (unused_count >= min_active_dek_count_)
+        if (unused_count >= min_active_dek_count())
             break;
         generate_new_data_key();
         generate_new_data_key();
@@ -80,12 +101,12 @@ Domain::DataKey DEKPool::generate_new_data_key(bool is_hmac) {
     data_key.start_ts = Yb::now();
     if (is_hmac) {
         data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
-                366 * 24 * 3600);
+                2 * 366 * 24 * 3600);
         data_key.max_counter = 0;
     }
     else {
         data_key.finish_ts = Yb::dt_add_seconds(data_key.start_ts,
-                dek_usage_period_ * 24 * 3600);
+                dek_usage_period() * 24 * 3600);
         data_key.max_counter = dek_use_count();
     }
     data_key.dek_crypted = encoded_dek;
