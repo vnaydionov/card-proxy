@@ -587,7 +587,8 @@ const std::string Tokenizer::search(const std::string &plain_text)
                 .select_from<Domain::DataToken>()
                 .join<Domain::DataKey>()
                 .filter_by(Domain::DataToken::c.hmac_digest == hmac_digest)
-                .one();
+                .order_by(Yb::Expression(Domain::DataToken::c.id))
+                .first();
             result = data_token.token_string;
             logger_->debug("deduplicated using HMAC ver"
                            + Yb::to_string(hmac_version));
@@ -612,7 +613,7 @@ const std::string Tokenizer::tokenize(const std::string &plain_text,
     }
     int hmac_version = tokenizer_config().get_active_hmac_key_version();
     std::string hmac_digest;
-    if (deduplicate) {
+    if (plain_text.size() >= 10) {
         hmac_digest = count_hmac(plain_text, hmac_version);
     }
     else {
