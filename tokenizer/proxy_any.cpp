@@ -28,14 +28,15 @@ void dump_nested_response(const HttpResponse &nested_response,
 const HttpMessage convert_response(const HttpResponse &nested_response,
                                    Yb::ILogger &logger)
 {
+    dump_nested_response(nested_response, logger);
     HttpMessage response(10, nested_response.get<0>(),
             nested_response.get<1>());
     auto i = nested_response.get<3>().begin(),
          iend = nested_response.get<3>().end();
     for (; i != iend; ++i) {
-        response.set_header(i->first, i->second);
+        if (i->first != "Transfer-Encoding")
+            response.set_header(i->first, i->second);
     }
-    dump_nested_response(nested_response, logger);
     response.set_response_body(nested_response.get<2>());
     return response;
 }

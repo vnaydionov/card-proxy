@@ -138,7 +138,6 @@ public:
     bool is_version_checked(int version) const;
     int get_last_version() const;
     int get_switch_version() const;
-
 };
 
 #ifdef TOKENIZER_CONFIG_SINGLETON

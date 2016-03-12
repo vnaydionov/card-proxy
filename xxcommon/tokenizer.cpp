@@ -350,9 +350,9 @@ const std::string TokenizerConfig::assemble_kek(
     const auto kek1 = decode_part(kek1_hex, 1);
     const auto kek2 = decode_part(kek2_hex, 2);
     const auto kek3 = decode_part(kek3_hex, 3);
-    std::string kek(kek1.size(), ' ');
-    for (size_t i = 0; i < kek1.size(); ++i)
-        kek[i] = kek1[i] ^ kek2[i] ^ kek3[i];
+    std::string kek = kek1;
+    xor_buffer(kek, kek2);
+    xor_buffer(kek, kek3);
     auto master_key = sha256_digest(kek);
     return master_key;
 }
@@ -749,7 +749,7 @@ Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
 const std::string Tokenizer::count_hmac(const std::string &plain_text,
                                         const std::string &hmac_key)
 {
-    return encode_base64(sha256_digest(hmac_key + ":" + plain_text));
+    return encode_base64(hmac_sha256_digest(hmac_key, plain_text));
 }
 
 const std::string Tokenizer::count_hmac(const std::string &plain_text,

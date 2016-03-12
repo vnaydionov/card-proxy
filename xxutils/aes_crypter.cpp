@@ -75,4 +75,29 @@ const std::string sha256_digest(const std::string &s)
     return out;
 }
 
+std::string &xor_buffer(std::string &buf, const std::string &second)
+{
+    YB_ASSERT(buf.size() == second.size());
+    auto i = buf.begin(), iend = buf.end();
+    auto j = second.begin();
+    for (; i != iend; ++i, ++j)
+        *i ^= *j;
+    return buf;
+}
+
+const std::string hmac_sha256_digest(const std::string &hk, const std::string &s)
+{
+    const size_t block_size = 64;
+    std::string key = hk;
+    if (key.size() > block_size)
+        key = sha256_digest(key);
+    if (key.size() < block_size)
+        key += std::string(block_size - key.size(), 0);
+    std::string o_key_pad(block_size, 0x5c);
+    xor_buffer(o_key_pad, key);
+    std::string i_key_pad(block_size, 0x36);
+    xor_buffer(i_key_pad, key);
+    return sha256_digest(o_key_pad + sha256_digest(i_key_pad + s));
+}
+
 // vim:ts=4:sts=4:sw=4:et:

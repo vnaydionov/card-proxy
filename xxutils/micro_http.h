@@ -91,9 +91,10 @@ public:
         body_ = body;
         if (!Yb::str_empty(content_type)) {
             set_header(_T("Content-Type"), content_type);
-            if (set_content_length)
-                set_header(_T("Content-Length"),
-                           Yb::to_string(body.size()));
+        }
+        if (body.size() && set_content_length) {
+            set_header(_T("Content-Length"),
+                       Yb::to_string(body.size()));
         }
     }
 

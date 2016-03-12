@@ -417,4 +417,34 @@ TEST_CASE( "Some tests for JSON", "[full][json]" ) {
     }
 }
 
+TEST_CASE( "Some tests for SHA256", "[full][hash]" ) {
+    int hex_mode = HEX_LOWERCASE|HEX_NOSPACES;
+    SECTION( "basic SHA256" ) {
+        CHECK( "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                == string_to_hexstring(sha256_digest(""), hex_mode) );
+        CHECK( "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+                == string_to_hexstring(sha256_digest("a"), hex_mode) );
+        CHECK( "e7e8b89c2721d290cc5f55425491ecd6831355e91063f20b39c22f9ec6a71f91"
+                == string_to_hexstring(sha256_digest("ABCDEFGHIJKLMNOP"), hex_mode) );
+        CHECK( "0fe126d1ae30c66671c56b7895aa1edca4f0794e27f99e374260524196efb53f"
+                == string_to_hexstring(sha256_digest(
+                        "e7e8b89c2721d290cc5f55425491ecd6831355e91063f20b39c22f9ec6a71f91"), hex_mode) );
+    }
+    SECTION( "SHA256 HMAC" ) {
+        CHECK( "b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad"
+                == string_to_hexstring(hmac_sha256_digest("", ""), hex_mode) );
+        CHECK( "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+                == string_to_hexstring(hmac_sha256_digest("key",
+                        "The quick brown fox jumps over the lazy dog"), hex_mode) );
+        CHECK( "61396e328aa68db475d7a92b3fdbf515c5df49961654620ca4cd3827f546209f"
+                == string_to_hexstring(hmac_sha256_digest(
+                        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+                        "The quick brown fox jumps over the lazy dog"), hex_mode) );
+        CHECK( "deda1649198d64cbc74dfd47705ff1a1400b92f3cdf41d8e87f75c92e29f7494"
+                == string_to_hexstring(hmac_sha256_digest(
+                        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8+",
+                        "The quick brown fox jumps over the lazy dog"), hex_mode) );
+    }
+}
+
 // vim:ts=4:sts=4:sw=4:et:

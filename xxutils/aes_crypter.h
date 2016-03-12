@@ -30,6 +30,8 @@ public:
 };
 
 const std::string sha256_digest(const std::string &s);
+std::string &xor_buffer(std::string &buf, const std::string &second);
+const std::string hmac_sha256_digest(const std::string &hk, const std::string &s);
 
 #endif // CARD_PROXY__AES_CRYPTER_H
 // vim:ts=4:sts=4:sw=4:et:

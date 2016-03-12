@@ -28,8 +28,8 @@ const HttpMessage proxy_processing_api(Yb::ILogger &logger,
     YB_ASSERT(ends_with(uri, suffix));
     uri = uri.substr(0, uri.size() - suffix.size());
     uri += "/" + method;
-    auto processing_cert = CFG_VALUE("authorize_url_cert");
-    auto processing_key = CFG_VALUE("authorize_url_key");
+    auto processing_cert = CFG_VALUE("ProxyUrl/authorize_url_cert");
+    auto processing_key = CFG_VALUE("ProxyUrl/authorize_url_key");
     return proxy_any(
             logger, request, uri,
             processing_cert, processing_key,

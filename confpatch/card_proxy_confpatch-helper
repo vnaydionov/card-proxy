@@ -1,10 +1,32 @@
-#!/bin/sh
+#!/usr/bin/python
 
-SERVANT="$1"
-CONF_PATH="$2"
-TEMP_NAME="$3"
+import sys
+import os
+import re
+import xml.etree.ElementTree as et
 
-sudo cp "$TEMP_NAME" "$CONF_PATH" &&
-sudo service "$SERVANT" restart
-exit $?
+SERVANT=sys.argv[1]
+CONF_PATH=sys.argv[2]
+TEMP_NAME=sys.argv[3]
 
+if not re.match('^card_proxy_[a-z0-9]+$', SERVANT):
+    raise RuntimeError('invalid SERVANT')
+
+if not re.match('^/etc/card_proxy_[a-z0-9/_]+[.]cfg[.]xml$', CONF_PATH):
+    raise RuntimeError('invalid CONF_PATH')
+
+if not re.match('^[a-zA-Z0-9_/.-]+$', TEMP_NAME):
+    raise RuntimeError('invalid TEMP_NAME')
+
+f = open(TEMP_NAME)
+data = f.read()
+f.close()
+
+data_xml = et.XML(data)
+
+g = open(CONF_PATH, 'w')
+g.write(data)
+g.close()
+
+rc = os.system("service %s restart" % SERVANT)
+sys.exit(rc)

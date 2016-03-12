@@ -39,5 +39,9 @@ CREATE INDEX i_dtoken_dek ON t_data_token(dek_id);
 
 CREATE INDEX i_dtoken_hmac ON t_data_token(hmac_digest);
 
+CREATE INDEX i_dtoken_hmac_ver ON t_data_token(hmac_version);
+
 CREATE INDEX i_dek_finish ON t_dek(finish_ts);
+
+CREATE INDEX i_dek_kek_ver ON t_dek(kek_version);
 
