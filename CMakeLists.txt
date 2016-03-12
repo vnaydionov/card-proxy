@@ -17,7 +17,8 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 find_path (BOOST_INCLUDEDIR boost/lexical_cast.hpp /usr/include)
-EXECUTE_PROCESS(COMMAND "arch | sed 's/i[456]86/i386/'" OUTPUT_VARIABLE BOOST_ARCH)
+EXECUTE_PROCESS(COMMAND bash -c "arch | sed 's/i[456]86/i386/'"
+                OUTPUT_VARIABLE BOOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 set (BOOST_LIBRARYDIR /usr/lib/${BOOST_ARCH}-linux-gnu/)
 set (Boost_USE_STATIC_LIBS OFF)
 set (Boost_USE_MULTITHREADED ON)

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<Config>
+    <!--
+    <Log level="DEBUG">syslog</Log>
+    <Log level="DEBUG">card_proxy_cleaner.log</Log>
+    -->
+    <Log level="DEBUG">/var/log/cpr_service/card_proxy_cleaner.log</Log>
+
+    <DbBackend id="card_proxy_db">
+        <Host>127.0.0.1</Host>
+        <Port>3306</Port>
+        <DB>card_proxy_db</DB>
+        <User>card_proxy_user</User>
+        <Pass>card_proxy_pass</Pass>
+    </DbBackend>
+</Config>
