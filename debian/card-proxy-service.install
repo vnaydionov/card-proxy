@@ -1,1 +1,6 @@
+usr/etc/card_proxy_service
+usr/etc/cron.d/card-proxy-service
+usr/bin/card_proxy_cleaner*
+usr/bin/card_proxy_keyproc*
+usr/lib/python*/dist-packages/card_proxy_service
 usr/share/card_proxy_service

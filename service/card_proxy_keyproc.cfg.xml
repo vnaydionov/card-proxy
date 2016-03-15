@@ -2,9 +2,9 @@
 <Config>
     <!--
     <Log level="DEBUG">syslog</Log>
-    <Log level="DEBUG">card_proxy_cleaner.log</Log>
+    <Log level="DEBUG">card_proxy_keyproc.log</Log>
     -->
-    <Log level="DEBUG">/var/log/cpr_service/card_proxy_cleaner.log</Log>
+    <Log level="DEBUG">/var/log/cpr_service/card_proxy_keyproc.log</Log>
 
     <DbBackend id="card_proxy_db">
         <Host>127.0.0.1</Host>
@@ -13,4 +13,12 @@
         <User>cpr_service</User>
         <Pass>cpr_service_pwd</Pass>
     </DbBackend>
+
+    <KeyAPI>
+        <URL>http://127.0.0.1:15019/keyapi/</URL>
+    </KeyAPI>
+
+    <Reencrypt>
+        <BatchSize>100</BatchSize>
+    </Reencrypt>
 </Config>

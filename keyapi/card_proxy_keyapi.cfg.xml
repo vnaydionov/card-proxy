@@ -18,10 +18,10 @@
 
     <DbBackend id="card_proxy_db" type="mysql+soci">
         <Host>127.0.0.1</Host>
-        <Port>3306</Port>
-        <DB>card_proxy_db</DB>
-        <User>card_proxy_user</User>
-        <Pass>card_proxy_pass</Pass>
+        <Port>23306</Port>
+        <DB>card_proxy</DB>
+        <User>cpr_keyapi</User>
+        <Pass>cpr_keyapi_pwd</Pass>
     </DbBackend>
 
     <xi:include href="/etc/card_proxy_common/key_settings.cfg.xml" />

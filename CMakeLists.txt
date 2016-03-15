@@ -72,6 +72,8 @@ if (NOT JSONC_LIB)
     MESSAGE(FATAL_ERROR "Could not find the JSON-C library and development files.")
 ENDIF ()
 
+add_subdirectory (sql)
+add_subdirectory (tests)
 add_subdirectory (service)
 add_subdirectory (xxutils)
 add_subdirectory (keykeeper2)
@@ -80,5 +82,5 @@ add_subdirectory (xxcommon)
 add_subdirectory (tokenizer)
 add_subdirectory (keyapi)
 
-install (FILES LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
+install (FILES INSTALL LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
 

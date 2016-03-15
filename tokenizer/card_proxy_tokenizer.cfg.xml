@@ -7,19 +7,12 @@
         micro_http.worker: ERROR,
     </LogLevel>
 
-    <!--
-    <DbBackend id="card_proxy_db" type="mysql+odbc">
-        <DB>card_proxy_dsn</DB>
-        <User>card_proxy_user</User>
-        <Pass>card_proxy_pass</Pass>
-    </DbBackend>
-    -->
     <DbBackend id="card_proxy_db" type="mysql+soci">
         <Host>127.0.0.1</Host>
-        <Port>3306</Port>
-        <DB>card_proxy_db</DB>
-        <User>card_proxy_user</User>
-        <Pass>card_proxy_pass</Pass>
+        <Port>23306</Port>
+        <DB>card_proxy</DB>
+        <User>cpr_tokenizer</User>
+        <Pass>cpr_tokenizer_pwd</Pass>
     </DbBackend>
 
     <HttpListener>
