@@ -1,3 +1,30 @@
+card-proxy (0.5.5) unstable; urgency=low
+
+  * Add keyman
+  * Add hmacproc
+  * Move common python code to application.py
+  * Add keyproc script
+  * Use distinct DB users
+  * Fix deduplication
+  * Add cleaner script
+  * Securing confpatch-helper with better parameter check
+  * SQL script: fix missing indicies
+  * Fix header passing in proxy
+  * Switch to using HMAC algorithm
+  * Hacking on keyapi
+  * More attention to config files
+  * Add tests for JsonObject
+  * Improve modularity of code
+  * Add skeleton for KeyAPI servant
+  * http_post: content-length managed explicitly
+  * Move card-data related code in one place: card_crypter module
+  * Fix locking within keykeeper2
+  * Fix filter_log_msg not to crash on application exit
+  * Implemented confpatch servant
+  * Implement KEK validation
+
+ -- Vaclav Naydionov (linux rulez) <vaclav@yandex.ru>  Sun, 20 Mar 2016 21:18:01 +0300
+
 card-proxy (0.5.4) unstable; urgency=low
 
   * Filter PANs and encryption keys from logging
