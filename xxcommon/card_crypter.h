@@ -99,6 +99,11 @@ public:
     CardData get_card(const std::string &card_token,
                       const std::string &cvn_token = "");
 
+    const std::string search(const std::string &token)
+    {
+        return tokenizer_.search(token);
+    }
+
     int remove_data_token(const std::string &token_string)
     {
         return tokenizer_.remove_data_token(token_string);

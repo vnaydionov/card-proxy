@@ -1,43 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import sys
-import os
-import logging
 import datetime as dt
-import xml.etree.ElementTree as et
-import MySQLdb
+from application import Application
 
 
-class Application(object):
-    def __init__(self):
-        self.cfg = et.parse(os.environ['CONFIG_FILE'])
-        log_file = self.cfg.findtext('Log')
-        logging.basicConfig(
-            filename=log_file, level=logging.DEBUG,
-            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-        logger = logging.getLogger('')
-        logger.setLevel(logging.DEBUG)
-        logger = logging.getLogger('card_proxy_cleaner.%d' % os.getpid())
-        logger.setLevel(logging.DEBUG)
-        logger.info('Application started')
-        self.logger = logger
+class CleanerApp(Application):
+    app_name = 'card_proxy_cleaner'
 
-    def new_db_connection(self):
-        try:
-            host = self.cfg.findtext('DbBackend/Host')
-            port = int(self.cfg.findtext('DbBackend/Port'))
-            database = self.cfg.findtext('DbBackend/DB')
-            user = self.cfg.findtext('DbBackend/User')
-            password = self.cfg.findtext('DbBackend/Pass')
-            connection = MySQLdb.connect(user=user, passwd=password,
-                                         host=host, port=port, db=database)
-            self.logger.info('Connected to MySQLdb: %s@%s:%d/%s' % (user, host, port, database))
-            return connection
-        except Exception:
-            self.logger.exception('Connect failed')
-            raise
-
-    def run(self):
+    def on_run(self):
         conn = self.new_db_connection()
         try:
             self.delete_stale_tokens(conn)
@@ -59,7 +29,8 @@ class Application(object):
             self.logger.exception('Rollback')
             conn.rollback()
 
+
 if __name__ == '__main__':
-    Application().run()
+    CleanerApp().run()
 
 # vim:ts=4:sts=4:sw=4:et:

@@ -383,10 +383,7 @@ Yb::ElementTree::ElementPtr KeyAPI::rehash_tokens(const Yb::StringDict &params)
     j = params.find("id_max");
     YB_ASSERT(j != params.end());
     const auto &id_max = j->second;
-    const auto hmac_versions = tcfg.get_hmac_versions();
-    auto k = std::max_element(hmac_versions.begin(), hmac_versions.end());
-    YB_ASSERT(hmac_versions.end() != k);
-    int target_hmac_version = *k;
+    int target_hmac_version = tcfg.get_active_hmac_key_version();
     auto rs = Yb::query<Domain::DataToken>(session_)
         .filter_by(Domain::DataToken::c.hmac_version != target_hmac_version)
         .filter_by(Domain::DataToken::c.id >= id_min)

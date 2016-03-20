@@ -1,3 +1,4 @@
-SHELL=/bin/bash
-*/5 * * * * cpr_service card_proxy_cleaner.sh
-*/1 * * * * cpr_service card_proxy_keyproc.sh
+SHELL=/bin/sh
+1,11,21,31,41,51 * * * * cpr_service card_proxy_keyproc.sh
+2,12,22,32,42,52 * * * * cpr_service card_proxy_hmacproc.sh
+4,14,24,34,44,54 * * * * cpr_service card_proxy_cleaner.sh

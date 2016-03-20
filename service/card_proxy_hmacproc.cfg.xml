@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <Config>
     <!--
-    <Log level="DEBUG">card_proxy_keyproc.log</Log>
-    <Log level="DEBUG">/var/log/cpr_service/card_proxy_keyproc.log</Log>
+    <Log level="DEBUG">card_proxy_hmacproc.log</Log>
+    <Log level="DEBUG">/var/log/cpr_service/card_proxy_hmacproc.log</Log>
     -->
     <Log level="INFO">syslog</Log>
 
@@ -18,8 +18,8 @@
         <URL>http://127.0.0.1:15019/keyapi/</URL>
     </KeyAPI>
 
-    <Reencrypt>
+    <Rehash>
         <TimeLimit>240</TimeLimit>
         <BatchSize>100</BatchSize>
-    </Reencrypt>
+    </Rehash>
 </Config>

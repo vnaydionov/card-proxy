@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <Config>
     <!--
-    <Log level="DEBUG">syslog</Log>
     <Log level="DEBUG">card_proxy_cleaner.log</Log>
-    -->
     <Log level="DEBUG">/var/log/cpr_service/card_proxy_cleaner.log</Log>
+    -->
+    <Log level="INFO">syslog</Log>
 
     <DbBackend id="card_proxy_db">
         <Host>127.0.0.1</Host>
