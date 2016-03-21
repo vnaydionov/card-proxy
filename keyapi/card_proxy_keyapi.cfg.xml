@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <Config xmlns:xi="http://www.w3.org/2001/XInclude">
-    <Log level="INFO">syslog</Log>
+
     <!--
     <Log level="DEBUG">/var/log/cpr_keyapi/card_proxy_keyapi.log</Log>
     -->
+    <Log level="INFO">syslog</Log>
     <LogLevel>
         micro_http: INFO,
         invoker_xml: INFO,

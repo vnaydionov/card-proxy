@@ -44,7 +44,7 @@ class HmacProcApp(Application):
                 self.db_config.get('HMAC_VERSION') or 0)
             self.logger.info('Target HMAC: %s', target_version)
             resp = self.call_keyapi('status')
-            target_status = resp.get('hmac_status_%s' % target_version)
+            target_status = resp.get('hmac_status_%s' % target_version) or ''
             if 'valid' not in target_status:
                 self.logger.warning('Target HMAC is not valid')
                 return None

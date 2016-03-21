@@ -45,6 +45,18 @@ const std::string filter_log_msg(const std::string &msg)
 
 using namespace std;
 
+FileLogAppender::FileLogAppender(std::ostream &out)
+    : LogAppender(out)
+{}
+
+void FileLogAppender::append(const Yb::LogRecord &rec)
+{
+    Yb::LogRecord new_rec(rec.get_level(),
+                          rec.get_component(),
+                          filter_log_msg(rec.get_msg()));
+    Yb::LogAppender::append(new_rec);
+}
+
 char SyslogAppender::process_name[100];
 
 int SyslogAppender::log_level_to_syslog(int log_level)
@@ -172,7 +184,7 @@ void App::init_log(const string &log_name, const string &log_level)
             file_stream_.reset(new ofstream(log_name.data(), ios::app));
             if (file_stream_->fail())
                 throw RunTimeError("can't open logfile: " + log_name);
-            appender_.reset(new Yb::LogAppender(*file_stream_));
+            appender_.reset(new FileLogAppender(*file_stream_));
         }
         log_.reset(new Yb::Logger(appender_.get()));
         info("Application started.");

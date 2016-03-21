@@ -19,7 +19,7 @@ class Application(object):
         self.cfg = et.parse(os.environ['CONFIG_FILE'])
         self._init_logger()
         if self.RANDOM_DELAY:
-            delay = random.random() * 30
+            delay = random.random() * 20
             self.logger.info('Random delay: %.3f sec', delay)
             time.sleep(delay)
         self.logger.info('Application started')

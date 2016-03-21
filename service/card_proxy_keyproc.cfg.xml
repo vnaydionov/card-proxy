@@ -19,7 +19,7 @@
     </KeyAPI>
 
     <Reencrypt>
-        <TimeLimit>240</TimeLimit>
+        <TimeLimit>40</TimeLimit>
         <BatchSize>100</BatchSize>
     </Reencrypt>
 </Config>

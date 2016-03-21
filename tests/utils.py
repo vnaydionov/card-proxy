@@ -1,5 +1,6 @@
 import os
 import random
+from baluhn import generate, verify
 
 
 def generate_random_number(length):
@@ -24,6 +25,15 @@ def generate_random_string(length):
     return result
 
 
+def generate_pan():
+    prefix = '500000'  # not to mess with real world cards
+    base = prefix + str(random.randint(100000000, 999999999))
+    pan = base + generate(base)
+    assert verify(pan)
+    #print "pan=%s" % pan
+    return pan
+
+
 class CardData(object):
     def __init__(self, **kwargs):
         for k, v in kwargs.iteritems():
@@ -39,7 +49,7 @@ class CardData(object):
 def generate_random_card_data(mode='full', pan_len=16):
     if mode == 'full':
         card_data = CardData(
-            pan=generate_random_number(16),
+            pan=generate_pan(),
             expire_year=random.randrange(2016, 2030),
             expire_month=random.randrange(1, 13),
             card_holder=generate_random_string(20),
@@ -47,7 +57,7 @@ def generate_random_card_data(mode='full', pan_len=16):
         )
     elif mode == 'without_cvn':
         card_data = CardData(
-            pan=generate_random_number(16),
+            pan=generate_pan(),
             expire_year=random.randrange(2016, 2030),
             expire_month=random.randrange(1, 13),
             card_holder=generate_random_string(20),

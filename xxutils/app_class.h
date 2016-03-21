@@ -12,6 +12,13 @@
 
 const std::string filter_log_msg(const std::string &msg);
 
+class FileLogAppender: public Yb::LogAppender
+{
+public:
+    FileLogAppender(std::ostream &out);
+    void append(const Yb::LogRecord &rec);
+};
+
 class SyslogAppender: public Yb::ILogAppender
 {
     static char process_name[100];

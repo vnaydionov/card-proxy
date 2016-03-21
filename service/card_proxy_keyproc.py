@@ -48,7 +48,7 @@ class KeyProcApp(Application):
                 self.db_config.get('KEK_TARGET_VERSION') or 0)
             self.logger.info('Target KEK: %s', target_version)
             resp = self.call_keyapi('status')
-            target_status = resp.get('kek_status_%s' % target_version)
+            target_status = resp.get('kek_status_%s' % target_version) or ''
             if 'valid' not in target_status:
                 self.logger.warning('Target KEK is not valid')
                 return None

@@ -103,6 +103,8 @@ Yb::ElementTree::ElementPtr KeyAPI::mk_resp(const std::string &status)
 
 Yb::ElementTree::ElementPtr KeyAPI::generate_hmac(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto password = params.get("password", "");
     auto r = kek_auth(tcfg, "CURRENT", password);
@@ -131,6 +133,8 @@ Yb::ElementTree::ElementPtr KeyAPI::generate_hmac(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyAPI::generate_kek(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto password = params.get("password", "");
     auto r = kek_auth(tcfg, "CURRENT", password);
@@ -187,6 +191,8 @@ Yb::ElementTree::ElementPtr KeyAPI::generate_kek(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyAPI::get_component(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto password = params.get("password", "");
     auto want_kek_version_str = params.get("version", "");
@@ -211,6 +217,8 @@ Yb::ElementTree::ElementPtr KeyAPI::get_component(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyAPI::confirm_component(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto password = params.get("password", "");
     auto want_kek_version_str = params.get("version", "");
@@ -235,6 +243,8 @@ Yb::ElementTree::ElementPtr KeyAPI::confirm_component(const Yb::StringDict &para
 
 Yb::ElementTree::ElementPtr KeyAPI::reset_target_version(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto password = params.get("password", "");
     int want_kek_version = boost::lexical_cast<int>(params.get("version", ""));
@@ -278,6 +288,8 @@ void KeyAPI::cleanup_kek(int kek_version)
 
 Yb::ElementTree::ElementPtr KeyAPI::cleanup(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     std::string mode = "CURRENT";
     auto password = params.get("password", "");
@@ -376,6 +388,8 @@ void KeyAPI::rehash_token(TokenizerConfig &tcfg, int token_id, int target_hmac_v
 
 Yb::ElementTree::ElementPtr KeyAPI::rehash_tokens(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto j = params.find("id_min");
     YB_ASSERT(j != params.end());
@@ -431,6 +445,8 @@ void KeyAPI::reencrypt_dek(TokenizerConfig &tcfg, int dek_id, int target_kek_ver
 
 Yb::ElementTree::ElementPtr KeyAPI::reencrypt_deks(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto j = params.find("id_min");
     YB_ASSERT(j != params.end());
@@ -468,6 +484,8 @@ Yb::ElementTree::ElementPtr KeyAPI::reencrypt_deks(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyAPI::switch_hmac(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     std::string mode = "CURRENT";
     auto password = params.get("password", "");
@@ -494,6 +512,8 @@ Yb::ElementTree::ElementPtr KeyAPI::switch_hmac(const Yb::StringDict &params)
 
 Yb::ElementTree::ElementPtr KeyAPI::switch_kek(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     std::string mode = "TARGET";
     auto password = params.get("password", "");
@@ -556,6 +576,8 @@ const VersionMap KeyAPI::get_hmac_use_counts()
 
 Yb::ElementTree::ElementPtr KeyAPI::status(const Yb::StringDict &params)
 {
+    IConfig &config(theApp::instance().cfg());
+    config.reload();
     TokenizerConfig tcfg;
     auto resp = mk_resp();
     resp->sub_element("keyapi_state",
