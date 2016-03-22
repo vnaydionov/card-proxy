@@ -10,7 +10,7 @@ ENABLE_SERVICE_RESTART="Y"
 ENABLE_NGINX_CONFIG="Y"
 
 log_message () {
-    # input vars: LOG_MODE SCRIPT_TAG
+    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
     local LEVEL
     local MSG
     local DT
@@ -19,27 +19,27 @@ log_message () {
     DT=$( date '+%Y-%m-%d %H:%M:%S' )
 
     if [ "$LOG_MODE" = "stderr" ] ; then
-        echo "$DT $LEVEL ${SCRIPT_TAG}[$$]: $MSG" >&2
+        echo "$DT $LEVEL ${SCRIPT_TAG}[$$]: ${LOGGER_NAME}: $MSG" >&2
     else
         if [ "$LOG_MODE" != "none" ] ; then
             # syslog by default
-            logger -p "user.$LEVEL" -t "${SCRIPT_TAG}[$$]" "$MSG"
+            logger -p "user.$LEVEL" -t "${SCRIPT_TAG}[$$]" "T1 ${LOGGER_NAME}: $MSG"
         fi
     fi
 }
 
 log_info () {
-    # input vars: LOG_MODE SCRIPT_TAG
+    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
     log_message "info" "$1"
 }
 
 log_error () {
-    # input vars: LOG_MODE SCRIPT_TAG
+    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
     log_message "error" "$1"
 }
 
 detect_env_type () {
-    # input vars: LOG_MODE SCRIPT_TAG
+    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
     # output vars: ENV_TYPE
     local ENV_CFG
     ENV_CFG="${CFG_PREFIX}/card_proxy_common/environment.cfg.xml"
@@ -55,7 +55,7 @@ detect_env_type () {
 }
 
 detect_cfg_file () {
-    # input vars: ENV_TYPE SERVANT LOG_MODE SCRIPT_TAG
+    # input vars: ENV_TYPE SERVANT LOG_MODE SCRIPT_TAG LOGGER_NAME
     # output vars: CFG_FILE
     local CFG_SUFFIX
     CFG_SUFFIX=""
@@ -99,7 +99,8 @@ servant_pinger () {
     HTTP_PATH="$3"
 
     SERVANT=$( basename "$SELF" | sed "s/-ping//" )
-    SCRIPT_TAG="${SERVANT}-ping"
+    SCRIPT_TAG="$SERVANT"
+    LOGGER_NAME="pinger_script"
     log_info "SERVANT=$SERVANT"
 
     detect_env_type
@@ -109,7 +110,7 @@ servant_pinger () {
 }
 
 check_alive () {
-    # input vars: BIN DELAY SCRIPT_TAG
+    # input vars: BIN DELAY SCRIPT_TAG LOGGER_NAME
     local PID
     local IS_ALIVE
     local RC
@@ -126,7 +127,7 @@ check_alive () {
 }
 
 restarter_loop () {
-    # input vars: CFG_FILE BIN BIN_PARAMS PINGER DELAY PING_DELAY SCRIPT_TAG
+    # input vars: CFG_FILE BIN BIN_PARAMS PINGER DELAY PING_DELAY SCRIPT_TAG LOGGER_NAME
     local PID
     local TS0
     local SPENT
@@ -166,7 +167,8 @@ servant_restarter () {
 
     # input vars: SELF PINGER BIN BIN_PARAMS
     SERVANT=$(basename "$SELF" | sed 's/-restarter//' | sed 's/-/_/')
-    SCRIPT_TAG="$SERVANT-restarter"
+    SCRIPT_TAG="$SERVANT"
+    LOGGER_NAME="restarter_script"
     DELAY=2
     PING_DELAY=10
 
@@ -263,7 +265,8 @@ servant_init () {
     fi
 
     SERVANT=$(basename "$SELF" | sed 's/-/_/' | sed 's/^[SK][0-9][0-9]//')
-    SCRIPT_TAG="${SERVANT}.init"
+    SCRIPT_TAG="$SERVANT"
+    LOGGER_NAME="init_script"
     LOG_FILE="/var/log/$CP_USER/${SERVANT}.log"
 
     if [ "$MODE" != "reload" ] && [ "$MODE" != "start" ] &&

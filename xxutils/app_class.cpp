@@ -7,6 +7,24 @@
 #include <orm/domain_object.h>
 #include "utils.h"
 
+const std::string escape_nl(const std::string &msg)
+{
+    std::string result;
+    result.reserve(msg.size() + 4*10);
+    char buf[40];
+    auto i = msg.begin(), iend = msg.end();
+    for (; i != iend; ++i) {
+        if (!(*i >= '\040' && *i <= '\176')) {
+            // not a printable character
+            sprintf(buf, "#%03o", (*i & 0xff));
+            result += buf;
+        }
+        else
+            result += *i;
+    }
+    return result;
+}
+
 const std::string filter_log_msg(const std::string &msg)
 {
     static const boost::regex *cn_re = NULL;
@@ -42,8 +60,6 @@ const std::string filter_log_msg(const std::string &msg)
     }
     return fixed_msg.substr(1, fixed_msg.size() - 2);
 }
-
-using namespace std;
 
 FileLogAppender::FileLogAppender(std::ostream &out)
     : LogAppender(out)
@@ -96,7 +112,7 @@ void SyslogAppender::really_append(const Yb::LogRecord &rec)
     std::ostringstream msg;
     msg << "T" << rec.get_tid() << " "
         << rec.get_component() << ": "
-        << filter_log_msg(rec.get_msg());
+        << escape_nl(filter_log_msg(rec.get_msg()));
     ::syslog(priority, fmt_string_escape(msg.str()).c_str());
 }
 
@@ -143,6 +159,9 @@ void SyslogAppender::set_level(const std::string &name, int level)
             it->second = level;
     }
 }
+
+
+using namespace std;
 
 static int decode_log_level(const string &log_level0)
 {

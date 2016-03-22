@@ -10,6 +10,7 @@
 #include <orm/data_object.h>
 #include "conf_reader.h"
 
+const std::string escape_nl(const std::string &msg);
 const std::string filter_log_msg(const std::string &msg);
 
 class FileLogAppender: public Yb::LogAppender

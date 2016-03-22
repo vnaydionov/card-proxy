@@ -376,6 +376,14 @@ TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
     }
 }
 
+TEST_CASE( "Testing the escaping of non-printables", "[full][escape_nl]" ) {
+    SECTION( "testing escaping of non-printables" ) {
+        CHECK("" == escape_nl(""));
+        CHECK("!abc DEF~" == escape_nl("!abc DEF~"));
+        CHECK("#001#011#037. .#177#200#377" == escape_nl("\x01\x09\x1F.\x20.\x7F\x80\xFF"));
+    }
+}
+
 TEST_CASE( "Some tests for JSON", "[full][json]" ) {
     SECTION( "check ownership passing" ) {
         JsonObject o = JsonObject::new_object();
