@@ -28,8 +28,6 @@ install (FILES card_proxy_keykeeper2.cfg.xml
          DESTINATION etc/card_proxy_keykeeper2)
 install (PROGRAMS card_proxy_keykeeper2.init
          DESTINATION etc/init.d RENAME card_proxy_keykeeper2)
-install (FILES card_proxy_keykeeper2.logrotate
-         DESTINATION etc/logrotate.d RENAME card_proxy_keykeeper2)
 install (FILES card_proxy_keykeeper2.nginx DESTINATION etc/nginx/sites-available
          RENAME 10-card_proxy_keykeeper2)
 

@@ -31,8 +31,6 @@ install (FILES card_proxy_confpatch.cfg.xml
          DESTINATION etc/card_proxy_confpatch)
 install (PROGRAMS card_proxy_confpatch.init
          DESTINATION etc/init.d RENAME card_proxy_confpatch)
-install (FILES card_proxy_confpatch.logrotate
-         DESTINATION etc/logrotate.d RENAME card_proxy_confpatch)
 install (FILES card_proxy_confpatch.nginx DESTINATION etc/nginx/sites-available
          RENAME 10-card_proxy_confpatch)
 install (FILES card_proxy_confpatch.sudo DESTINATION etc/sudoers.d

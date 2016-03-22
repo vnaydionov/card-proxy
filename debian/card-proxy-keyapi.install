@@ -1,5 +1,4 @@
 usr/bin/card_proxy_keyapi*
 usr/etc/card_proxy_keyapi
 usr/etc/init.d/card_proxy_keyapi
-usr/etc/logrotate.d/card_proxy_keyapi
 usr/etc/nginx/sites-available/10-card_proxy_keyapi

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Config>
+
     <!--
-    <Log level="DEBUG">card_proxy_keyproc.log</Log>
     <Log level="DEBUG">/var/log/cpr_service/card_proxy_keyproc.log</Log>
     -->
     <Log level="INFO">syslog</Log>

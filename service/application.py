@@ -35,9 +35,11 @@ class Application(object):
             self.RANDOM_DELAY = True
 
     def _init_logger(self):
+        log_node = self.cfg.find('Log')
+        log_file = log_node.text
+        log_level = getattr(logging, log_node.attrib.get('level') or 'ERROR')
         root_logger = logging.getLogger('')
-        root_logger.setLevel(logging.DEBUG)
-        log_file = self.cfg.findtext('Log')
+        root_logger.setLevel(log_level)
         if log_file == 'syslog':
             handler = SysLogHandler(address='/dev/log')
             program = '%s[%d]' % (self.app_name, os.getpid())
@@ -50,7 +52,7 @@ class Application(object):
         handler.setFormatter(formatter)
         root_logger.addHandler(handler)
         logger = logging.getLogger('%s' % self.app_name)
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(log_level)
         self.logger = logger
 
     def new_db_connection(self):

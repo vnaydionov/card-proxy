@@ -35,9 +35,6 @@ install (FILES key_settings.cfg.xml
 install (PROGRAMS card_proxy_tokenizer.init
          DESTINATION etc/init.d RENAME card_proxy_tokenizer)
 
-install (FILES card_proxy_tokenizer.logrotate
-         DESTINATION etc/logrotate.d RENAME card_proxy_tokenizer)
-
 install (FILES card_proxy_tokenizer.nginx DESTINATION etc/nginx/sites-available
          RENAME 10-card_proxy_tokenizer)
 
