@@ -5,44 +5,12 @@
 #include "servant_utils.h"
 #include <boost/lexical_cast.hpp>
 
-char luhn_control_digit(const std::string &num)
-{
-    const int N = num.size();
-    int sum = 0;
-    for (int i = 0; i < N; ++i) {
-        int p = num[N - i - 1] - '0';
-        if (i % 2 == 0) {
-            p = 2*p;
-            if (p > 9)
-                p = p - 9;
-        }
-        sum = sum + p;
-    }
-    sum = 10 - (sum % 10);
-    if (sum == 10)
-        sum = 0;
-    return sum + '0';
-}
-
-bool luhn_check(const std::string &num)
-{
-    const int N = num.size();
-    int sum = 0;
-    for (int i = 0; i < N; ++i) {
-        int p = num[i] - '0';
-        sum += i % 2? p: (p*2 > 9? p*2 - 9: p*2);
-    }
-    return sum % 10 == 0;
-}
-
 CardData generate_random_card_data()
 {
-    std::string cn = generate_random_number(16);
-    cn[0] = cn[0] > '4'? '5': '4';
-    cn[15] = luhn_control_digit(cn.substr(0, 15));
-    YB_ASSERT(luhn_check(cn));
+    std::string pan = generate_pan(16);
+    YB_ASSERT(luhn_check(pan.c_str(), pan.size()));
     CardData d(
-            cn,
+            pan,
             2018 + rand() % 5,
             1 + rand() % 12,
             generate_random_string(10) + " " + generate_random_string(10),

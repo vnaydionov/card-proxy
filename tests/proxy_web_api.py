@@ -6,10 +6,9 @@ import urllib
 import re
 import random
 import os
+import logging
 
-import logger
-
-log = logger.get_logger()
+log = logging.getLogger('proxy_web_api')
 
 
 def response_wrapper(f):

@@ -82,5 +82,5 @@ add_subdirectory (xxcommon)
 add_subdirectory (tokenizer)
 add_subdirectory (keyapi)
 
-install (FILES INSTALL LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
+install (FILES LICENSE README.md DESTINATION share/doc/card-proxy-tokenizer)
 

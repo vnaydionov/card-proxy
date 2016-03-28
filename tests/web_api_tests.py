@@ -8,7 +8,7 @@ from proxy_web_api import get_resp_field, call_proxy
 from utils import generate_random_card_data, generate_random_number
 import logger
 
-log = logger.get_logger('web_api_tests.log')
+log = logger.get_logger('/tmp/web_api_tests-%s.log' % os.environ['USER'])
 
 SERVER_URI = 'http://localhost:17117/'
 

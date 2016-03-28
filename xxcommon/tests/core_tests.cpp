@@ -455,4 +455,42 @@ TEST_CASE( "Some tests for SHA256", "[full][hash]" ) {
     }
 }
 
+TEST_CASE( "Some tests for Luhn algorithm", "[full][luhn]" ) {
+    std::vector<std::string> cases{
+        "4556010003898458",
+        "4024007142076149",
+        "4024007104953392",
+        "4485885429059249",
+        "4024007148404196",
+        "5276663720734368",
+        "5150158941098827",
+        "5580989627560239",
+        "5587477196001895",
+        "5134820490751921",
+        "6011431373154641",
+        "6011783564165038",
+        "6011105839205565",
+        "6011542291600273",
+        "6011029693567516",
+        "342614564327869",
+        "375577692445517",
+        "342542450952112",
+        "344767932252017",
+        "377426240334393",
+    };
+
+    for (auto i = cases.begin(); i != cases.end(); ++i) {
+        const std::string &p = *i;
+        CHECK(luhn_check(p.c_str(), p.size()));
+        CHECK(p[p.size() - 1] == luhn_control_digit(p.c_str(), p.size() - 1));
+        std::string q = p;
+        q[q.size() - 1] = '0' + ((q[q.size() - 1] - '0' + 1) % 10);
+        CHECK( ! luhn_check(q.c_str(), q.size()));
+    }
+
+    for (int i = 8; i < 32; ++i) {
+        CHECK(luhn_check(generate_pan(i).c_str(), i));
+    }
+}
+
 // vim:ts=4:sts=4:sw=4:et:

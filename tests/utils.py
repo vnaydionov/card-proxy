@@ -25,11 +25,13 @@ def generate_random_string(length):
     return result
 
 
-def generate_pan():
+def generate_pan(pan_len=16):
     prefix = '500000'  # not to mess with real world cards
-    base = prefix + str(random.randint(100000000, 999999999))
-    pan = base + generate(base)
-    assert verify(pan)
+    base = prefix + str(random.randint(
+        10 ** (pan_len - len(prefix) - 2),
+        10 ** (pan_len - len(prefix) - 1) - 1))
+    pan = base + baluhn.generate(base)
+    assert baluhn.verify(pan)
     #print "pan=%s" % pan
     return pan
 
@@ -69,3 +71,5 @@ def generate_random_card_data(mode='full', pan_len=16):
     else:
         raise RuntimeError('Invalid mode [%s]' % mode)
     return card_data
+
+# vim:ts=4:sts=4:sw=4:tw=85:et:

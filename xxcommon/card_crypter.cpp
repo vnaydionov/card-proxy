@@ -29,6 +29,45 @@ int normalize_year(int year)
     return year;
 }
 
+char luhn_control_digit(const char *num, size_t len)
+{
+    const char *ptr = num + len - 1, *end = num - 1;
+    int i = 0, sum = 0;
+    for (; ptr != end; --ptr, ++i)
+    {
+        int p = *ptr - '0';
+        sum += !(i % 2)? (p*2 > 9? p*2 - 9: p*2): p;
+    }
+    sum = (10 - (sum % 10)) % 10;
+    return sum + '0';
+}
+
+bool luhn_check(const char *num, size_t len)
+{
+    const char *ptr = num + len - 1, *end = num - 1;
+    int i = 0, sum = 0;
+    for (; ptr != end; --ptr, ++i)
+    {
+        int p = *ptr - '0';
+        sum += i % 2? (p*2 > 9? p*2 - 9: p*2): p;
+    }
+    return sum % 10 == 0;
+}
+
+const std::string generate_pan(int pan_len)
+{
+    const char prefix[] = "500000";  // not to mess with real world cards
+    const size_t prefix_len = std::strlen(prefix);
+    const size_t gen_len = pan_len - prefix_len - 1;
+    YB_ASSERT(gen_len >= 1);
+    std::string pan(pan_len, '0');
+    std::memcpy(&pan[0], prefix, prefix_len);
+    std::memcpy(&pan[prefix_len], generate_random_number(gen_len).c_str(),
+                gen_len);
+    pan[pan_len - 1] = luhn_control_digit(&pan[0], pan_len - 1);
+    return pan;
+}
+
 CardCrypter::CardCrypter(IConfig &config, Yb::ILogger &logger,
                          Yb::Session &session)
     : tokenizer_(config, logger, session)

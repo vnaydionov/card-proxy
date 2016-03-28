@@ -21,7 +21,7 @@ def config_sublogger(log):
     pass
 
 
-def get_logger(filename='proxy_tests.log'):
+def get_logger(filename):
     return config_logger(filename)
 
 # vim:ts=4:sts=4:sw=4:tw=85:et:

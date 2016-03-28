@@ -7,6 +7,10 @@
 std::string mask_pan(const std::string &pan);
 std::string normalize_pan(const std::string &pan);
 int normalize_year(int year);
+char luhn_control_digit(const char *num, size_t len);
+bool luhn_check(const char *num, size_t len);
+const std::string generate_pan(int pan_len = 16);
+
 
 /* The following fields are recognized:
  * pan, expire_year, expire_month, card_holder, cvn.

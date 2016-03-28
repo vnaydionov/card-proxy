@@ -13,7 +13,7 @@ from utils import generate_random_card_data
 from proxy_web_api import get_resp_field, call_proxy
 import logger
 
-log = logger.get_logger()
+log = logger.get_logger('/tmp/load_tests-%s.log' % os.environ['USER'])
 
 
 HTTP_METHOD = 'POST'
