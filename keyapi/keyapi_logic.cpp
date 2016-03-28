@@ -362,19 +362,9 @@ Yb::ElementTree::ElementPtr KeyAPI::cleanup(const Yb::StringDict &params)
     return resp;
 }
 
-void KeyAPI::rehash_token(TokenizerConfig &tcfg, int token_id, int target_hmac_version)
+void KeyAPI::rehash_token(TokenizerConfig &tcfg, Domain::DataToken &data_token,
+                          Domain::DataKey &data_key, int target_hmac_version)
 {
-    std::auto_ptr<Yb::Session> session = theApp::instance().new_session();
-    typedef boost::tuple<Domain::DataToken, Domain::DataKey> Pair;
-    Pair data_pair = Yb::query<Pair>(session_)
-        .select_from<Domain::DataToken>()
-        .join<Domain::DataKey>()
-        .filter_by(Domain::DataToken::c.id == token_id)
-        .filter_by(Domain::DataToken::c.hmac_version != target_hmac_version)
-        .for_update()
-        .one();
-    Domain::DataToken &data_token = data_pair.get<0>();
-    Domain::DataKey &data_key = data_pair.get<1>();
     auto master_key = tcfg.get_master_key(data_key.kek_version);
     AESCrypter c1(master_key);
     auto dek = c1.decrypt(decode_base64(data_key.dek_crypted));
@@ -383,7 +373,6 @@ void KeyAPI::rehash_token(TokenizerConfig &tcfg, int token_id, int target_hmac_v
     auto new_hmac_key = tcfg.get_hmac_key(target_hmac_version);
     data_token.hmac_digest = Tokenizer::count_hmac(data, new_hmac_key);
     data_token.hmac_version = target_hmac_version;
-    session->commit();
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::rehash_tokens(const Yb::StringDict &params)
@@ -398,24 +387,24 @@ Yb::ElementTree::ElementPtr KeyAPI::rehash_tokens(const Yb::StringDict &params)
     YB_ASSERT(j != params.end());
     const auto &id_max = j->second;
     int target_hmac_version = tcfg.get_active_hmac_key_version();
-    auto rs = Yb::query<Domain::DataToken>(session_)
+    typedef boost::tuple<Domain::DataToken, Domain::DataKey> Pair;
+    auto rs = Yb::query<Pair>(session_)
+        .select_from<Domain::DataToken>()
+        .join<Domain::DataKey>()
         .filter_by(Domain::DataToken::c.hmac_version != target_hmac_version)
         .filter_by(Domain::DataToken::c.id >= id_min)
         .filter_by(Domain::DataToken::c.id <= id_max)
+        .for_update()
         .all();
     int converted = 0, failed = 0;
     for (auto i = rs.begin(), iend = rs.end(); i != iend; ++i)
     {
-        try {
-            rehash_token(tcfg, i->id, target_hmac_version);
-            ++converted;
-        }
-        catch (const std::exception &e) {
-            log_->error("Error while rehashing DataToken " + Yb::to_string(i->id.value()) +
-                        ": " + e.what());
-            ++failed;
-        }
+        Domain::DataToken &data_token = i->get<0>();
+        Domain::DataKey &data_key = i->get<1>();
+        rehash_token(tcfg, data_token, data_key, target_hmac_version);
+        ++converted;
     }
+    session_.commit();
     auto resp = mk_resp();
     resp->sub_element("target_hmac_version", Yb::to_string(target_hmac_version));
     resp->sub_element("id_min", Yb::to_string(id_min));
@@ -425,14 +414,9 @@ Yb::ElementTree::ElementPtr KeyAPI::rehash_tokens(const Yb::StringDict &params)
     return resp;
 }
 
-void KeyAPI::reencrypt_dek(TokenizerConfig &tcfg, int dek_id, int target_kek_version)
+void KeyAPI::reencrypt_dek(TokenizerConfig &tcfg, Domain::DataKey &data_key,
+                           int target_kek_version)
 {
-    std::auto_ptr<Yb::Session> session = theApp::instance().new_session();
-    Domain::DataKey data_key = Yb::query<Domain::DataKey>(session_)
-        .filter_by(Domain::DataKey::c.id == dek_id)
-        .filter_by(Domain::DataKey::c.kek_version != target_kek_version)
-        .for_update()
-        .one();
     auto old_master_key = tcfg.get_master_key(data_key.kek_version);
     auto new_master_key = tcfg.get_master_key(target_kek_version);
     AESCrypter c1(old_master_key);
@@ -440,7 +424,6 @@ void KeyAPI::reencrypt_dek(TokenizerConfig &tcfg, int dek_id, int target_kek_ver
     AESCrypter c2(new_master_key);
     data_key.dek_crypted = encode_base64(c2.encrypt(dek));
     data_key.kek_version = target_kek_version;
-    session->commit();
 }
 
 Yb::ElementTree::ElementPtr KeyAPI::reencrypt_deks(const Yb::StringDict &params)
@@ -459,20 +442,16 @@ Yb::ElementTree::ElementPtr KeyAPI::reencrypt_deks(const Yb::StringDict &params)
         .filter_by(Domain::DataKey::c.kek_version != target_kek_version)
         .filter_by(Domain::DataKey::c.id >= id_min)
         .filter_by(Domain::DataKey::c.id <= id_max)
+        .for_update()
         .all();
     int converted = 0, failed = 0;
     for (auto i = rs.begin(), iend = rs.end(); i != iend; ++i)
     {
-        try {
-            reencrypt_dek(tcfg, i->id, target_kek_version);
-            ++converted;
-        }
-        catch (const std::exception &e) {
-            log_->error("Error while converting DEK " + Yb::to_string(i->id.value()) +
-                        ": " + e.what());
-            ++failed;
-        }
+        Domain::DataKey &data_key = *i;
+        reencrypt_dek(tcfg, data_key, target_kek_version);
+        ++converted;
     }
+    session_.commit();
     auto resp = mk_resp();
     resp->sub_element("target_kek_version", Yb::to_string(target_kek_version));
     resp->sub_element("id_min", Yb::to_string(id_min));

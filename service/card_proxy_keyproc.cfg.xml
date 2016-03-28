@@ -20,6 +20,6 @@
 
     <Reencrypt>
         <TimeLimit>40</TimeLimit>
-        <BatchSize>100</BatchSize>
+        <BatchSize>1000</BatchSize>
     </Reencrypt>
 </Config>

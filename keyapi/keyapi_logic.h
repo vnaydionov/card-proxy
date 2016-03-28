@@ -43,10 +43,12 @@ public:
     void cleanup_kek(int kek_version);
     Yb::ElementTree::ElementPtr cleanup(const Yb::StringDict &params);
 
-    void rehash_token(TokenizerConfig &tcfg, int token_id, int target_hmac_version);
+    void rehash_token(TokenizerConfig &tcfg, Domain::DataToken &data_token,
+                      Domain::DataKey &data_key, int target_hmac_version);
     Yb::ElementTree::ElementPtr rehash_tokens(const Yb::StringDict &params);
 
-    void reencrypt_dek(TokenizerConfig &tcfg, int dek_id, int target_kek_version);
+    void reencrypt_dek(TokenizerConfig &tcfg, Domain::DataKey &data_key,
+                       int target_kek_version);
     Yb::ElementTree::ElementPtr reencrypt_deks(const Yb::StringDict &params);
 
     Yb::ElementTree::ElementPtr switch_hmac(const Yb::StringDict &params);
