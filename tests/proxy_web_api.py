@@ -22,7 +22,7 @@ def response_wrapper(f):
 
 
 class CardProxyWebApi(object):
-    def __init__(self, server_uri, timeout=2.0, method='POST'):
+    def __init__(self, server_uri, timeout=5.0, method='POST'):
         self.server_uri = server_uri
         self.timeout = timeout
         self.method = method

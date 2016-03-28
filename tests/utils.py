@@ -1,6 +1,6 @@
 import os
 import random
-from baluhn import generate, verify
+import baluhn
 
 
 def generate_random_number(length):
