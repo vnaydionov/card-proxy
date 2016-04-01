@@ -5,21 +5,31 @@
 CFG_PREFIX="/etc"
 PROXY_COMMON="${CFG_PREFIX}/card_proxy_common"
 
+ENV_CFG="${PROXY_COMMON}/environment.cfg.xml"
+ENV_TYPE=$(
+    python -c "import xml.etree.ElementTree as et; \
+               print et.parse('$ENV_CFG')\
+                   .findtext('Type')" 2> /dev/null
+)
+if [ -z "$ENV_TYPE" ] ; then
+    ENV_TYPE=test
+fi
+
 # "Y" or "N"
 ENABLE_SERVICE_RESTART="Y"
 ENABLE_NGINX_CONFIG="Y"
 
 log_message () {
-    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
+    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME LOG_FILE
     local LEVEL
     local MSG
     local DT
     LEVEL="$1"
     MSG="$2"
-    DT=$( date '+%Y-%m-%d %H:%M:%S' )
+    DT=$( date '+%y-%m-%d %H:%M:%S' )
 
-    if [ "$LOG_MODE" = "stderr" ] ; then
-        echo "$DT $LEVEL ${SCRIPT_TAG}[$$]: ${LOGGER_NAME}: $MSG" >&2
+    if [ "$LOG_MODE" = "logfile" ] ; then
+        echo "$DT $LEVEL ${SCRIPT_TAG}[$$]: ${LOGGER_NAME}: $MSG" >> "$LOG_FILE"
     else
         if [ "$LOG_MODE" != "none" ] ; then
             # syslog by default
@@ -39,18 +49,6 @@ log_error () {
 }
 
 detect_env_type () {
-    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
-    # output vars: ENV_TYPE
-    local ENV_CFG
-    ENV_CFG="${CFG_PREFIX}/card_proxy_common/environment.cfg.xml"
-    ENV_TYPE=$(
-        python -c "import xml.etree.ElementTree as et; \
-                   print et.parse('$ENV_CFG')\
-                       .findtext('Type')" 2> /dev/null
-    )
-    if [ "$ENV_TYPE" = "" ] ; then
-        ENV_TYPE=test
-    fi
     log_info "ENV_TYPE=$ENV_TYPE"
 }
 
@@ -65,6 +63,19 @@ detect_cfg_file () {
         CFG_SUFFIX=".nonprod"
     fi
     CFG_FILE="${CFG_PREFIX}/$SERVANT/$SERVANT$CFG_SUFFIX.cfg.xml"
+
+    LOG_FILE=$(
+        python -c "import xml.etree.ElementTree as et; \
+                   print et.parse('$CFG_FILE')\
+                       .findtext('Log')" 2> /dev/null
+    )
+    if [ -z "$LOG_FILE" ] || [ "$LOG_FILE" = "syslog" ] ; then
+        LOG_MODE="syslog"
+        LOG_FILE="/dev/null"
+    else
+        LOG_MODE="logfile"
+    fi
+
     log_info "CFG_FILE=$CFG_FILE"
 }
 
@@ -85,7 +96,7 @@ ping_servant () {
     HTTP_PORT="$1"
     HTTP_PATH="$2"
 
-    curl -m 1 "http://127.0.0.1:${HTTP_PORT}${HTTP_PATH}" 2> /dev/null |
+    http_proxy='' curl -m 1 "http://127.0.0.1:${HTTP_PORT}${HTTP_PATH}" 2> /dev/null |
         grep -q 'success'
     exit $?
 }
@@ -232,13 +243,17 @@ servant_start () {
     local CNT
 
     echo "Starting..."
-    touch "$LOG_FILE"
-    chown "$CP_USER:$CP_USER" "$LOG_FILE"
-    
+    if [ -z "$LOG_FILE" ] ; then
+        LOG_FILE="/dev/null"
+    else
+        touch "$LOG_FILE"
+        chown "$CP_USER:$CP_USER" "$LOG_FILE"
+    fi
+
     RESTARTER="/usr/bin/${SERVANT}-restarter"
     PINGER="/usr/bin/${SERVANT}-ping"
     SERVANT_BIN="/usr/bin/${SERVANT}"
-    su $CP_USER -c "setsid $RESTARTER $PINGER $SERVANT_BIN &>> \"$LOG_FILE\" & "
+    su -l $CP_USER -c "setsid $RESTARTER $PINGER $SERVANT_BIN &>> \"$LOG_FILE\" & "
 
     # Check if it has started OK
     CNT=15
@@ -267,7 +282,10 @@ servant_init () {
     SERVANT=$(basename "$SELF" | sed 's/-/_/' | sed 's/^[SK][0-9][0-9]//')
     SCRIPT_TAG="$SERVANT"
     LOGGER_NAME="init_script"
-    LOG_FILE="/var/log/$CP_USER/${SERVANT}.log"
+
+    LOG_MODE="none"
+    detect_env_type
+    detect_cfg_file
 
     if [ "$MODE" != "reload" ] && [ "$MODE" != "start" ] &&
         [ "$MODE" != "stop" ] && [ "$MODE" != "restart" ]

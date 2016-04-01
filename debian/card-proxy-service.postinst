@@ -1,0 +1,21 @@
+#!/bin/sh
+
+. /usr/share/card_proxy_service/functions.sh
+
+case "$1" in
+    "configure")
+        ensure_user_exists 'cpr_service' 'CardProxy.Service'
+        ;;
+
+    "upgrade" | "abort-upgrade" | "abort-remove" | "abort-deconfigure")
+        ;;
+
+    *) 
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
+
+

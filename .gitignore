@@ -44,11 +44,13 @@ obj-i386-linux-gnu
 
 # Debian
 debian/*.substvars
+debian/*.debhelper
 debian/card-proxy-service
 debian/card-proxy-keykeeper2
 debian/card-proxy-confpatch
 debian/card-proxy-keyapi
 debian/card-proxy-tokenizer
+debian/card-proxy-tests
 debian/files
 debian/tmp
 
