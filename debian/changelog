@@ -1,3 +1,16 @@
+card-proxy (0.5.6) unstable; urgency=low
+
+  * Fix typo in tests
+  * Optimize batch reencryption and rehashing
+  * generate PANs always with prefix 500000 for testing
+  * Get rid of logrotate scripts; Accept Log/@level in application.py
+  * Scripts write to syslog with more correct tags
+  * Escape non printable characters before syslog
+  * KeyAPI: always reload config from files
+  * Fix logging to files to support obfuscation
+
+ -- Vaclav Naydionov (linux rulez) <vaclav@yandex.ru>  Fri, 01 Apr 2016 16:16:36 +0300
+
 card-proxy (0.5.5) unstable; urgency=low
 
   * Add keyman
