@@ -300,7 +300,7 @@ Yb::ElementTree::ElementPtr KeyAPI::cleanup(const Yb::StringDict &params)
     YB_ASSERT(part_n >= 1 && part_n <= 3);
     int old_kek_version = tcfg.get_active_master_key_version();
     YB_ASSERT(kek_version == old_kek_version);
-    int target_kek_version = -1;
+    int target_kek_version = old_kek_version;
     try {
         target_kek_version = boost::lexical_cast<int>(
                 tcfg.get_db_config_key("KEK_TARGET_VERSION"));

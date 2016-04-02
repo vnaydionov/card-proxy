@@ -5,22 +5,12 @@
 CFG_PREFIX="/etc"
 PROXY_COMMON="${CFG_PREFIX}/card_proxy_common"
 
-ENV_CFG="${PROXY_COMMON}/environment.cfg.xml"
-ENV_TYPE=$(
-    python -c "import xml.etree.ElementTree as et; \
-               print et.parse('$ENV_CFG')\
-                   .findtext('Type')" 2> /dev/null
-)
-if [ -z "$ENV_TYPE" ] ; then
-    ENV_TYPE=test
-fi
-
 # "Y" or "N"
 ENABLE_SERVICE_RESTART="Y"
 ENABLE_NGINX_CONFIG="Y"
 
 log_message () {
-    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME LOG_FILE
+    # input vars: LOG_MODE LOG_FILE SCRIPT_TAG LOGGER_NAME
     local LEVEL
     local MSG
     local DT
@@ -28,55 +18,67 @@ log_message () {
     MSG="$2"
     DT=$( date '+%y-%m-%d %H:%M:%S' )
 
-    if [ "$LOG_MODE" = "logfile" ] ; then
-        echo "$DT $LEVEL ${SCRIPT_TAG}[$$]: ${LOGGER_NAME}: $MSG" >> "$LOG_FILE"
+    if [ "$LOG_MODE" = "syslog" ] ; then
+        logger -p "user.$LEVEL" -t "${SCRIPT_TAG}[$$]" "T1 ${LOGGER_NAME}: $MSG"
     else
-        if [ "$LOG_MODE" != "none" ] ; then
-            # syslog by default
-            logger -p "user.$LEVEL" -t "${SCRIPT_TAG}[$$]" "T1 ${LOGGER_NAME}: $MSG"
+        if [ "$LOG_MODE" = "logfile" ] ; then
+            LEVEL=`echo "$LEVEL" | awk '{print toupper($0)}'`
+            echo "${DT},000 P$$ T1  $LEVEL  ${LOGGER_NAME}: $MSG" >> "$LOG_FILE"
         fi
     fi
 }
 
 log_info () {
-    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
+    # input vars: LOG_MODE LOG_FILE SCRIPT_TAG LOGGER_NAME
     log_message "info" "$1"
 }
 
 log_error () {
-    # input vars: LOG_MODE SCRIPT_TAG LOGGER_NAME
+    # input vars: LOG_MODE LOG_FILE SCRIPT_TAG LOGGER_NAME
     log_message "error" "$1"
 }
 
 detect_env_type () {
-    log_info "ENV_TYPE=$ENV_TYPE"
+    # input vars: PROXY_COMMON
+    # output vars: ENV_TYPE
+    local ENV_CFG
+    ENV_CFG="${PROXY_COMMON}/environment.cfg.xml"
+
+    ENV_TYPE=$(
+        python -c "import xml.etree.ElementTree as et; \
+                   print et.parse('$ENV_CFG')\
+                       .findtext('Type')" 2> /dev/null
+    )
+    if [ -z "$ENV_TYPE" ] ; then
+        ENV_TYPE=test
+    fi
 }
 
 detect_cfg_file () {
-    # input vars: ENV_TYPE SERVANT LOG_MODE SCRIPT_TAG LOGGER_NAME
-    # output vars: CFG_FILE
+    # input vars: ENV_TYPE CFG_PREFIX SERVANT LOG_MODE
+    # output vars: CFG_FILE LOG_MODE LOG_FILE
     local CFG_SUFFIX
     CFG_SUFFIX=""
     if [ "$ENV_TYPE" != "prod" ] &&
-        [ -r "${CFG_PREFIX}/$SERVANT/$SERVANT.nonprod.cfg.xml" ]
+        [ -r "${CFG_PREFIX}/${SERVANT}/${SERVANT}.nonprod.cfg.xml" ]
     then
         CFG_SUFFIX=".nonprod"
     fi
-    CFG_FILE="${CFG_PREFIX}/$SERVANT/$SERVANT$CFG_SUFFIX.cfg.xml"
+    CFG_FILE="${CFG_PREFIX}/${SERVANT}/${SERVANT}${CFG_SUFFIX}.cfg.xml"
 
-    LOG_FILE=$(
-        python -c "import xml.etree.ElementTree as et; \
-                   print et.parse('$CFG_FILE')\
-                       .findtext('Log')" 2> /dev/null
-    )
-    if [ -z "$LOG_FILE" ] || [ "$LOG_FILE" = "syslog" ] ; then
-        LOG_MODE="syslog"
-        LOG_FILE="/dev/null"
-    else
-        LOG_MODE="logfile"
+    if [ "$LOG_MODE" != "none" ] ; then
+        LOG_FILE=$(
+            python -c "import xml.etree.ElementTree as et; \
+                       print et.parse('$CFG_FILE')\
+                           .findtext('Log')" 2> /dev/null
+        )
+        if [ -z "$LOG_FILE" ] || [ "$LOG_FILE" = "syslog" ] ; then
+            LOG_MODE="syslog"
+            LOG_FILE="/dev/null"
+        else
+            LOG_MODE="logfile"
+        fi
     fi
-
-    log_info "CFG_FILE=$CFG_FILE"
 }
 
 detect_httplistener_port () {
@@ -187,11 +189,14 @@ servant_restarter () {
 
     trap "echo SIGHUP received" HUP
 
+    detect_env_type
+    detect_cfg_file
+
+    log_info "ENV_TYPE=$ENV_TYPE"
+    log_info "CFG_FILE=$CFG_FILE"
     log_info "BIN=$BIN"
     log_info "PINGER=$PINGER"
 
-    detect_env_type
-    detect_cfg_file
     restarter_loop
 }
 
@@ -243,7 +248,7 @@ servant_start () {
     local CNT
 
     echo "Starting..."
-    if [ -z "$LOG_FILE" ] ; then
+    if [ -z "$LOG_FILE" ] || [ "$LOG_FILE" = "/dev/null" ] ; then
         LOG_FILE="/dev/null"
     else
         touch "$LOG_FILE"
@@ -283,7 +288,6 @@ servant_init () {
     SCRIPT_TAG="$SERVANT"
     LOGGER_NAME="init_script"
 
-    LOG_MODE="none"
     detect_env_type
     detect_cfg_file
 

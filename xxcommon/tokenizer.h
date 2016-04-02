@@ -111,11 +111,11 @@ public:
     const std::string get_db_config_key(const std::string &config_key) const;
 
     int get_active_master_key_version() const;
-    const std::string get_master_key(int version) const;
-    const std::string get_active_master_key() const {
-        return get_master_key(get_active_master_key_version());
+    const std::string get_master_key(int version, bool valid_only = true) const;
+    const std::string get_active_master_key(bool valid_only = true) const {
+        return get_master_key(get_active_master_key_version(), valid_only);
     }
-    const VersionMap get_master_keys() const;
+    const VersionMap get_master_keys(bool valid_only = true) const;
 
     int get_active_hmac_key_version() const;
     const std::string get_hmac_key(int version) const;

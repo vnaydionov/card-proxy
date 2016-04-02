@@ -382,19 +382,26 @@ int TokenizerConfig::get_active_master_key_version() const
     return boost::lexical_cast<int>(get_db_config_key("KEK_VERSION"));
 }
 
-const std::string TokenizerConfig::get_master_key(int version) const
+const std::string TokenizerConfig::get_master_key(int version, bool valid_only) const
 {
     Yb::ScopedLock lock(mux_);
     auto i = master_keys_.find(version);
     if (master_keys_.end() == i)
         throw Yb::KeyError("master key not found: " + Yb::to_string(version));
-    return i->second;
+    if (!valid_only || is_kek_valid(i->first))
+        return i->second;
+    throw Yb::KeyError("master key not valid: " + Yb::to_string(version));
 }
 
-const VersionMap TokenizerConfig::get_master_keys() const
+const VersionMap TokenizerConfig::get_master_keys(bool valid_only) const
 {
     Yb::ScopedLock lock(mux_);
-    VersionMap result(master_keys_);
+    VersionMap result;
+    auto i = master_keys_.begin(), iend = master_keys_.end();
+    for (; i != iend; ++i) {
+        if (!valid_only || is_kek_valid(i->first))
+            result.insert(*i);
+    }
     return result;
 }
 
@@ -553,8 +560,13 @@ int TokenizerConfig::get_last_version() const
 
 int TokenizerConfig::get_switch_version() const
 {
-    const std::string key = "KEK_TARGET_VERSION";
-    int version = boost::lexical_cast<int>(get_db_config_key(key));
+    int version = get_active_master_key_version();
+    try {
+        const std::string key = "KEK_TARGET_VERSION";
+        version = boost::lexical_cast<int>(get_db_config_key(key));
+    }
+    catch (const Yb::KeyError &) { }
+
     if (!is_version_checked(version))
         throw ::RunTimeError("KEK version not confirmed: " +
                 Yb::to_string(version));
