@@ -193,16 +193,21 @@ std::string bcd_encode(const std::string &ascii_input)
     return string_from_hexstring(x.substr(0, 32), HEX_NOSPACES);
 }
 
+void generate_random_bytes(void *buf, size_t len)
+{
+    int fd = ::open("/dev/urandom", O_RDONLY);
+    if (fd == -1)
+        throw RunTimeError("Can't open /dev/urandom");
+    int n = ::read(fd, buf, len);
+    ::close(fd);
+    if (static_cast<int>(len) != n)
+        throw RunTimeError("Can't read from /dev/urandom");
+}
+
 std::string generate_random_bytes(size_t length)
 {
     std::string result(length, 0);
-    int fd = open("/dev/urandom", O_RDONLY);
-    if (fd == -1)
-        throw RunTimeError("Can't open /dev/urandom");
-    int n = read(fd, &result[0], result.size());
-    close(fd);
-    if (static_cast<int>(result.size()) != n)
-        throw RunTimeError("Can't read from /dev/urandom");
+    generate_random_bytes(&result[0], result.size());
     return result;
 }
 

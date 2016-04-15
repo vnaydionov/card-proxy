@@ -50,7 +50,9 @@ const DEKPoolStatus DEKPool::get_status() {
 Domain::DataKey DEKPool::get_active_data_key() {
     while (true) {
         generate_enough_deks();  // generate some if necessary
-        int choice = rand() % active_deks_.size();
+        unsigned rnd = 0;
+        generate_random_bytes(&rnd, sizeof(rnd));
+        int choice = rnd % active_deks_.size();
         Domain::DataKey dek = Yb::lock_and_refresh(session_, active_deks_[choice]);
         if (dek.counter < dek.max_counter && dek.finish_ts > Yb::now()) {
             session_.debug("selected DEK: " + Yb::to_string(dek.id.value()));

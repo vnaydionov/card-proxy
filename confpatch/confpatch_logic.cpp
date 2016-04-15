@@ -2,6 +2,8 @@
 #include "confpatch_logic.h"
 #include "utils.h"
 #include "app_class.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <boost/regex.hpp>
 #include <stdio.h>
 
@@ -42,6 +44,7 @@ void ConfPatch::call_helper(
         const std::string &xml_s)
 {
     char tmp_name[] = "/tmp/confpatch-XXXXXX";
+    ::umask(0077);
     int tmp_fd = ::mkstemp(tmp_name);
     if (tmp_fd == -1) {
         throw ::RunTimeError("ConfPatch::call_helper(): "

@@ -7,14 +7,19 @@
 
 CardData generate_random_card_data()
 {
-    std::string pan = generate_pan(16);
+    const std::string pan = generate_pan(16);
     YB_ASSERT(luhn_check(pan.c_str(), pan.size()));
-    CardData d(
-            pan,
-            2018 + rand() % 5,
-            1 + rand() % 12,
-            generate_random_string(10) + " " + generate_random_string(10),
-            generate_random_number(3));
+    unsigned year = 0;
+    const Yb::DateTime now = Yb::now();
+    generate_random_bytes(&year, sizeof(year));
+    year = Yb::dt_year(now) + 2 + year % 5;
+    unsigned month = 0;
+    generate_random_bytes(&month, sizeof(month));
+    month = 1 + month % 12;
+    const std::string name =
+        generate_random_string(10) + " " + generate_random_string(10);
+    const std::string cvn = generate_random_number(3);
+    CardData d(pan, year, month, name, cvn);
     return d;
 }
 
@@ -136,6 +141,7 @@ Yb::ElementTree::ElementPtr run_load_scenario(
         const Yb::StringDict &params)
 {
     int count = params.get_as<int>("count");
+    YB_ASSERT(count > 0 && count < 1000000000);
     int failed_count = 0;
     long long t0 = Yb::get_cur_time_millisec();
     for (int i = 0; i < count; ++i) {
