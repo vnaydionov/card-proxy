@@ -11,6 +11,7 @@
 #include "domain/DataKey.h"
 #include "domain/Config.h"
 #include "domain/DataToken.h"
+#include "domain/SecureVault.h"
 
 using Yb::StrUtils::starts_with;
 using Yb::StrUtils::ends_with;
@@ -575,8 +576,9 @@ int TokenizerConfig::get_switch_version() const
 
 
 Tokenizer::Tokenizer(IConfig &config, Yb::ILogger &logger,
-                     Yb::Session &session)
-    : config_(config)
+                     Yb::Session &session, bool card_tokenizer)
+    : card_tokenizer_(card_tokenizer)
+    , config_(config)
     , logger_(logger.new_logger("tokenizer").release())
     , session_(session)
 #ifdef TOKENIZER_CONFIG_SINGLETON
@@ -594,14 +596,10 @@ const std::string Tokenizer::search(const std::string &plain_text)
         auto hmac_version = *i;
         auto hmac_digest = count_hmac(plain_text, hmac_version);
         try {
-            Domain::DataToken data_token =
-                Yb::query<Domain::DataToken>(session_)
-                .select_from<Domain::DataToken>()
-                .join<Domain::DataKey>()
-                .filter_by(Domain::DataToken::c.hmac_digest == hmac_digest)
-                .order_by(Yb::Expression(Domain::DataToken::c.id))
-                .first();
-            result = data_token.token_string;
+            if (card_tokenizer_)
+                result = do_search<Domain::DataToken>(hmac_digest);
+            else
+                result = do_search<Domain::SecureVault>(hmac_digest);
             logger_->debug("deduplicated using HMAC ver"
                            + Yb::to_string(hmac_version));
             break;
@@ -632,38 +630,53 @@ const std::string Tokenizer::tokenize(const std::string &plain_text,
         hmac_digest =
             encode_base64(sha256_digest(generate_random_string(10)));
     }
-    Domain::DataToken data_token = do_tokenize(plain_text, finish_ts,
-                                               hmac_version, hmac_digest);
-    return data_token.token_string;
+    std::string crypted;
+    std::string encoded_text = plain_text;
+    if (card_tokenizer_)
+        encoded_text = bcd_encode(plain_text);
+    Domain::DataKey data_key = use_dek(encoded_text, crypted);
+    std::string token_string = generate_token_string();
+    if (card_tokenizer_)
+        do_tokenize<Domain::DataToken>(
+                finish_ts, hmac_version, hmac_digest,
+                token_string, crypted, data_key);
+    else
+        do_tokenize<Domain::SecureVault>(
+                finish_ts, hmac_version, hmac_digest,
+                token_string, crypted, data_key);
+    return token_string;
 }
 
 const std::string Tokenizer::detokenize(const std::string &token_string)
 {
-    Domain::DataToken data_token;
+    std::string dek_crypted, data_crypted;
+    int kek_version;
     try {
-        data_token = Yb::query<Domain::DataToken>(session_)
-            .select_from<Domain::DataToken>()
-            .join<Domain::DataKey>()
-            .filter_by(Domain::DataToken::c.token_string == token_string)
-            .one();
+        if (card_tokenizer_)
+            do_detokenize<Domain::DataToken>(token_string,
+                    dek_crypted, kek_version, data_crypted);
+        else
+            do_detokenize<Domain::SecureVault>(token_string,
+                    dek_crypted, kek_version, data_crypted);
     }
     catch (const Yb::NoDataFound &) {
         throw TokenNotFound();
     }
     tokenizer_config(false);
-    std::string dek = decode_dek(data_token.dek->dek_crypted,
-                                 data_token.dek->kek_version);
-    return bcd_decode(decode_data(dek, data_token.data_crypted));
+    std::string dek = decode_dek(dek_crypted, kek_version);
+    if (card_tokenizer_)
+        return bcd_decode(decode_data(dek, data_crypted));
+    else
+        return decode_data(dek, data_crypted);
 }
 
 bool Tokenizer::remove_data_token(const std::string &token_string)
 {
     try {
-        Domain::DataToken data_token =
-            Yb::query<Domain::DataToken>(session_)
-                .filter_by(Domain::DataToken::c.token_string == token_string)
-                .one();
-        data_token.delete_object();
+        if (card_tokenizer_)
+            do_delete<Domain::DataToken>(token_string);
+        else
+            do_delete<Domain::SecureVault>(token_string);
     }
     catch (const Yb::NoDataFound &) {
         return false;
@@ -676,9 +689,11 @@ const std::string Tokenizer::generate_token_string()
     while (true) {
         const std::string token_string = string_to_hexstring(
                 generate_random_bytes(16), HEX_LOWERCASE | HEX_NOSPACES);
-        int count = Yb::query<Domain::DataToken>(session_)
-                .filter_by(Domain::DataToken::c.token_string == token_string)
-                .count();
+        int count = 0;
+        if (card_tokenizer_)
+            count = do_check_token<Domain::DataToken>(token_string);
+        else
+            count = do_check_token<Domain::SecureVault>(token_string);
         if (!count)  // TODO: too optimistic
             return token_string;
     }
@@ -738,25 +753,17 @@ DEKPool &Tokenizer::dek_pool()
     return *dek_pool_;
 }
 
-Domain::DataToken Tokenizer::do_tokenize(const std::string &plain_text,
-                                         const Yb::DateTime &finish_ts,
-                                         int hmac_version,
-                                         const std::string &hmac_digest)
+Domain::DataKey Tokenizer::use_dek(
+        const std::string &plain_text, std::string &out)
 {
-    Domain::DataToken data_token;
-    data_token.finish_ts = finish_ts;
-    data_token.token_string = generate_token_string();
     Domain::DataKey data_key = dek_pool().get_active_data_key();
     std::string dek = decode_dek(data_key.dek_crypted, data_key.kek_version);
-    data_token.data_crypted = encode_data(dek, bcd_encode(plain_text));
-    data_token.dek = Domain::DataKey::Holder(data_key);
-    data_token.hmac_version = hmac_version;
-    data_token.hmac_digest = hmac_digest;
-    data_token.save(session_);
+    std::string crypted = encode_data(dek, plain_text);
+    std::swap(crypted, out);
     data_key.counter = data_key.counter + 1;
     if (data_key.counter >= data_key.max_counter)
         data_key.finish_ts = Yb::now();
-    return data_token;
+    return data_key;
 }
 
 const std::string Tokenizer::count_hmac(const std::string &plain_text,

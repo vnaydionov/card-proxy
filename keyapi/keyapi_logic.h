@@ -12,6 +12,9 @@
 #include "http_post.h"
 #include "tokenizer.h"
 
+#include "domain/DataToken.h"
+
+
 class KeyAPI: private Yb::NonCopyable
 {
     Yb::Logger::Ptr log_;

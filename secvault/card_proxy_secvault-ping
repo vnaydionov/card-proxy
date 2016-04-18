@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. /usr/share/card_proxy_service/functions.sh
+
+LOG_MODE=none
+servant_pinger "$0" detect_httplistener_port "/service/ping"

@@ -33,7 +33,7 @@ override_dh_installdocs:
 
 override_dh_install:
 	dh_install
-	for FIXPKG in tokenizer service keykeeper2 confpatch keyapi ; do \
+	for FIXPKG in tokenizer service keykeeper2 confpatch keyapi secvault ; do \
 		mv debian/card-proxy-$${FIXPKG}/usr/etc debian/card-proxy-$${FIXPKG} ; \
 	done
 

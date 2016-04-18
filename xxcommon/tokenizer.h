@@ -13,8 +13,6 @@
 #include "conf_reader.h"
 #include "dek_pool.h"
 
-#include "domain/DataToken.h"
-
 #define TOKENIZER_CONFIG_SINGLETON
 
 typedef std::map<std::string, std::string> ConfigMap;
@@ -148,7 +146,8 @@ typedef Yb::SingletonHolder<TokenizerConfig> theTokenizerConfig;
 class Tokenizer
 {
 public:
-    Tokenizer(IConfig &config, Yb::ILogger &logger, Yb::Session &session);
+    Tokenizer(IConfig &config, Yb::ILogger &logger, Yb::Session &session,
+              bool card_tokenizer = true);
 
     const std::string search(const std::string &plain_text);
     const std::string tokenize(const std::string &plain_text,
@@ -172,6 +171,7 @@ public:
     static const std::string count_hmac(const std::string &plain_text,
                                         const std::string &hmac_key);
 private:
+    bool card_tokenizer_;
     IConfig &config_;
     Yb::ILogger::Ptr logger_;
     Yb::Session &session_;
@@ -185,12 +185,77 @@ private:
     TokenizerConfig &tokenizer_config(bool hmac_needed = true);
     DEKPool &dek_pool();
 
-    Domain::DataToken do_tokenize(const std::string &plain_text,
-                                  const Yb::DateTime &finish_ts,
-                                  int hmac_version,
-                                  const std::string &hmac_digest);
+    Domain::DataKey use_dek(
+            const std::string &plain_text, std::string &out);
     const std::string count_hmac(const std::string &plain_text,
                                  int hmac_version);
+
+
+    template <typename TokenClass>
+    const std::string do_search(const std::string &hmac_digest)
+    {
+        TokenClass data_token =
+            Yb::template query<TokenClass>(session_)
+            .template select_from<TokenClass>()
+            .template join<Domain::DataKey>()
+            .filter_by(TokenClass::c.hmac_digest == hmac_digest)
+            .order_by(Yb::Expression(TokenClass::c.id))
+            .first();
+        return data_token.token_string;
+    }
+
+    template <typename TokenClass>
+    void do_tokenize(const Yb::DateTime &finish_ts,
+                     int hmac_version,
+                     const std::string &hmac_digest,
+                     const std::string &token_string,
+                     const std::string &crypted,
+                     Domain::DataKey &data_key)
+    {
+        TokenClass data_token;
+        data_token.finish_ts = finish_ts;
+        data_token.token_string = token_string;
+        data_token.data_crypted = crypted;
+        data_token.dek = Domain::DataKey::Holder(data_key);
+        data_token.hmac_version = hmac_version;
+        data_token.hmac_digest = hmac_digest;
+        data_token.save(session_);
+    }
+
+    template <typename TokenClass>
+    void do_delete(const std::string &token_string)
+    {
+        TokenClass data_token =
+            Yb::template query<TokenClass>(session_)
+                .filter_by(TokenClass::c.token_string == token_string)
+                .one();
+        data_token.delete_object();
+    }
+
+    template <typename TokenClass>
+    int do_check_token(const std::string &token_string)
+    {
+        int count = Yb::template query<TokenClass>(session_)
+                .filter_by(TokenClass::c.token_string == token_string)
+                .count();
+        return count;
+    }
+
+    template <typename TokenClass>
+    void do_detokenize(const std::string &token_string,
+                       std::string &dek_crypted, int &kek_version,
+                       std::string &data_crypted)
+    {
+        TokenClass data_token;
+        data_token = Yb::template query<TokenClass>(session_)
+            .template select_from<TokenClass>()
+            .template join<Domain::DataKey>()
+            .filter_by(TokenClass::c.token_string == token_string)
+            .one();
+        dek_crypted = data_token.dek->dek_crypted;
+        kek_version = data_token.dek->kek_version;
+        data_crypted = data_token.data_crypted;
+    }
 };
 
 
@@ -199,6 +264,7 @@ class TokenNotFound: public RunTimeError
 public:
     TokenNotFound(): RunTimeError("Token not found") {}
 };
+
 
 #endif // CARD_PROXY__TOKENIZER_H
 // vim:ts=4:sts=4:sw=4:et:

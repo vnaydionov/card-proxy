@@ -6,7 +6,7 @@
         </column>
         <column name="cvalue" type="string" size="1000" null="true" />
         <column name="update_ts" type="datetime" default="sysdate" />
-    </table> 
+    </table>
 
     <table name="t_dek" sequence="s_dek"
             class="DataKey" xml-name="data_key">
@@ -18,12 +18,14 @@
             <index>i_dek_finish</index>
         </column>
         <!-- two blocks 128 bit each (AES blocks) encoded in BASE64 -->
-        <column name="dek_crypted" type="string" size="45" null="false" />
-        <column name="kek_version" type="integer" null="false" />
+        <column name="dek_crypted" type="string" size="46" null="false" />
+        <column name="kek_version" type="integer" null="false">
+            <index>i_dek_kek_ver</index>
+        </column>
         <column name="max_counter" type="longint" null="false" default="0" />
         <column name="counter" type="longint" null="false" default="0" />
     </table>
- 
+
     <table name="t_data_token" sequence="s_data_token"
             class="DataToken" xml-name="data_token">
         <column name="id" type="longint">
@@ -44,11 +46,57 @@
         <column name="hmac_digest" type="string" size="46" null="false">
             <index>i_dtoken_hmac</index>
         </column>
-        <column name="hmac_version" type="integer" null="false" />
+        <column name="hmac_version" type="integer" null="false">
+            <index>i_dtoken_hmac_ver</index>
+        </column>
+    </table>
+
+    <table name="t_vault_user" sequence="s_vault_user"
+            class="VaultUser" xml-name="vault_user">
+        <column name="id" type="longint">
+            <primary-key />
+        </column>
+        <column name="update_ts" type="datetime" null="false" default="sysdate" />
+        <column name="login" type="string" size="50" null="false">
+            <index>i_vault_user_login</index>
+        </column>
+        <column name="passwd" type="string" size="100" />
+        <column name="roles" type="string" size="250" />
+    </table>
+
+    <table name="t_secure_vault" sequence="s_secure_vault"
+            class="SecureVault" xml-name="secure_vault">
+        <column name="id" type="longint">
+            <primary-key />
+        </column>
+        <column name="create_ts" type="datetime" null="false" default="sysdate" />
+        <column name="finish_ts" type="datetime" null="false">
+            <index>i_secvault_finish</index>
+        </column>
+        <column name="token_string" type="string" size="32" null="false">
+            <index>i_secvault_string</index> <!-- unique -->
+        </column>
+        <!-- one or more blocks of 128 bit (an AES block) encoded in BASE64 -->
+        <column name="data_crypted" type="string" size="9500" null="false" />
+        <column name="dek_id" type="longint" null="false">
+            <foreign-key table="t_dek" />
+            <index>i_secvault_dek</index>
+        </column>
+        <column name="hmac_digest" type="string" size="46" null="false">
+            <index>i_secvault_hmac</index>
+        </column>
+        <column name="hmac_version" type="integer" null="false">
+            <index>i_secvault_hmac_ver</index>
+        </column>
     </table>
 
     <relation type="one-to-many">
         <one class="DataKey" />
         <many class="DataToken" property="dek" />
+    </relation>
+
+    <relation type="one-to-many">
+        <one class="DataKey" />
+        <many class="SecureVault" property="dek" />
     </relation>
 </schema>

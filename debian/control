@@ -43,3 +43,11 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
 Description: The key management server implements a HTTP API.
  Most methods are authenticated by passing an existing part of KEK of some version.
 
+Package: card-proxy-secvault
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, card-proxy-service
+Description: This is an HTTP server implementing API for tokenization of secrets.
+ Secrets are tokenized and stored encrypted in database, each secret can be
+ retrieved later using its token.  Secrets also have expiration timestamp
+ to notify about update needed.
+

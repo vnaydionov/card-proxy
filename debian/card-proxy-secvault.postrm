@@ -1,0 +1,22 @@
+#!/bin/sh
+
+. /usr/share/card_proxy_service/functions.sh
+
+case "$1" in
+    "remove" | "purge" | "abort-install" | "disappear")
+        disable_nginx_config card_proxy_secvault
+        service card_proxy_secvault stop
+        unregister_autostart card_proxy_secvault
+        ;;
+
+    "upgrade" | "failed-upgrade" | "abort-upgrade")
+        ;;
+
+    *)
+        echo "postrm called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
+
