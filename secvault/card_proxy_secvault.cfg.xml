@@ -14,8 +14,8 @@
         <Host>127.0.0.1</Host>
         <Port>23306</Port>
         <DB>card_proxy</DB>
-        <User>cpr_tokenizer</User>
-        <Pass>cpr_tokenizer_pwd</Pass>
+        <User>cpr_secvault</User>
+        <Pass>cpr_secvault_pwd</Pass>
     </DbBackend>
 
     <HttpListener>

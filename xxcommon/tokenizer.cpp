@@ -324,8 +324,8 @@ const VersionMap
             if (master_keys.end() == mk)
                 throw ::RunTimeError("can't decode HMAC using KEK ver" +
                                      Yb::to_string(kek_version));
-            auto hmac = Tokenizer::decode_data(mk->second,
-                                               hmac_key.dek_crypted);
+            auto hmac = Tokenizer::decrypt_data(mk->second,
+                                                hmac_key.dek_crypted);
             hk[ver] = hmac;
             logger.info("HMAC key ver" + ver_str + " loaded OK");
         }
@@ -630,10 +630,8 @@ const std::string Tokenizer::tokenize(const std::string &plain_text,
         hmac_digest =
             encode_base64(sha256_digest(generate_random_string(10)));
     }
+    std::string encoded_text = encode_data(plain_text);
     std::string crypted;
-    std::string encoded_text = plain_text;
-    if (card_tokenizer_)
-        encoded_text = bcd_encode(plain_text);
     Domain::DataKey data_key = use_dek(encoded_text, crypted);
     std::string token_string = generate_token_string();
     if (card_tokenizer_)
@@ -663,11 +661,8 @@ const std::string Tokenizer::detokenize(const std::string &token_string)
         throw TokenNotFound();
     }
     tokenizer_config(false);
-    std::string dek = decode_dek(dek_crypted, kek_version);
-    if (card_tokenizer_)
-        return bcd_decode(decode_data(dek, data_crypted));
-    else
-        return decode_data(dek, data_crypted);
+    std::string dek = decrypt_dek(dek_crypted, kek_version);
+    return decode_data(decrypt_data(dek, data_crypted, card_tokenizer_));
 }
 
 bool Tokenizer::remove_data_token(const std::string &token_string)
@@ -699,34 +694,50 @@ const std::string Tokenizer::generate_token_string()
     }
 }
 
-const std::string Tokenizer::encode_data(const std::string &dek,
-                                         const std::string &data)
+const std::string Tokenizer::encode_data(const std::string &s)
 {
-    AESCrypter data_encrypter(dek);
+    if (card_tokenizer_)
+        return bcd_encode(s);
+    return pkcs7_encode(s);
+}
+
+const std::string Tokenizer::decode_data(const std::string &s)
+{
+    if (card_tokenizer_)
+        return bcd_decode(s);
+    return pkcs7_decode(s);      
+}
+
+const std::string Tokenizer::encrypt_data(const std::string &dek,
+                                          const std::string &data,
+                                          bool card_tokenizer)
+{
+    AESCrypter data_encrypter(dek, card_tokenizer? AES_CRYPTER_ECB: AES_CRYPTER_CBC);
     return encode_base64(data_encrypter.encrypt(data));
 }
 
-const std::string Tokenizer::decode_data(const std::string &dek,
-                                         const std::string &data_crypted)
+const std::string Tokenizer::decrypt_data(const std::string &dek,
+                                          const std::string &data_crypted,
+                                          bool card_tokenizer)
 {
-    AESCrypter data_encrypter(dek);
+    AESCrypter data_encrypter(dek, card_tokenizer? AES_CRYPTER_ECB: AES_CRYPTER_CBC);
     return data_encrypter.decrypt(decode_base64(data_crypted));
 }
 
-const std::string Tokenizer::encode_dek(const std::string &dek,
+const std::string Tokenizer::encrypt_dek(const std::string &dek,
                                         int kek_version)
 {
-    return encode_data(
-            tokenizer_config().get_master_key(kek_version),
-            dek);
+    AESCrypter data_encrypter(tokenizer_config().get_master_key(kek_version),
+                              AES_CRYPTER_ECB);
+    return encode_base64(data_encrypter.encrypt(dek));
 }
 
-const std::string Tokenizer::decode_dek(const std::string &dek_crypted,
+const std::string Tokenizer::decrypt_dek(const std::string &dek_crypted,
                                         int kek_version)
 {
-    return decode_data(
-            tokenizer_config().get_master_key(kek_version),
-            dek_crypted);
+    AESCrypter data_encrypter(tokenizer_config().get_master_key(kek_version),
+                              AES_CRYPTER_ECB);
+    return data_encrypter.decrypt(decode_base64(dek_crypted));
 }
 
 TokenizerConfig &Tokenizer::tokenizer_config(bool hmac_needed)
@@ -757,8 +768,8 @@ Domain::DataKey Tokenizer::use_dek(
         const std::string &plain_text, std::string &out)
 {
     Domain::DataKey data_key = dek_pool().get_active_data_key();
-    std::string dek = decode_dek(data_key.dek_crypted, data_key.kek_version);
-    std::string crypted = encode_data(dek, plain_text);
+    std::string dek = decrypt_dek(data_key.dek_crypted, data_key.kek_version);
+    std::string crypted = encrypt_data(dek, plain_text, card_tokenizer_);
     std::swap(crypted, out);
     data_key.counter = data_key.counter + 1;
     if (data_key.counter >= data_key.max_counter)

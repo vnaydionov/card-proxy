@@ -118,26 +118,26 @@ public:
         return tokenizer_.generate_token_string();
     }
 
-    static const std::string encode_data(const std::string &dek,
+    static const std::string encrypt_data(const std::string &dek,
                                          const std::string &data)
     {
-        return Tokenizer::encode_data(dek, data);
+        return Tokenizer::encrypt_data(dek, data);
     }
-    static const std::string decode_data(const std::string &dek,
+    static const std::string decrypt_data(const std::string &dek,
                                          const std::string &data_crypted)
     {
-        return Tokenizer::decode_data(dek, data_crypted);
+        return Tokenizer::decrypt_data(dek, data_crypted);
     }
 
-    const std::string encode_dek(const std::string &dek,
+    const std::string encrypt_dek(const std::string &dek,
                                  int kek_version)
     {
-        return tokenizer_.encode_dek(dek, kek_version);
+        return tokenizer_.encrypt_dek(dek, kek_version);
     }
-    const std::string decode_dek(const std::string &dek_crypted,
+    const std::string decrypt_dek(const std::string &dek_crypted,
                                  int kek_version)
     {
-        return tokenizer_.decode_dek(dek_crypted, kek_version);
+        return tokenizer_.decrypt_dek(dek_crypted, kek_version);
     }
 
 private:

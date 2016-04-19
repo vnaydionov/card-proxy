@@ -22,9 +22,6 @@ std::string string_from_hexstring(const std::string &hex_input, int mode=0);
 std::string encode_base64(const std::string &message);
 std::string decode_base64(const std::string &b64message);
 
-std::string bcd_decode(const std::string &bcd_input);
-std::string bcd_encode(const std::string &ascii_input);
-
 void generate_random_bytes(void *buf, size_t len);
 std::string generate_random_bytes(size_t length);
 

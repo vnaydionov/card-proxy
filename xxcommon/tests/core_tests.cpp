@@ -216,13 +216,63 @@ TEST_CASE( "Testing BCD random_coding", "[bcd]" ) {
 TEST_CASE( "Testing BCD errors", "[bcd]" ) {
     CHECK_NOTHROW( bcd_encode(generate_random_number(30)) );
     CHECK_NOTHROW( bcd_encode(generate_random_number(31)) );
-    CHECK_THROWS( bcd_encode(generate_random_number(32)) );
+    CHECK_NOTHROW( bcd_encode(generate_random_number(32)) );
     CHECK_THROWS( bcd_encode(generate_random_number(33)) );
+}
+
+TEST_CASE( "Testing PKCS7 encoder output size", "[pkcs7]" ) {
+    CHECK( 4 == std::string(8, 0).substr(1, 4).size() );
+    CHECK( 32 == pkcs7_encode("1234567890123456").size() );
+    CHECK( 32 == pkcs7_encode("12345678901234567890").size() );
+    CHECK( 16 == pkcs7_encode("1234567890123").size() );
+    CHECK( 16 == pkcs7_encode("123").size() );
+    CHECK( 16 == pkcs7_encode("").size() );
+}
+
+TEST_CASE( "Testing PKCS7 coding", "[pkcs7]" ) {
+    std::vector<std::pair<std::string, std::string>> cases{
+        {"",   "\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10"},
+        {"1",  "1\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f\x0f"},
+        {"12", "12\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e"},
+        {"87638103692640182746",
+            "87638103692640182746\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c"},
+        {"98275192837768916432927652854",
+            "98275192837768916432927652854\x03\x03\x03"},
+        {"abcdefghijklmnopabcdefghijklmno",
+            "abcdefghijklmnopabcdefghijklmno\x01"},
+    };
+
+    SECTION( "testing encoding" ) { 
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
+            std::string encode_pkcs7 = pkcs7_encode(p.first);
+            CHECK( p.second == encode_pkcs7 );
+        }
+    }
+
+    SECTION( "testing decoding" ) { 
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
+            std::string decode_pkcs7 = pkcs7_decode(p.second);
+            CHECK( p.first == decode_pkcs7 );
+        }
+    }
+}
+
+TEST_CASE( "Testing PKCS7 errors", "[pkcs7]" ) {
+    CHECK_NOTHROW( pkcs7_encode(generate_random_string(30)) );
+    CHECK_NOTHROW( pkcs7_encode(generate_random_string(31)) );
+    CHECK_NOTHROW( pkcs7_encode(generate_random_string(32)) );
+    CHECK_NOTHROW( pkcs7_encode(generate_random_string(33)) );
+    CHECK_THROWS( pkcs7_decode(std::string("")) );
+    CHECK_THROWS( pkcs7_decode(std::string("xxx")) );
+    CHECK_THROWS( pkcs7_decode(std::string(16, 0)) );
+    CHECK_THROWS( pkcs7_decode(std::string(16, 0x11)) );
+    CHECK_THROWS( pkcs7_decode(std::string(15, 0) + '\x02') );
 }
 
 TEST_CASE( "Testing AES coding", "[aes]") {
     std::string key = "12345678901234567890123456789012";
-    AESCrypter aes_crypter(key);
     std::vector<std::pair<std::string, std::string>> cases{
         {"1234567890123456",
             "CF 21 48 02 A9 EA F1 F8 A1 68 91 6A 80 7F 60 54"},
@@ -230,9 +280,21 @@ TEST_CASE( "Testing AES coding", "[aes]") {
             "CB 3B D7 7F 8B 72 28 4A 17 66 21 88 4E 3E 06 C9"},
         {"ABCDEFGHIJKLMNOP",
             "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27"},
+        {"ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP",
+            "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27 "
+            "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27"},
     };
-    
+    std::string cbc_case =
+            "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27 "
+            "B3 0A 93 0E C3 7E B0 7A 79 26 F7 82 5C D8 80 9F";
+    /*
+    openssl enc -aes-256-cbc -in plain.txt -out encrypted.bin -nosalt \ 
+      -K 3132333435363738393031323334353637383930313233343536373839303132 \ 
+      -iv 00000000000000000000000000000000
+    */
+
     SECTION( "testing encrypt" ) {
+        AESCrypter aes_crypter(key, AES_CRYPTER_ECB);
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string aes_encode = aes_crypter.encrypt(p.first);
@@ -241,26 +303,64 @@ TEST_CASE( "Testing AES coding", "[aes]") {
     }
 
     SECTION( "testing decrypt" ) {
+        AESCrypter aes_crypter(key, AES_CRYPTER_ECB);
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string code = string_from_hexstring(p.second);
             std::string aes_decode = aes_crypter.decrypt(code);
-            CAPTURE(p.second);
-            CAPTURE(string_to_hexstring(code));
             CHECK(p.first == aes_decode);
         }
+    }
+
+    SECTION( "testing encrypt with CBC" ) {
+        AESCrypter aes_crypter(key, AES_CRYPTER_CBC);
+        auto i = cases.begin();
+        for (; (i + 1) != cases.end(); ++i) {
+            const auto &p = *i;
+            std::string aes_encode = aes_crypter.encrypt(p.first);
+            CHECK(p.second == string_to_hexstring(aes_encode));
+        }
+        const auto &p = *i;
+        std::string aes_encode = aes_crypter.encrypt(p.first);
+        CAPTURE(string_to_hexstring(aes_encode));
+        CHECK(cbc_case == string_to_hexstring(aes_encode));
+    }
+
+    SECTION( "testing decrypt with CBC" ) {
+        AESCrypter aes_crypter(key, AES_CRYPTER_CBC);
+        auto i = cases.begin();
+        for (; (i + 1) != cases.end(); ++i) {
+            const auto &p = *i;
+            std::string code = string_from_hexstring(p.second);
+            std::string aes_decode = aes_crypter.decrypt(code);
+            CHECK(p.first == aes_decode);
+        }
+        const auto &p = *i;
+        std::string code = string_from_hexstring(cbc_case);
+        std::string aes_decode = aes_crypter.decrypt(code);
+        CHECK(p.first == aes_decode);
     }
 }
 
 TEST_CASE( "Testing AES random coding", "[aes]") {
     std::vector<std::string> cases;
     std::string key = "12345678901234567890123456789012";
-    AESCrypter aes_crypter(key);
     for(int i = 0; i < AES_TESTS; i++) {
         cases.push_back(generate_random_string(16 * (rand() % 5 + 1)));
     }
 
     SECTION( "testing encode/decode" ) { 
+        AESCrypter aes_crypter(key, AES_CRYPTER_ECB);
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
+            std::string encode_aes = aes_crypter.encrypt(p);
+            std::string decode_aes = aes_crypter.decrypt(encode_aes);
+            CHECK(p == decode_aes);
+        }
+    }
+
+    SECTION( "testing encode/decode with CBC" ) { 
+        AESCrypter aes_crypter(key, AES_CRYPTER_CBC);
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string encode_aes = aes_crypter.encrypt(p);
@@ -301,6 +401,28 @@ TEST_CASE( "Testing full coding", "[full][base64][aes][bcd]") {
             std::string decode_aes =    aes_crypter.decrypt(decode_b64);
             std::string decode_bindec = bcd_decode(decode_aes); 
             CHECK(p == decode_bindec);
+        }
+    }
+}
+
+TEST_CASE( "Testing full coding with PKCS7 and CBC mode", "[full][base64][aes][pkcs7]") {
+    std::vector<std::string> cases;
+    std::string key = "12345678901234567890123456789012";
+    AESCrypter aes_crypter(key, AES_CRYPTER_CBC);
+    for(int i = 0; i < FULL_TESTS; i++) {
+        cases.push_back(generate_random_string(rand() % 48));
+    }
+
+    SECTION( "testing encode/decode" ) {
+        for (auto i = cases.begin(); i != cases.end(); ++i) {
+            const auto &p = *i;
+            std::string encode_pkcs7 =  pkcs7_encode(p);
+            std::string encode_aes =    aes_crypter.encrypt(encode_pkcs7);
+            std::string encode_b64 =    encode_base64(encode_aes);
+            std::string decode_b64 =    decode_base64(encode_b64);
+            std::string decode_aes =    aes_crypter.decrypt(decode_b64);
+            std::string decode_pkcs7 =  pkcs7_decode(decode_aes); 
+            CHECK( p == decode_pkcs7 );
         }
     }
 }

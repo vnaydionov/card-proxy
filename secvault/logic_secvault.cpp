@@ -4,18 +4,33 @@
 #include "app_class.h"
 #include "servant_utils.h"
 #include "card_crypter.h"
+#include "aes_crypter.h"
 #include <boost/lexical_cast.hpp>
+#include "domain/VaultUser.h"
 
 namespace LogicSecVault {
+
+void check_user(Yb::Session &session, Yb::ILogger &logger,
+                const Yb::StringDict &params, const std::string &command)
+{
+    std::string user = params.get("user", "");
+    std::string passwd = params.get("passwd", "");
+    YB_ASSERT(user != "" && passwd != "");
+    std::string digest = string_to_hexstring(
+        sha256_digest(passwd),  HEX_LOWERCASE | HEX_NOSPACES);
+    Domain::VaultUser good_user = Yb::query<Domain::VaultUser>(session)
+        .filter_by(Domain::VaultUser::c.login == user)
+        .filter_by(Domain::VaultUser::c.passwd == digest)
+        .filter_by(Domain::VaultUser::c.roles.like_(Yb::ConstExpr("%[" + command + "]%")))
+        .one();
+}
 
 Yb::ElementTree::ElementPtr tokenize(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    Tokenizer tokenizer(theApp::instance().cfg(), logger, session);
-    std::string user = params.get("user", "");
-    std::string passwd = params.get("passwd", "");
-    YB_ASSERT(user != "" && passwd != "");
+    Tokenizer tokenizer(theApp::instance().cfg(), logger, session, false);
+    check_user(session, logger, params, "tokenize");
     std::string plain_text = params.get("plain_text", "");
     Yb::DateTime expire_ts;
     std::string expire_ts_str = params.get("expire_ts", "");
@@ -32,10 +47,8 @@ Yb::ElementTree::ElementPtr detokenize(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    Tokenizer tokenizer(theApp::instance().cfg(), logger, session);
-    std::string user = params.get("user", "");
-    std::string passwd = params.get("passwd", "");
-    YB_ASSERT(user != "" && passwd != "");
+    Tokenizer tokenizer(theApp::instance().cfg(), logger, session, false);
+    check_user(session, logger, params, "detokenize");
     std::string token = params.get("token", "");
     std::string plain_text = tokenizer.detokenize(token);
     Yb::ElementTree::ElementPtr resp = mk_resp("success");
@@ -47,10 +60,8 @@ Yb::ElementTree::ElementPtr search_token(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    Tokenizer tokenizer(theApp::instance().cfg(), logger, session);
-    std::string user = params.get("user", "");
-    std::string passwd = params.get("passwd", "");
-    YB_ASSERT(user != "" && passwd != "");
+    Tokenizer tokenizer(theApp::instance().cfg(), logger, session, false);
+    check_user(session, logger, params, "search_token");
     std::string plain_text = params.get("plain_text", "");
     try {
         std::string token = tokenizer.search(plain_text);
@@ -69,10 +80,8 @@ Yb::ElementTree::ElementPtr remove_token(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
 {
-    Tokenizer tokenizer(theApp::instance().cfg(), logger, session);
-    std::string user = params.get("user", "");
-    std::string passwd = params.get("passwd", "");
-    YB_ASSERT(user != "" && passwd != "");
+    Tokenizer tokenizer(theApp::instance().cfg(), logger, session, false);
+    check_user(session, logger, params, "remove_token");
     std::string token = params.get("token", "");
     try {
         bool success = tokenizer.remove_data_token(token);

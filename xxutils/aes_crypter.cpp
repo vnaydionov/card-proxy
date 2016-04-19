@@ -7,21 +7,23 @@
 #include "aes_crypter.h"
 #include "utils.h"
 
-#define TO_AES_KEY(s) reinterpret_cast<AES_KEY *>(&((s)[0]))
-#define TO_CONST_UCHAR(s) reinterpret_cast<const unsigned char *>((s).data())
-#define TO_UCHAR(s) reinterpret_cast<unsigned char *>(&((s)[0]))
+#define TO_CONST_AES_KEY(s) reinterpret_cast<const AES_KEY *>((s).c_str())
+#define TO_CONST_UCHAR(s) reinterpret_cast<const unsigned char *>((s).c_str())
 
-AESCrypter::AESCrypter(const std::string &key)
-    : encrypt_key_(sizeof(AES_KEY), 0)
-    , decrypt_key_(sizeof(AES_KEY), 0)
+AESCrypter::AESCrypter(const std::string &key, int mode)
+    : mode_(mode)
 {
     if (key.size() != AES_CRYPTER_KEY_SIZE_BYTES)
         throw AESBlockSizeException(AES_CRYPTER_KEY_SIZE_BYTES,
                 "expected AES key block size");
+    AES_KEY keybuf;
     AES_set_encrypt_key(TO_CONST_UCHAR(key), AES_CRYPTER_KEY_SIZE,
-            TO_AES_KEY(encrypt_key_));
+                        &keybuf);
+    encrypt_key_ = std::string((const char *)&keybuf, sizeof(AES_KEY));
     AES_set_decrypt_key(TO_CONST_UCHAR(key), AES_CRYPTER_KEY_SIZE,
-            TO_AES_KEY(decrypt_key_));
+                        &keybuf);
+    decrypt_key_ = std::string((const char *)&keybuf, sizeof(AES_KEY));
+    memset(&keybuf, 0, sizeof(AES_KEY));  // TODO: secure_erase
 }
 
 std::string AESCrypter::encrypt(const std::string &input_text)
@@ -32,14 +34,39 @@ std::string AESCrypter::encrypt(const std::string &input_text)
         throw AESBlockSizeException(AES_CRYPTER_BLOCK_SIZE_BYTES,
                 "input text size must be a multiple of AES block size");
     }
-    std::string result(input_text.size(), 0);
-    for (size_t offs = 0; offs < input_text.size();
-            offs += AES_CRYPTER_BLOCK_SIZE_BYTES)
-    {
-        AES_encrypt(TO_CONST_UCHAR(input_text) + offs,
-                TO_UCHAR(result) + offs, TO_AES_KEY(encrypt_key_));
+    unsigned char *result = new unsigned char[input_text.size()];
+    try {
+        memset(result, 0, input_text.size());
+        unsigned char iv[AES_CRYPTER_BLOCK_SIZE_BYTES];
+        memset(iv, 0, AES_CRYPTER_BLOCK_SIZE_BYTES);
+        for (size_t offs = 0; offs < input_text.size();
+                offs += AES_CRYPTER_BLOCK_SIZE_BYTES)
+        {
+            if (mode_ == AES_CRYPTER_CBC)
+            {
+                memxor(iv, TO_CONST_UCHAR(input_text) + offs, AES_CRYPTER_BLOCK_SIZE_BYTES);
+            }
+            else
+            {
+                memcpy(iv, TO_CONST_UCHAR(input_text) + offs, AES_CRYPTER_BLOCK_SIZE_BYTES);
+            }
+            AES_encrypt(iv,
+                        result + offs, TO_CONST_AES_KEY(encrypt_key_));
+            if (mode_ == AES_CRYPTER_CBC)
+            {
+                memcpy(iv, result + offs, AES_CRYPTER_BLOCK_SIZE_BYTES);
+            }
+        }
+        std::string r((const char *)result, input_text.size());
+        memset(result, 0, input_text.size());  // TODO: secure_erase
+        delete [] result;
+        return r;
     }
-    return result;
+    catch (...) {
+        memset(result, 0, input_text.size());  // TODO: secure_erase
+        delete [] result;
+        throw;
+    }
 }
 
 std::string AESCrypter::decrypt(const std::string &input_cipher)
@@ -50,14 +77,36 @@ std::string AESCrypter::decrypt(const std::string &input_cipher)
         throw AESBlockSizeException(AES_CRYPTER_BLOCK_SIZE_BYTES,
                 "input cipher size must be a multiple of AES block size");
     }
-    std::string result(input_cipher.size(), 0);
-    for (size_t offs = 0; offs < input_cipher.size();
-            offs += AES_CRYPTER_BLOCK_SIZE_BYTES)
-    {
-        AES_decrypt(TO_CONST_UCHAR(input_cipher) + offs,
-                TO_UCHAR(result) + offs, TO_AES_KEY(decrypt_key_));
+    unsigned char *result = new unsigned char[input_cipher.size()];
+    try {
+        memset(result, 0, input_cipher.size());
+        unsigned char iv[AES_CRYPTER_BLOCK_SIZE_BYTES];
+        memset(iv, 0, AES_CRYPTER_BLOCK_SIZE_BYTES);
+        unsigned char iv_next[AES_CRYPTER_BLOCK_SIZE_BYTES];
+        memset(iv_next, 0, AES_CRYPTER_BLOCK_SIZE_BYTES);
+        for (size_t offs = 0; offs < input_cipher.size();
+                offs += AES_CRYPTER_BLOCK_SIZE_BYTES)
+        {
+            memcpy(iv_next, TO_CONST_UCHAR(input_cipher) + offs,
+                    AES_CRYPTER_BLOCK_SIZE_BYTES);
+            AES_decrypt(iv_next,
+                        result + offs, TO_CONST_AES_KEY(decrypt_key_));
+            if (mode_ == AES_CRYPTER_CBC)
+            {
+                memxor(result + offs, iv, AES_CRYPTER_BLOCK_SIZE_BYTES);
+                memcpy(iv, iv_next, AES_CRYPTER_BLOCK_SIZE_BYTES);
+            }
+        }
+        std::string r((const char *)result, input_cipher.size());
+        memset(result, 0, input_cipher.size());  // TODO: secure_erase
+        delete [] result;
+        return r;
     }
-    return result;
+    catch (...) {
+        memset(result, 0, input_cipher.size());  // TODO: secure_erase
+        delete [] result;
+        throw;
+    }
 }
 
 AESBlockSizeException::AESBlockSizeException(int expected_size, const std::string &msg)
@@ -98,6 +147,68 @@ const std::string hmac_sha256_digest(const std::string &hk, const std::string &s
     std::string i_key_pad(block_size, 0x36);
     xor_buffer(i_key_pad, key);
     return sha256_digest(o_key_pad + sha256_digest(i_key_pad + s));
+}
+
+std::string bcd_decode(const std::string &bcd_input)
+{
+    if (!bcd_input.size())
+        return std::string(); // TODO analyze this case
+    if (bcd_input.size() != AES_CRYPTER_BLOCK_SIZE_BYTES)
+        throw RunTimeError("BCD decode data of wrong size");
+    std::string x = string_to_hexstring(bcd_input,
+                                        HEX_LOWERCASE|HEX_NOSPACES);
+    size_t i = 0;
+    for (; i < x.size(); ++i)
+        if (!(x[i] >= '0' && x[i] <= '9'))
+            break;
+    return x.substr(0, i);
+}
+
+std::string bcd_encode(const std::string &ascii_input)
+{
+    if (!ascii_input.size())
+        return std::string();
+    if (ascii_input.size() > AES_CRYPTER_BLOCK_SIZE_BYTES * 2)
+        throw RunTimeError("BCD encode data of wrong size");
+    std::string x = ascii_input + "f";  // TODO may be use a..f
+    int padding_length = AES_CRYPTER_BLOCK_SIZE_BYTES * 2 - x.size();
+    if (padding_length > 0)
+        x += generate_random_hex_string(padding_length);
+    return string_from_hexstring(
+            x.substr(0, AES_CRYPTER_BLOCK_SIZE_BYTES * 2), HEX_NOSPACES);
+}
+
+std::string pkcs7_decode(const std::string &blocks_input)
+{
+    if (blocks_input.size() % AES_CRYPTER_BLOCK_SIZE_BYTES)
+        throw RunTimeError("PKCS7 decode data of wrong size");
+    char d = blocks_input[blocks_input.size() - 1];
+    if (!(d >= 1 && d <= AES_CRYPTER_BLOCK_SIZE_BYTES))
+        throw RunTimeError("PKCS7 padding not found");
+    for (int i = blocks_input.size() - 2; i >= (int)blocks_input.size() - d; --i)
+    {
+        if (blocks_input[i] != d)
+            throw RunTimeError("PKCS7 padding not found");
+    }
+    return blocks_input.substr(0, blocks_input.size() - d);
+}
+
+std::string pkcs7_encode(const std::string &plain_input)
+{
+    size_t padding_length = AES_CRYPTER_BLOCK_SIZE_BYTES -
+        plain_input.size() % AES_CRYPTER_BLOCK_SIZE_BYTES;
+    return plain_input + std::string(padding_length, (char)padding_length);
+}
+
+void *memxor(void *dst, const void *src, size_t len)
+{
+    void *dst0 = dst;
+    unsigned char *cdst = (unsigned char *)dst,
+        *cend = cdst + len;
+    const unsigned char *csrc = (const unsigned char *)src;
+    for (; cdst != cend; ++csrc, ++cdst)
+        *cdst ^= *csrc;
+    return dst0;
 }
 
 // vim:ts=4:sts=4:sw=4:et:

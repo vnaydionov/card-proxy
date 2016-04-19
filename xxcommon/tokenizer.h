@@ -158,14 +158,19 @@ public:
 
     const std::string generate_token_string();
 
-    static const std::string encode_data(const std::string &dek,
-                                         const std::string &data);
-    static const std::string decode_data(const std::string &dek,
-                                         const std::string &data_crypted);
+    const std::string encode_data(const std::string &s);
+    const std::string decode_data(const std::string &s);
 
-    const std::string encode_dek(const std::string &dek,
+    static const std::string encrypt_data(const std::string &dek,
+                                          const std::string &data,
+                                          bool card_tokenizer = true);
+    static const std::string decrypt_data(const std::string &dek,
+                                          const std::string &data_crypted,
+                                          bool card_tokenizer = true);
+
+    const std::string encrypt_dek(const std::string &dek,
                                  int kek_version);
-    const std::string decode_dek(const std::string &dek_crypted,
+    const std::string decrypt_dek(const std::string &dek_crypted,
                                  int kek_version);
 
     static const std::string count_hmac(const std::string &plain_text,

@@ -165,34 +165,6 @@ std::string decode_base64(const std::string &b64message)
     return result; 
 }
 
-std::string bcd_decode(const std::string &bcd_input)
-{
-    if (!bcd_input.size())
-        return std::string(); // TODO analyze this case
-    if (bcd_input.size() > 32)
-        throw RunTimeError("BCD decode data of wrong size");
-    std::string x = string_to_hexstring(bcd_input,
-                                        HEX_LOWERCASE|HEX_NOSPACES);
-    size_t i = 0;
-    for (; i < x.size(); ++i)
-        if (!(x[i] >= '0' && x[i] <= '9'))
-            break;
-    return x.substr(0, i);
-}
-
-std::string bcd_encode(const std::string &ascii_input)
-{
-    if (!ascii_input.size())
-        return std::string();
-    if (ascii_input.size() > 31)
-        throw RunTimeError("BCD encode data of wrong size");
-    std::string x = ascii_input + "f";
-    int padding_length = 32 - x.size();
-    if (padding_length > 0)
-        x += generate_random_hex_string(padding_length);
-    return string_from_hexstring(x.substr(0, 32), HEX_NOSPACES);
-}
-
 void generate_random_bytes(void *buf, size_t len)
 {
     int fd = ::open("/dev/urandom", O_RDONLY);
