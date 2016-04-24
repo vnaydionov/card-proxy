@@ -496,6 +496,12 @@ TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
         CHECK("65E84BE3....E02337C5,8588310a....c54581cd" == filter_log_msg(
                     "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5,8588310a98676af6e22563c1559e1ae20f85950792bdcd0c8f334867c54581cd"));
     }
+    SECTION( "CVN filtering" ) {
+        CHECK( "'cvn':\"***\",  'cvv2': '2345', \"CVV\":\"***\", 'cVc2': \"***\"" ==
+                filter_log_msg("'cvn':'123',  'cvv2': '2345', \"CVV\":'324', 'cVc2': '345'") );
+        CHECK( "cvn=***&cvv2=2345&CVV=***&cVc2=***" ==
+                filter_log_msg("cvn=123&cvv2=2345&CVV=324&cVc2=345") );
+    }
 }
 
 TEST_CASE( "Testing the escaping of non-printables", "[full][escape_nl]" ) {

@@ -40,6 +40,20 @@ const std::string filter_log_msg(const std::string &msg)
     static const std::string *obfk_fmt = NULL;
     if (!obfk_fmt)
         obfk_fmt = new std::string("\\1\\2....\\4\\5");
+    static const boost::regex *cvn_json_re = NULL;
+    if (!cvn_json_re)
+        cvn_json_re = new boost::regex(
+            "([\'\"][cC][vV][cCvVnN]2?[\'\"]):( *)([\'\"]\\d{3}[\'\"])");
+    static const std::string *cvn_json_fmt = NULL;
+    if (!cvn_json_fmt)
+        cvn_json_fmt = new std::string("\\1:\\2\"***\"");
+    static const boost::regex *cvn_url_re = NULL;
+    if (!cvn_url_re)
+        cvn_url_re = new boost::regex(
+            "([cC][vV][cCvVnN]2?)=(\\d{3})(?=[^\\d]|$)");
+    static const std::string *cvn_url_fmt = NULL;
+    if (!cvn_url_fmt)
+        cvn_url_fmt = new std::string("\\1=***");
 
     std::string fixed_msg = " " + msg + " ";
     while (true) {
@@ -54,6 +68,22 @@ const std::string filter_log_msg(const std::string &msg)
         const std::string orig_msg = fixed_msg;
         fixed_msg = boost::regex_replace(
                 fixed_msg, *key_re, *obfk_fmt,
+                boost::match_default | boost::format_perl);
+        if (fixed_msg == orig_msg)
+            break;
+    }
+    while (true) {
+        const std::string orig_msg = fixed_msg;
+        fixed_msg = boost::regex_replace(
+                fixed_msg, *cvn_json_re, *cvn_json_fmt,
+                boost::match_default | boost::format_perl);
+        if (fixed_msg == orig_msg)
+            break;
+    }
+    while (true) {
+        const std::string orig_msg = fixed_msg;
+        fixed_msg = boost::regex_replace(
+                fixed_msg, *cvn_url_re, *cvn_url_fmt,
                 boost::match_default | boost::format_perl);
         if (fixed_msg == orig_msg)
             break;
