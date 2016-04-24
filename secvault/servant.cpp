@@ -5,7 +5,7 @@
 #include "app_class.h"
 #include "micro_http.h"
 
-typedef XmlHttpWrapper CardProxyHttpWrapper;
+typedef XmlHttpWrapper SecVaultHttpWrapper;
 
 template <class HttpHandler>
 inline int run_server_app(const std::string &config_name,
@@ -35,7 +35,7 @@ inline int run_server_app(const std::string &config_name,
             std::string prefix = handlers_array[i].prefix();
             handlers[prefix + handlers_array[i].name()] = handlers_array[i];
         }
-        std::string error_content_type = "text/json";
+        std::string error_content_type = "text/xml";
         std::string error_body = "{\"status\": \"internal_error\"}";
         MyHttpServer server(
                 bind_host, bind_port, 30, handlers, &theApp::instance(),
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     const std::string ping_prefix = "/service/";
     using namespace LogicService;
     using namespace LogicSecVault;
-    CardProxyHttpWrapper handlers[] = {
+    SecVaultHttpWrapper handlers[] = {
         // service methods
         WRAP(ping_prefix, ping),
         WRAP(ping_prefix, check_kek),

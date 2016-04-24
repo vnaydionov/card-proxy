@@ -37,7 +37,12 @@ CREATE TABLE t_secure_vault (
     data_crypted VARCHAR(9500) NOT NULL,
     dek_id BIGINT NOT NULL,
     hmac_digest VARCHAR(46) NOT NULL,
-    hmac_version INT NOT NULL
+    hmac_version INT NOT NULL,
+    creator_id BIGINT NULL,
+    domain VARCHAR(30) NULL,
+    comment VARCHAR(250) NULL,
+    notify_email VARCHAR(250) NULL,
+    notify_status VARCHAR(250) NULL
     , PRIMARY KEY (id)
 ) ENGINE=INNODB DEFAULT CHARSET=utf8;
 
@@ -53,6 +58,8 @@ CREATE TABLE t_vault_user (
 ALTER TABLE t_data_token ADD FOREIGN KEY (dek_id) REFERENCES t_dek(id);
 
 ALTER TABLE t_secure_vault ADD FOREIGN KEY (dek_id) REFERENCES t_dek(id);
+
+ALTER TABLE t_secure_vault ADD FOREIGN KEY (creator_id) REFERENCES t_vault_user(id);
 
 CREATE INDEX i_dtoken_finish ON t_data_token(finish_ts);
 
@@ -77,6 +84,10 @@ CREATE INDEX i_secvault_dek ON t_secure_vault(dek_id);
 CREATE INDEX i_secvault_hmac ON t_secure_vault(hmac_digest);
 
 CREATE INDEX i_secvault_hmac_ver ON t_secure_vault(hmac_version);
+
+CREATE INDEX i_secvault_creator ON t_secure_vault(creator_id);
+
+CREATE INDEX i_secvault_domain ON t_secure_vault(domain);
 
 CREATE INDEX i_vault_user_login ON t_vault_user(login);
 

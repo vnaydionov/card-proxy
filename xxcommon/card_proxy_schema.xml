@@ -88,6 +88,16 @@
         <column name="hmac_version" type="integer" null="false">
             <index>i_secvault_hmac_ver</index>
         </column>
+        <column name="creator_id" type="longint">
+            <foreign-key table="t_vault_user" />
+            <index>i_secvault_creator</index>
+        </column>
+        <column name="domain" type="string" size="30">
+            <index>i_secvault_domain</index>
+        </column>
+        <column name="comment" type="string" size="250" />
+        <column name="notify_email" type="string" size="250" />
+        <column name="notify_status" type="string" size="250" />
     </table>
 
     <relation type="one-to-many">
@@ -98,5 +108,10 @@
     <relation type="one-to-many">
         <one class="DataKey" />
         <many class="SecureVault" property="dek" />
+    </relation>
+
+    <relation type="one-to-many">
+        <one class="VaultUser" />
+        <many class="SecureVault" property="creator" />
     </relation>
 </schema>
