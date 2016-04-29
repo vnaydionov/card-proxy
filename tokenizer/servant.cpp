@@ -9,6 +9,8 @@
 #include "app_class.h"
 #include "micro_http.h"
 
+#include "domain/VaultUser.h"
+
 typedef XmlHttpWrapper CardProxyHttpWrapper;
 
 template <class HttpHandler>
@@ -55,6 +57,9 @@ inline int run_server_app(const std::string &config_name,
 
 int main(int argc, char *argv[])
 {
+    //just to trigger linking
+    Domain::VaultUser dummy;
+
     const std::string dbg_prefix = "/debug_api/";
     const std::string ping_prefix = "/service/";
     const std::string inbound_prefix = "/incoming/";

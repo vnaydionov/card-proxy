@@ -303,8 +303,17 @@ void App::init(IConfig::Ptr config, bool use_db)
     config_.reset(config.release());
     init_log(cfg().get_value("Log"), cfg().get_value("Log/@level"));
     use_db_ = use_db;
-    if (use_db_)
+    if (use_db_) {
         init_engine(cfg().get_value("DbBackend/@id"));
+#if 0
+        // dump schema:
+        std::auto_ptr<Yb::Session> session(new_session().release());
+        std::string prefix = "/tmp/" + get_process_name() +
+            "-" + Yb::to_string(Yb::get_process_id());
+        session->schema().export_xml(prefix + ".xml");
+        session->schema().export_ddl(prefix + ".sql", "MYSQL");
+#endif
+    }
 }
 
 IConfig &App::cfg()
