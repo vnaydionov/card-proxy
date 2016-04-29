@@ -16,6 +16,9 @@ const std::map<std::string, std::string> SERVANTS = {
     {"card_proxy_tokenizer",
      "/etc/card_proxy_common/key_settings.cfg.xml"},
 
+    {"card_proxy_secvault",
+     "/etc/card_proxy_common/key_settings.cfg.xml"},
+
 /*
     {"card_proxy_keyapi",
      "/etc/card_proxy_common/key_settings.cfg.xml"},
