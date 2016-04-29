@@ -42,5 +42,11 @@ insert into t_dek(start_ts, finish_ts, dek_crypted, kek_version, max_counter, co
 
 insert into t_config(ckey, cvalue) values('HMAC_VER0_ID', last_insert_id());
 
+/* test users: password=qwerty */
+
+insert into t_vault_user(update_ts, login, passwd, roles) values (current_timestamp(), 'tokenize_only', '65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c5', '[tokenize:mydomain]');
+
+insert into t_vault_user(update_ts, login, passwd, roles) values (current_timestamp(), 'detokenize_only', '65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c5', '[detokenize:mydomain]');
+
 commit;
 
