@@ -272,7 +272,8 @@ const string App::get_db_url()
             " pass=" + pass +
             " host=" + host +
             " port=" + Yb::to_string(port) +
-            " service=" + db;
+            " service=" + db +
+            " charset=utf8";
     }
     if (type == "mysql+odbc") {
         return type + "://" + user + ":" + pass + "@" + db;
