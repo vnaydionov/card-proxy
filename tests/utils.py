@@ -72,4 +72,10 @@ def generate_random_card_data(mode='full', pan_len=16):
         raise RuntimeError('Invalid mode [%s]' % mode)
     return card_data
 
+
+if __name__ == '__main__':
+    import sys
+    if '-gen' in sys.argv:
+        print generate_pan()
+
 # vim:ts=4:sts=4:sw=4:tw=85:et:
