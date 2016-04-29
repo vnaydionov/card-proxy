@@ -4,6 +4,8 @@
 #include "servant_utils.h"
 #include "keyapi_logic.h"
 
+#include "domain/VaultUser.h"
+
 Yb::ElementTree::ElementPtr
 ping(Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params)
@@ -35,6 +37,9 @@ KEYAPI_METHOD(status)
 
 int main(int argc, char *argv[])
 {
+    //just to trigger linking
+    Domain::VaultUser dummy;
+
     auto config_file = Yb::StrUtils::xgetenv("CONFIG_FILE");
     if (!config_file.size())
         config_file = "/etc/card_proxy_keyapi/card_proxy_keyapi.cfg.xml";
