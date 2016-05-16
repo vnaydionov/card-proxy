@@ -1,0 +1,59 @@
+diff -Nuar 0.5.7-orig/service/functions.sh 0.5.7/service/functions.sh
+--- 0.5.7-orig/service/functions.sh	2016-04-24 22:17:42.000000000 +0200
++++ 0.5.7/service/functions.sh	2016-05-15 23:32:55.919017202 +0200
+@@ -324,7 +324,11 @@
+     CP_USER="$1"
+     CP_GECOS="$2"
+     grep -q "^${CP_USER}:" '/etc/passwd' || ( \
+-        adduser --gecos "$CP_GECOS" --disabled-password "$CP_USER" ; \
++        if [ -f /etc/redhat-release ] ; then \
++            adduser -c "$CP_GECOS" -p 234234 "$CP_USER" ; \
++        else \
++            adduser --gecos "$CP_GECOS" --disabled-password "$CP_USER" ; \
++        fi ; \
+         mkdir -p "/var/run/$CP_USER" "/var/log/$CP_USER" ; \
+         chown "${CP_USER}:root" "/var/log/$CP_USER" "/var/run/$CP_USER" )
+ }
+@@ -349,19 +353,40 @@
+ register_autostart () {
+     local SERVICE
+     SERVICE="$1"
+-    update-rc.d "$SERVICE" defaults
++    if [ -f /etc/redhat-release ] ; then
++        #RUNLEVEL=`runlevel | sed 's/^.*\([0-9]\+\).*$/\1/'`
++        for lvl in 0 1 6 ; do
++            ln -s ../init.d/$SERVICE /etc/rc$lvl.d/K20$SERVICE
++        done
++        for lvl in 2 3 4 5 ; do
++            ln -s ../init.d/$SERVICE /etc/rc$lvl.d/S20$SERVICE
++        done
++    else
++        update-rc.d "$SERVICE" defaults
++    fi
+ }
+ 
+ unregister_autostart () {
+     local SERVICE
+     SERVICE="$1"
+-    update-rc.d "$SERVICE" remove
++    if [ -f /etc/redhat-release ] ; then
++        #RUNLEVEL=`runlevel | sed 's/^.*\([0-9]\+\).*$/\1/'`
++        for lvl in 0 1 6 ; do
++            rm -f /etc/rc$lvl.d/K20$SERVICE
++        done
++        for lvl in 2 3 4 5 ; do
++            rm -f /etc/rc$lvl.d/S20$SERVICE
++        done
++    else
++        update-rc.d "$SERVICE" remove
++    fi
+ }
+ 
+ enable_nginx_config () {
+     local SERVICE
+     SERVICE="$1"
+     if [ "$ENABLE_NGINX_CONFIG" = "Y" ] ; then
++        mkdir -p /etc/nginx/sites-enabled
+         ln -s "../sites-available/10-$SERVICE" '/etc/nginx/sites-enabled'
+         service nginx restart
+     else

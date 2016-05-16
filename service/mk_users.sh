@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for USER in cpr_keykeeper cpr_tokenizer cpr_confpatch cpr_keyapi cpr_service
+for USER in cpr_keykeeper cpr_tokenizer cpr_confpatch cpr_keyapi cpr_service cpr_secvault
 do
     if grep -q $USER /etc/passwd
     then
