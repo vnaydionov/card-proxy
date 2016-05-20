@@ -315,6 +315,22 @@ void App::init(IConfig::Ptr config, bool use_db)
 {
     config_.reset(config.release());
     init_log(cfg().get_value("Log"), cfg().get_value("Log/@level"));
+
+    try {
+        env_type_ = cfg().get_value("environment");
+        if (!env_type_.compare("development"))
+            env_type_ = "dev";
+        else if (!env_type_.compare("testing"))
+            env_type_ = "test";
+        else if (!env_type_.compare("production"))
+            env_type_ = "prod";
+    }
+    catch (const std::exception &e) {
+        warning("Can't detect environment type, using 'test': "
+                + std::string(e.what()));
+        env_type_ = "test";
+    }
+
     use_db_ = use_db;
     if (use_db_) {
         init_engine(cfg().get_value("DbBackend/@id"));

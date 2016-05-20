@@ -51,6 +51,7 @@ class App: public Yb::ILogger
     std::auto_ptr<Yb::ILogAppender> appender_;
     Yb::ILogger::Ptr log_;
     bool use_db_;
+    std::string env_type_;
     std::auto_ptr<Yb::Engine> engine_;
 
     void init_log(const std::string &log_name,
@@ -65,6 +66,8 @@ public:
     IConfig &cfg();
     Yb::Engine &get_engine();
     bool uses_db() const { return use_db_; }
+    const std::string &get_env_type() const { return env_type_; }
+    bool is_prod() const { return !env_type_.compare("prod"); }
     std::auto_ptr<Yb::Session> new_session();
 
     // implement ILogger

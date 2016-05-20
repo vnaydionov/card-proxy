@@ -2,6 +2,7 @@
 #ifndef CARD_PROXY__CARD_CRYPTER_H
 #define CARD_PROXY__CARD_CRYPTER_H
 
+#include "app_class.h"
 #include "tokenizer.h"
 
 std::string mask_pan(const std::string &pan);
@@ -72,7 +73,7 @@ struct CardData
     }
 
     bool is_fake_card() const {
-        return (
+        return !theApp::instance().is_prod() && (
             pan == "5555555555554444" ||
             pan == "5105105105105100" ||
             pan == "4111111111111111" ||

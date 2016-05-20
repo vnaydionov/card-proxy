@@ -1,5 +1,6 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "proxy_any.h"
+#include "app_class.h"
 #include "servant_utils.h"
 #include <util/string_utils.h>
 
@@ -56,8 +57,7 @@ const HttpResponse proxy_any(Yb::ILogger &logger,
 {
     logger.info("proxy pass to " + target_uri);
 
-    // TODO: turn on validation in production code!
-    bool ssl_validate = false;
+    bool ssl_validate = theApp::instance().is_prod();
 
     std::string target_uri_fixed = target_uri;
     std::string body_fixed = request.body();
