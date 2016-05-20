@@ -2,6 +2,7 @@
 #include "key_keeper_logic.h"
 #include "utils.h"
 #include "app_class.h"
+#include "servant_utils.h"
 #include <boost/regex.hpp>
 
 #include <util/util_config.h>
@@ -71,9 +72,9 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         params,
         "",
         ssl_validate);
-    if (resp.get<0>() != 200)
+    if (resp.resp_code() != 200)
         throw ::RunTimeError("call_peer: not HTTP 200");
-    const std::string &body = resp.get<2>();
+    const std::string &body = resp.body();
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("call_peer: not success");
@@ -249,8 +250,7 @@ KeyKeeper::KeyKeeper(IConfig &cfg, Yb::ILogger &log)
 
 Yb::ElementTree::ElementPtr KeyKeeper::mk_resp(const std::string &status)
 {
-    auto root = Yb::ElementTree::new_element("result");
-    root->sub_element("status", status);
+    auto root = ::mk_resp(status);
     root->sub_element("app_id", app_id_);
     return root;
 }

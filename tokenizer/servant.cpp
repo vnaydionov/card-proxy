@@ -8,6 +8,7 @@
 #include "servant_utils.h"
 #include "app_class.h"
 #include "micro_http.h"
+#include <util/string_utils.h>
 
 #include "domain/VaultUser.h"
 

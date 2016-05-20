@@ -9,7 +9,7 @@
 
 namespace LogicOutbound {
 
-const HttpMessage authorize(Yb::ILogger &logger, const HttpMessage &request)
+const HttpResponse authorize(Yb::ILogger &logger, const HttpRequest &request)
 {
     return proxy_any(
             logger, request, CFG_VALUE("ProxyUrl/authorize_url"),
@@ -18,9 +18,9 @@ const HttpMessage authorize(Yb::ILogger &logger, const HttpMessage &request)
             NULL, authorize__fix_params);
 }
 
-const HttpMessage proxy_processing_api(Yb::ILogger &logger,
-                                         const HttpMessage &request,
-                                         const std::string &method)
+const HttpResponse proxy_processing_api(Yb::ILogger &logger,
+                                        const HttpRequest &request,
+                                        const std::string &method)
 {
     using Yb::StrUtils::ends_with;
     auto uri = CFG_VALUE("ProxyUrl/authorize_url");
@@ -36,17 +36,17 @@ const HttpMessage proxy_processing_api(Yb::ILogger &logger,
             NULL, NULL);
 }
 
-const HttpMessage status(Yb::ILogger &logger, const HttpMessage &request)
+const HttpResponse status(Yb::ILogger &logger, const HttpRequest &request)
 {
     return proxy_processing_api(logger, request, "status");
 }
 
-const HttpMessage cancel(Yb::ILogger &logger, const HttpMessage &request)
+const HttpResponse cancel(Yb::ILogger &logger, const HttpRequest &request)
 {
     return proxy_processing_api(logger, request, "cancel");
 }
 
-const HttpMessage clear(Yb::ILogger &logger, const HttpMessage &request)
+const HttpResponse clear(Yb::ILogger &logger, const HttpRequest &request)
 {
     return proxy_processing_api(logger, request, "clear");
 }

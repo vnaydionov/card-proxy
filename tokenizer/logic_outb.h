@@ -7,13 +7,13 @@
 
 namespace LogicOutbound {
 
-const HttpMessage authorize(Yb::ILogger &logger, const HttpMessage &request);
+const HttpResponse authorize(Yb::ILogger &logger, const HttpRequest &request);
 
-const HttpMessage status(Yb::ILogger &logger, const HttpMessage &request);
+const HttpResponse status(Yb::ILogger &logger, const HttpRequest &request);
 
-const HttpMessage cancel(Yb::ILogger &logger, const HttpMessage &request);
+const HttpResponse cancel(Yb::ILogger &logger, const HttpRequest &request);
 
-const HttpMessage clear(Yb::ILogger &logger, const HttpMessage &request);
+const HttpResponse clear(Yb::ILogger &logger, const HttpRequest &request);
 
 } // LogicOutbound
 

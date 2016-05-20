@@ -7,12 +7,12 @@
 
 namespace LogicInbound {
 
-const HttpMessage bind_card(Yb::ILogger &logger, const HttpMessage &request);
+const HttpResponse bind_card(Yb::ILogger &logger, const HttpRequest &request);
 
-const HttpMessage supply_payment_data(Yb::ILogger &logger,
-                                      const HttpMessage &request);
+const HttpResponse supply_payment_data(Yb::ILogger &logger,
+                                       const HttpRequest &request);
 
-const HttpMessage start_payment(Yb::ILogger &logger, const HttpMessage &request);
+const HttpResponse start_payment(Yb::ILogger &logger, const HttpRequest &request);
 
 } // LogicInbound
 

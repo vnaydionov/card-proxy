@@ -10,7 +10,7 @@
 
 namespace LogicInbound {
 
-const HttpMessage bind_card(Yb::ILogger &logger, const HttpMessage &request)
+const HttpResponse bind_card(Yb::ILogger &logger, const HttpRequest &request)
 {
     return proxy_any(
             logger, request, CFG_VALUE("ProxyUrl/bind_card_url"),
@@ -18,8 +18,8 @@ const HttpMessage bind_card(Yb::ILogger &logger, const HttpMessage &request)
             bind_card__fix_json, NULL);
 }
 
-const HttpMessage supply_payment_data(Yb::ILogger &logger,
-                                      const HttpMessage &request)
+const HttpResponse supply_payment_data(Yb::ILogger &logger,
+                                       const HttpRequest &request)
 {
     using Yb::StrUtils::ends_with;
     auto uri = CFG_VALUE("ProxyUrl/bind_card_url");
@@ -33,7 +33,7 @@ const HttpMessage supply_payment_data(Yb::ILogger &logger,
             bind_card__fix_json, NULL);
 }
 
-const HttpMessage start_payment(Yb::ILogger &logger, const HttpMessage &request)
+const HttpResponse start_payment(Yb::ILogger &logger, const HttpRequest &request)
 {
     return proxy_any(
             logger, request, CFG_VALUE("ProxyUrl/start_payment_url"),

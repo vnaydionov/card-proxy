@@ -8,21 +8,21 @@
 #include "micro_http.h"
 #include "processors.h"
 
-const HttpHeaders convert_headers(const HttpMessage &req);
+const HttpHeaders convert_headers(const HttpRequest &req);
 
 void dump_nested_response(const HttpResponse &nested_response,
                           Yb::ILogger &logger);
 
-const HttpMessage convert_response(const HttpResponse &nested_response,
-                                   Yb::ILogger &logger);
+const HttpResponse convert_response(const HttpResponse &nested_response,
+                                    Yb::ILogger &logger);
 
-const HttpMessage proxy_any(Yb::ILogger &logger,
-                            const HttpMessage &request,
-                            const std::string &target_uri,
-                            const std::string &client_cert = "",
-                            const std::string &client_privkey = "",
-                            BodyProcessor bproc = NULL,
-                            ParamsProcessor pproc = NULL);
+const HttpResponse proxy_any(Yb::ILogger &logger,
+                             const HttpRequest &request,
+                             const std::string &target_uri,
+                             const std::string &client_cert = "",
+                             const std::string &client_privkey = "",
+                             BodyProcessor bproc = NULL,
+                             ParamsProcessor pproc = NULL);
 
 #endif // CARD_PROXY__PROXY_ANY_H
 // vim:ts=4:sts=4:sw=4:et:

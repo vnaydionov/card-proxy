@@ -3,6 +3,7 @@
 #include "micro_http.h"
 #include "servant_utils.h"
 #include "confpatch_logic.h"
+#include <util/string_utils.h>
 
 Yb::ElementTree::ElementPtr
 ping(Yb::Session &session, Yb::ILogger &logger,

@@ -3,6 +3,7 @@
 #include "micro_http.h"
 #include "servant_utils.h"
 #include "keyapi_logic.h"
+#include <util/string_utils.h>
 
 #include "domain/VaultUser.h"
 

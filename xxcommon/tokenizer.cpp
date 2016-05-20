@@ -40,8 +40,8 @@ const std::string
                                   "GET",
                                   HttpHeaders(), HttpParams(), "",
                                   ssl_validate_cert_);
-    validate_status(resp.get<0>());
-    const std::string &body = resp.get<2>();
+    validate_status(resp.resp_code());
+    const std::string &body = resp.body();
     auto root = Yb::ElementTree::parse(body);
     if (root->find_first("status")->get_text() != "success")
         throw ::RunTimeError("recv_key_from_server: not success");
@@ -98,8 +98,8 @@ void KeyKeeperAPI::send_key_to_server(const std::string &key,
                                   params,
                                   "",
                                   ssl_validate_cert_);
-    validate_status(resp.get<0>());
-    validate_body(resp.get<2>());
+    validate_status(resp.resp_code());
+    validate_body(resp.body());
 }
 
 void KeyKeeperAPI::cleanup(int kek_version)
@@ -119,8 +119,8 @@ void KeyKeeperAPI::cleanup(int kek_version)
                                   params,
                                   "",
                                   ssl_validate_cert_);
-    validate_status(resp.get<0>());
-    validate_body(resp.get<2>());
+    validate_status(resp.resp_code());
+    validate_body(resp.body());
 }
 
 void KeyKeeperAPI::unset(int kek_version)
@@ -140,8 +140,8 @@ void KeyKeeperAPI::unset(int kek_version)
                                   params,
                                   "",
                                   ssl_validate_cert_);
-    validate_status(resp.get<0>());
-    validate_body(resp.get<2>());
+    validate_status(resp.resp_code());
+    validate_body(resp.body());
 }
 
 const std::string KeyKeeperAPI::get_target_id(int kek_version) const
