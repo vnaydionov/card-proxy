@@ -39,4 +39,5 @@
         <URL3>https://node3.cluster:15118/confpatch/</URL3>
     </ConfPatch>
 
+    <xi:include href="/etc/card_proxy_common/kk2_secret.cfg.xml" />
 </Config>

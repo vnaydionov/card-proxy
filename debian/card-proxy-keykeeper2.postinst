@@ -5,6 +5,7 @@
 case "$1" in
     "configure")
         ensure_user_exists 'cpr_keykeeper' 'CardProxy.KeyKeeper'
+        process_sample_file "${PROXY_COMMON}/kk2_secret.cfg.xml"
         enable_nginx_config card_proxy_keykeeper2
         perform_service_restart card_proxy_keykeeper2
         register_autostart card_proxy_keykeeper2

@@ -143,17 +143,31 @@ const HttpResponse XmlHttpWrapper::try_call(TimerGuard &t,
 
 XmlHttpWrapper::XmlHttpWrapper(const Yb::String &name, XmlHttpHandler f,
         const Yb::String &prefix,
+        const Yb::String &secret,
         const Yb::String &default_status)
     : name_(name), prefix_(prefix)
-    , default_status_(default_status), f_(f), g_(NULL)
+    , default_status_(default_status), secret_(secret), f_(f), g_(NULL)
 {}
 
 XmlHttpWrapper::XmlHttpWrapper(const Yb::String &name, PlainHttpHandler g,
         const Yb::String &prefix,
+        const Yb::String &secret,
         const Yb::String &default_status)
     : name_(name), prefix_(prefix)
-    , default_status_(default_status), f_(NULL), g_(g)
+    , default_status_(default_status), secret_(secret), f_(NULL), g_(g)
 {}
+
+void XmlHttpWrapper::check_auth(const HttpRequest &request)
+{
+    if (secret_.size()) {
+        if (request.get_header("X-AUTH") != secret_) {
+            logger_->error("Wrong authentication secret");
+            throw ApiResult(mk_resp("no_auth", "wrong_secret"),
+                            401, "Unauthorized");
+        }
+        logger_->debug("Authenticated by secret");
+    }
+}
 
 const HttpResponse XmlHttpWrapper::operator() (const HttpRequest &request)
 {
@@ -162,6 +176,7 @@ const HttpResponse XmlHttpWrapper::operator() (const HttpRequest &request)
     const Yb::String cont_type = _T("application/xml");
     TimerGuard t(*logger_, NARROW(name_));
     try {
+        check_auth(request);
         try {
             return try_call(t, request, 0);
         }

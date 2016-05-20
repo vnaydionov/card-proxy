@@ -71,7 +71,7 @@ typedef Yb::ElementTree::ElementPtr (*XmlHttpHandler)(
 
 class XmlHttpWrapper
 {
-    Yb::String name_, prefix_, default_status_;
+    Yb::String name_, prefix_, default_status_, secret_;
     XmlHttpHandler f_;
     PlainHttpHandler g_;
     boost::shared_ptr<Yb::ILogger> logger_;
@@ -87,10 +87,12 @@ public:
 
     XmlHttpWrapper(const Yb::String &name, XmlHttpHandler f,
             const Yb::String &prefix = _T(""),
+            const Yb::String &secret_ = _T(""),
             const Yb::String &default_status = _T("internal_error"));
 
     XmlHttpWrapper(const Yb::String &name, PlainHttpHandler g,
             const Yb::String &prefix = _T(""),
+            const Yb::String &secret_ = _T(""),
             const Yb::String &default_status = _T("internal_error"));
 
     const Yb::String &name() const { return name_; }
@@ -100,6 +102,8 @@ public:
 };
 
 #define WRAP(prefix, func) XmlHttpWrapper(_T(#func), func, prefix)
+#define SECURE_WRAP(prefix, secret, func) XmlHttpWrapper(_T(#func), func, prefix, secret)
+
 
 #endif // CARD_PROXY__SERVANT_UTILS_H
 // vim:ts=4:sts=4:sw=4:et:

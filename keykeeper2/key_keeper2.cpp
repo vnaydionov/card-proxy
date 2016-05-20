@@ -83,14 +83,16 @@ int main(int argc, char *argv[])
         key_keeper = new KeyKeeper(theApp::instance().cfg(), *logger);
         const std::string prefix = "/" + theApp::instance().cfg()
             .get_value("HttpListener/Prefix");
+        Yb::String secret = theApp::instance().cfg().get_value("KK2Secret");
+
         XmlHttpWrapper handlers_array[] = {
             WRAP("/", ping),
-            WRAP(prefix, read),
-            WRAP(prefix, get),
-            WRAP(prefix, write),
-            WRAP(prefix, set),
-            WRAP(prefix, unset),
-            WRAP(prefix, cleanup),
+            SECURE_WRAP(prefix, secret, read),
+            SECURE_WRAP(prefix, secret, get),
+            SECURE_WRAP(prefix, secret, write),
+            SECURE_WRAP(prefix, secret, set),
+            SECURE_WRAP(prefix, secret, unset),
+            SECURE_WRAP(prefix, secret, cleanup),
         };
         int n_handlers = sizeof(handlers_array)/sizeof(handlers_array[0]);
         typedef HttpServer<XmlHttpWrapper> MyHttpServer;

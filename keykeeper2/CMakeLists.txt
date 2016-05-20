@@ -22,12 +22,20 @@ target_link_libraries (card_proxy_keykeeper2
     )
 
 install (TARGETS card_proxy_keykeeper2 DESTINATION bin)
+
 install (PROGRAMS card_proxy_keykeeper2-ping card_proxy_keykeeper2-restarter
          DESTINATION bin)
+
 install (FILES card_proxy_keykeeper2.cfg.xml
          DESTINATION etc/card_proxy_keykeeper2)
+
+install (FILES kk2_secret.cfg.xml
+         DESTINATION etc/card_proxy_common
+         RENAME kk2_secret.cfg.xml.sample)
+
 install (PROGRAMS card_proxy_keykeeper2.init
          DESTINATION etc/init.d RENAME card_proxy_keykeeper2)
+
 install (FILES card_proxy_keykeeper2.nginx DESTINATION etc/nginx/sites-available
          RENAME 10-card_proxy_keykeeper2)
 

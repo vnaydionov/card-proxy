@@ -36,5 +36,6 @@
         <UsagePeriod>100</UsagePeriod>
     </Dek>
 
+    <xi:include href="/etc/card_proxy_common/kk2_secret.cfg.xml" />
 </Config>
 

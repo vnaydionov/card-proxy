@@ -44,5 +44,6 @@
         <authorize_url_key>/etc/card_proxy/processing-client.key</authorize_url_key>
     </ProxyUrl>
 
+    <xi:include href="/etc/card_proxy_common/kk2_secret.cfg.xml" />
 </Config>
 

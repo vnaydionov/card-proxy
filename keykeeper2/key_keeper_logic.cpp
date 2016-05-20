@@ -58,17 +58,18 @@ KeyKeeper::PeerData KeyKeeper::call_peer(const std::string &peer_uri,
         const std::string &http_method,
         bool parse_items)
 {
-    // TODO: turn on validation in production code!
-    bool ssl_validate = false;
+    bool ssl_validate = theApp::instance().is_prod();
 
     Yb::Logger::Ptr http_logger(
             theApp::instance().new_logger("http_post").release());
+    HttpHeaders headers;
+    headers["X-AUTH"] = secret_;
     HttpResponse resp = http_post(
         peer_uri + path_prefix_ + method,
         http_logger.get(),
         peer_timeout_,
         http_method,
-        HttpHeaders(),
+        headers,
         params,
         "",
         ssl_validate);
@@ -239,6 +240,7 @@ KeyKeeper::KeyKeeper(IConfig &cfg, Yb::ILogger &log)
     last_fetch_time_ = 0;
     peer_timeout_ = cfg.get_value_as_int("Peers/Timeout")/1000.;
     refresh_interval_ = cfg.get_value_as_int("Peers/RefreshInterval")/1000.;
+    secret_ = cfg.get_value("KK2Secret");
     path_prefix_ = cfg.get_value("HttpListener/Prefix");
     for (int i = 0; i < 10; ++i) {
         std::string key = "Peers/Peer" + Yb::to_string(i);

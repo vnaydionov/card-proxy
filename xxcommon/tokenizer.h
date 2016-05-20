@@ -2,6 +2,7 @@
 #ifndef CARD_PROXY__TOKENIZER_H
 #define CARD_PROXY__TOKENIZER_H
 
+#include "http_post.h"
 #include <string>
 #include <algorithm>
 #include <boost/tuple/tuple.hpp>
@@ -20,7 +21,7 @@ typedef std::map<int, std::string> VersionMap;
 typedef std::map<int, bool> CheckMap;
 
 
-boost::tuple<std::string, double, int> get_keykeeper_controller(
+boost::tuple<std::string, double, int, std::string> get_keykeeper_controller(
         IConfig &config);
 
 class KeyKeeperAPI
@@ -39,10 +40,12 @@ public:
     void send_key_to_server(const std::string &key, int kek_version);
     void cleanup(int kek_version);
     void unset(int kek_version);
+    void set_secret(const Yb::String &secret);
 
 private:
     ConfigMap cached_;
     Yb::ILogger *logger_;
+    Yb::String secret_;
     std::string uri_;
     double timeout_;
     int part_;
@@ -51,6 +54,7 @@ private:
     const std::string get_target_id(int kek_version) const;
     void validate_status(int status) const;
     void validate_body(const std::string &body) const;
+    const HttpHeaders get_headers() const;
 };
 
 

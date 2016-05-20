@@ -17,16 +17,26 @@ using Yb::StrUtils::starts_with;
 using Yb::StrUtils::ends_with;
 
 
-boost::tuple<std::string, double, int> get_keykeeper_controller(
+boost::tuple<std::string, double, int, std::string> get_keykeeper_controller(
         IConfig &config)
 {
     std::string uri = config.get_value("KeyKeeper2/URL");
     double timeout =
         config.get_value_as_int("KeyKeeper2/Timeout")/1000.;
     int part = 1;
-    return boost::make_tuple(uri, timeout, part);
+    std::string secret = config.get_value("KK2Secret");
+    return boost::make_tuple(uri, timeout, part, secret);
 }
 
+const HttpHeaders KeyKeeperAPI::get_headers() const{
+    HttpHeaders res;
+    res["X-AUTH"] = secret_;
+    return res;
+}
+
+void KeyKeeperAPI::set_secret(const Yb::String &secret){
+    secret_ = secret;
+}
 
 const std::string
     KeyKeeperAPI::recv_key_from_server(int kek_version)
@@ -34,11 +44,11 @@ const std::string
     double key_keeper_timeout = timeout_;
     std::string key_keeper_uri = uri_;
     std::string target_id = get_target_id(kek_version);
-    HttpResponse resp = http_post(key_keeper_uri + "get",
+    HttpResponse resp = http_post(key_keeper_uri + "read",
                                   logger_,
                                   key_keeper_timeout,
                                   "GET",
-                                  HttpHeaders(), HttpParams(), "",
+                                  get_headers(), HttpParams(), "",
                                   ssl_validate_cert_);
     validate_status(resp.resp_code());
     const std::string &body = resp.body();
@@ -94,7 +104,7 @@ void KeyKeeperAPI::send_key_to_server(const std::string &key,
                                   logger_,
                                   key_keeper_timeout,
                                   "POST",
-                                  HttpHeaders(),
+                                  get_headers(),
                                   params,
                                   "",
                                   ssl_validate_cert_);
@@ -115,7 +125,7 @@ void KeyKeeperAPI::cleanup(int kek_version)
                                   logger_,
                                   key_keeper_timeout,
                                   "POST",
-                                  HttpHeaders(),
+                                  get_headers(),
                                   params,
                                   "",
                                   ssl_validate_cert_);
@@ -136,7 +146,7 @@ void KeyKeeperAPI::unset(int kek_version)
                                   logger_,
                                   key_keeper_timeout,
                                   "POST",
-                                  HttpHeaders(),
+                                  get_headers(),
                                   params,
                                   "",
                                   ssl_validate_cert_);
@@ -226,7 +236,10 @@ void TokenizerConfig::assemble_master_keys(
     CheckMap mk_valid;
     auto kk_config = get_keykeeper_controller(config);
     KeyKeeperAPI kk_api(kk_config.get<0>(), kk_config.get<1>(),
-                        kk_config.get<2>(), &logger);
+                        kk_config.get<2>(), &logger,
+                        theApp::instance().is_prod());
+    auto secret=kk_config.get<3>();
+    kk_api.set_secret(secret);
     const std::string prefix = "KEK_VER", suffix = "_PART3";
     auto i = db_params.begin(), iend = db_params.end();
     for (; i != iend; ++i) {
@@ -389,7 +402,7 @@ const std::string TokenizerConfig::get_master_key(int version, bool valid_only) 
     auto i = master_keys_.find(version);
     if (master_keys_.end() == i)
         throw Yb::KeyError("master key not found: " + Yb::to_string(version));
-    if (!valid_only || is_kek_valid(i->first))
+    if (!valid_only || is_kek_valid(version))
         return i->second;
     throw Yb::KeyError("master key not valid: " + Yb::to_string(version));
 }
@@ -705,7 +718,7 @@ const std::string Tokenizer::decode_data(const std::string &s)
 {
     if (card_tokenizer_)
         return bcd_decode(s);
-    return pkcs7_decode(s);      
+    return pkcs7_decode(s);
 }
 
 const std::string Tokenizer::encrypt_data(const std::string &dek,

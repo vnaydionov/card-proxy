@@ -41,6 +41,7 @@ class KeyKeeper
     double peer_timeout_;
     double refresh_interval_;
     std::string path_prefix_;
+    std::string secret_;
     std::vector<std::string> peer_uris_;
 
     Yb::Logger::Ptr log_;
