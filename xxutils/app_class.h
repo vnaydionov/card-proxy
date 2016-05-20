@@ -20,6 +20,7 @@ public:
     void append(const Yb::LogRecord &rec);
 };
 
+#if !defined(YBUTIL_WINDOWS)
 class SyslogAppender: public Yb::ILogAppender
 {
     static char process_name[100];
@@ -38,6 +39,10 @@ public:
     int get_level(const std::string &name);
     void set_level(const std::string &name, int level);
 };
+#endif // #if !defined(YBUTIL_WINDOWS)
+
+int decode_log_level(const std::string &log_level);
+const std::string encode_log_level(int level);
 
 class App: public Yb::ILogger
 {
@@ -50,8 +55,9 @@ class App: public Yb::ILogger
 
     void init_log(const std::string &log_name,
                   const std::string &log_level);
-    void init_engine(const std::string &db_name);
-    const std::string get_db_url();
+    void init_engine(const Yb::String &db_name);
+    const Yb::String get_db_url();
+
 public:
     App(): use_db_(true) {}
     void init(IConfig::Ptr config, bool use_db = true);

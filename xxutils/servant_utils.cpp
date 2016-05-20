@@ -49,7 +49,7 @@ const std::string uri_decode(const std::string &s)
 
 const std::string serialize_params(const Yb::StringDict &params)
 {
-    return HttpMessage::serialize_params(params);
+    return HttpRequest::serialize_params(params);
 }
 
 const std::string dict2str(const Yb::StringDict &params)
@@ -62,11 +62,7 @@ const std::string dict2str(const Yb::StringDict &params)
     for (bool first = true; it != end; ++it, first = false) {
         if (!first)
             out << ", ";
-        out << NARROW(it->first) << ": ";
-        if (it->first == _T("data"))  // TODO: take this specific to params
-            out << NARROW(dquote(_T("...")));
-        else
-            out << NARROW(dquote(c_string_escape(it->second)));
+        out << NARROW(it->first) << ": " << NARROW(dquote(c_string_escape(it->second)));
     }
     out << "}";
     return out.str();
@@ -90,8 +86,8 @@ TimerGuard::~TimerGuard()
 }
 
 Yb::ElementTree::ElementPtr mk_resp(
-        const std::string &status,
-        const std::string &status_code)
+        const Yb::String &status,
+        const Yb::String &status_code)
 {
     Yb::ElementTree::ElementPtr res =
         Yb::ElementTree::new_element("response");
@@ -100,7 +96,8 @@ Yb::ElementTree::ElementPtr mk_resp(
         res->sub_element("status_code", status_code);
     char buf[40];
     Yb::MilliSec t = Yb::get_cur_time_millisec();
-    std::sprintf(buf, "%u.%03u", (unsigned)(t/1000), (unsigned)(t%1000));
+    std::snprintf(buf, sizeof(buf), "%u.%03u", (unsigned)(t/1000), (unsigned)(t%1000));
+    buf[sizeof(buf) - 1] = 0;
     res->sub_element("ts", buf);
     return res;
 }
@@ -113,16 +110,16 @@ std::string XmlHttpWrapper::dump_result(Yb::ElementTree::ElementPtr res)
     return res_str;
 }
 
-const HttpMessage XmlHttpWrapper::try_call(TimerGuard &t,
-                                           const HttpMessage &request, int n)
+const HttpResponse XmlHttpWrapper::try_call(TimerGuard &t,
+                                            const HttpRequest &request, int n)
 {
     logger_->info("Method " + NARROW(name_) +
                   std::string(n? " re": " ") + "started.");
     if (f_)
     {
-        const Yb::StringDict &params = request.get_params();
+        const Yb::StringDict &params = request.params();
         logger_->debug("Method " + NARROW(name_) +
-                       ": params: " + NARROW(dict2str(params)));
+                       ": params: " + dict2str(params));
         // call xml wrapped
         std::auto_ptr<Yb::Session> session;
         if (theApp::instance().uses_db())
@@ -131,14 +128,14 @@ const HttpMessage XmlHttpWrapper::try_call(TimerGuard &t,
         if (theApp::instance().uses_db())
             session->commit();
         // form the reply
-        HttpMessage response(10, 200, _T("OK"));
+        HttpResponse response(HTTP_1_0, 200, _T("OK"));
         response.set_response_body(dump_result(res), _T("application/xml"));
         t.set_ok();
         return response;
     }
     else
     {
-        HttpMessage response = g_(*logger_, request);
+        HttpResponse response = g_(*logger_, request);
         t.set_ok();
         return response;
     }
@@ -158,12 +155,12 @@ XmlHttpWrapper::XmlHttpWrapper(const Yb::String &name, PlainHttpHandler g,
     , default_status_(default_status), f_(NULL), g_(g)
 {}
 
-const HttpMessage XmlHttpWrapper::operator() (const HttpMessage &request)
+const HttpResponse XmlHttpWrapper::operator() (const HttpRequest &request)
 {
     logger_.reset(theApp::instance().new_logger(
-                f_? _T("invoker_xml"): _T("invoker_plain")).release());
+                f_? "invoker_xml": "invoker_plain").release());
     const Yb::String cont_type = _T("application/xml");
-    TimerGuard t(*logger_, name_);
+    TimerGuard t(*logger_, NARROW(name_));
     try {
         try {
             return try_call(t, request, 0);
@@ -173,21 +170,27 @@ const HttpMessage XmlHttpWrapper::operator() (const HttpMessage &request)
             return try_call(t, request, 1);
         }
     }
+    catch (const HttpHeaderNotFound &ex) {
+        logger_->error("Missing header: " + ex.header_name());
+        HttpResponse response(HTTP_1_0, 400, _T("Bad Request"));
+        response.set_response_body(dump_result(mk_resp("error", "missing_header")), cont_type);
+        return response;
+    }
     catch (const ApiResult &ex) {
         t.set_ok();
-        HttpMessage response(10, 200, _T("OK"));
+        HttpResponse response(HTTP_1_0, ex.http_code(), ex.http_desc());
         response.set_response_body(dump_result(ex.result()), cont_type);
         return response;
     }
     catch (const std::exception &ex) {
         logger_->error(std::string("exception: ") + ex.what());
-        HttpMessage response(10, 500, _T("Internal error"));
+        HttpResponse response(HTTP_1_0, 500, _T("Internal error"));
         response.set_response_body(dump_result(mk_resp(default_status_)), cont_type);
         return response;
     }
     catch (...) {
         logger_->error("unknown exception");
-        HttpMessage response(10, 500, _T("Internal error"));
+        HttpResponse response(HTTP_1_0, 500, _T("Internal error"));
         response.set_response_body(dump_result(mk_resp(default_status_)), cont_type);
         return response;
     }

@@ -6,17 +6,22 @@
 #include <map>
 #include <stdexcept>
 #include <util/nlogger.h>
-#include <boost/tuple/tuple.hpp>
-
-typedef std::map<std::string, std::string> HttpParams;
-typedef std::map<std::string, std::string> HttpHeaders;
-typedef boost::tuple<int, std::string, std::string, HttpHeaders> HttpResponse;
+#include "http_message.h"
 
 class HttpClientError: public std::runtime_error
 {
 public:
     HttpClientError(const std::string &msg);
 };
+
+
+typedef Yb::StringDict HttpParams;
+typedef Yb::StringDict HttpHeaders;
+
+const HttpResponse mk_http_resp(int http_code, const std::string &http_desc,
+                                HttpHeaders &headers,
+                                std::string &body);
+
 
 const HttpResponse http_post(const std::string &uri,
     Yb::ILogger *logger = NULL,

@@ -9,6 +9,7 @@ add_library (xxutils STATIC
     aes_crypter.cpp
     app_class.cpp
     conf_reader.cpp
+    http_message.cpp
     http_post.cpp
     micro_http.cpp
     servant_utils.cpp

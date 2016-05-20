@@ -7,6 +7,17 @@
 #define LOG_INFO(s) do{ if (logger) logger->info(s); }while(0)
 #define LOG_ERROR(s) do{ if (logger) logger->error(s); }while(0)
 
+const HttpResponse mk_http_resp(int http_code, const std::string &http_desc,
+                                HttpHeaders &headers,
+                                std::string &body)
+{
+    HttpResponse response(HTTP_1_0, http_code, http_desc);
+    response.set_headers(headers);
+    response.set_body(body);
+    return response;
+}
+
+
 HttpClientError::HttpClientError(const std::string &msg):
     runtime_error(msg)
 {}
@@ -34,7 +45,7 @@ static size_t header_callback(char *data, size_t size, size_t nmemb,
         std::vector<std::string> parts;
         split_str_by_chars(header, " ", parts, 3);
         if (parts.size() == 3)
-            (*headersData)["X-ReasonPhrase"] = trim_trailing_space(parts[2]);
+            (*headersData)["X-Reason-Phrase"] = trim_trailing_space(parts[2]);
         return size * nmemb;
     }
     std::string header_name = header.substr(0, colon_pos);
@@ -223,17 +234,18 @@ const HttpResponse http_post(const std::string &uri,
         throw;
     }
     std::string reason_phrase = "SomeDesc";
-    auto rp = out_headers.find("X-ReasonPhrase");
+    auto rp = out_headers.find("X-Reason-Phrase");
     if (out_headers.end() != rp) {
         reason_phrase = rp->second;
-        out_headers.erase(rp);
+        out_headers.pop("X-Reason-Phrase");
+        //out_headers.erase(rp);
     }
     LOG_INFO("HTTP " + Yb::to_string(http_code) +
              " " + reason_phrase + " (body size: " +
              Yb::to_string(result_buffer.size()) +
              ")");
     LOG_DEBUG("response body: " + result_buffer);
-    return boost::make_tuple(http_code, reason_phrase, result_buffer, out_headers);
+    return mk_http_resp(http_code, reason_phrase, out_headers, result_buffer);
 }
 
 // vim:ts=4:sts=4:sw=4:et:

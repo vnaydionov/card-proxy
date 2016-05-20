@@ -2,12 +2,9 @@
 #ifndef CARD_PROXY__SERVANT_UTILS_H
 #define CARD_PROXY__SERVANT_UTILS_H
 
-#include <string>
-#include <stdexcept>
-
 #include <util/data_types.h>
-#include <util/nlogger.h>
 #include <util/element_tree.h>
+#include <util/nlogger.h>
 #include <orm/data_object.h>
 
 #include "micro_http.h"
@@ -40,27 +37,37 @@ public:
     ~TimerGuard();
 };
 
-Yb::ElementTree::ElementPtr mk_resp(
-        const std::string &status,
-        const std::string &status_code = "");
+Yb::ElementTree::ElementPtr mk_resp(const Yb::String &status,
+        const Yb::String &status_code = _T(""));
+
 
 class ApiResult: public std::runtime_error
 {
     Yb::ElementTree::ElementPtr p_;
+    int http_code_;
+    std::string http_desc_;
 public:
-    ApiResult(Yb::ElementTree::ElementPtr p)
-        : runtime_error("api result"), p_(p)
+    explicit ApiResult(Yb::ElementTree::ElementPtr p,
+                       int http_code = 200, const std::string &http_desc = "OK")
+        : runtime_error("api result")
+        , p_(p)
+        , http_code_(http_code)
+        , http_desc_(http_desc)
     {}
     virtual ~ApiResult() throw () {}
     Yb::ElementTree::ElementPtr result() const { return p_; }
+    int http_code() const { return http_code_; }
+    const std::string &http_desc() const { return http_desc_; }
 };
 
-typedef const HttpMessage (*PlainHttpHandler)(
-        Yb::ILogger &logger, const HttpMessage &request);
+
+typedef const HttpResponse (*PlainHttpHandler)(
+        Yb::ILogger &logger, const HttpRequest &request);
 
 typedef Yb::ElementTree::ElementPtr (*XmlHttpHandler)(
         Yb::Session &session, Yb::ILogger &logger,
         const Yb::StringDict &params);
+
 
 class XmlHttpWrapper
 {
@@ -71,8 +78,9 @@ class XmlHttpWrapper
 
     std::string dump_result(Yb::ElementTree::ElementPtr res);
 
-    const HttpMessage try_call(TimerGuard &t,
-                               const HttpMessage &request, int n);
+    void check_auth(const HttpRequest &request);
+    const HttpResponse try_call(TimerGuard &t,
+                                const HttpRequest &request, int n);
 
 public:
     XmlHttpWrapper(): f_(NULL), g_(NULL) {}
@@ -88,7 +96,7 @@ public:
     const Yb::String &name() const { return name_; }
     const Yb::String &prefix() const { return prefix_; }
 
-    const HttpMessage operator() (const HttpMessage &request);
+    const HttpResponse operator() (const HttpRequest &request);
 };
 
 #define WRAP(prefix, func) XmlHttpWrapper(_T(#func), func, prefix)

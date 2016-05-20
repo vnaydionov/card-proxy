@@ -1,11 +1,13 @@
 #include "app_class.h"
-#include <syslog.h>
 #include <fstream>
 #include <stdexcept>
 #include <boost/regex.hpp>
 #include <util/string_utils.h>
 #include <orm/domain_object.h>
 #include "utils.h"
+#if !defined(YBUTIL_WINDOWS)
+#include <syslog.h>
+#endif
 
 const std::string escape_nl(const std::string &msg)
 {
@@ -91,6 +93,8 @@ const std::string filter_log_msg(const std::string &msg)
     return fixed_msg.substr(1, fixed_msg.size() - 2);
 }
 
+using namespace std;
+
 FileLogAppender::FileLogAppender(std::ostream &out)
     : LogAppender(out)
 {}
@@ -103,6 +107,7 @@ void FileLogAppender::append(const Yb::LogRecord &rec)
     Yb::LogAppender::append(new_rec);
 }
 
+#if !defined(YBUTIL_WINDOWS)
 char SyslogAppender::process_name[100];
 
 int SyslogAppender::log_level_to_syslog(int log_level)
@@ -189,14 +194,12 @@ void SyslogAppender::set_level(const std::string &name, int level)
             it->second = level;
     }
 }
+#endif // !defined(YBUTIL_WINDOWS)
 
-
-using namespace std;
-
-static int decode_log_level(const string &log_level0)
+int decode_log_level(const string &log_level0)
 {
     using Yb::StrUtils::str_to_lower;
-    const string log_level = str_to_lower(log_level0);
+    const string log_level = NARROW(str_to_lower(WIDEN(log_level0)));
     if (log_level.empty())
         return Yb::ll_DEBUG;
     if (log_level == "critical" || log_level == "cri" || log_level == "crit")
@@ -214,7 +217,7 @@ static int decode_log_level(const string &log_level0)
     throw RunTimeError("invalid log level: " + log_level);
 }
 
-static const string encode_log_level(int level)
+const string encode_log_level(int level)
 {
     Yb::LogRecord r(level, "__xxx__", "yyy");
     return string(r.get_level_name());
@@ -225,16 +228,20 @@ void App::init_log(const string &log_name, const string &log_level)
     using Yb::StrUtils::split_str_by_chars;
     using Yb::StrUtils::trim_trailing_space;
     if (!log_.get()) {
+#if !defined(YBUTIL_WINDOWS)
         using Yb::StrUtils::str_to_lower;
-        if ("syslog" == str_to_lower(log_name)) {
+        if (_T("syslog") == str_to_lower(WIDEN(log_name))) {
             appender_.reset(new SyslogAppender());
         }
         else {
+#endif // !defined(YBUTIL_WINDOWS)
             file_stream_.reset(new ofstream(log_name.data(), ios::app));
             if (file_stream_->fail())
                 throw RunTimeError("can't open logfile: " + log_name);
             appender_.reset(new FileLogAppender(*file_stream_));
+#if !defined(YBUTIL_WINDOWS)
         }
+#endif // !defined(YBUTIL_WINDOWS)
         log_.reset(new Yb::Logger(appender_.get()));
         info("Application started.");
         info("Setting level " + encode_log_level(decode_log_level(log_level))
@@ -259,7 +266,7 @@ void App::init_log(const string &log_name, const string &log_level)
     }
 }
 
-const string App::get_db_url()
+const Yb::String App::get_db_url()
 {
     const string type = cfg().get_value("DbBackend/@type");
     const string db = cfg().get_value("DbBackend/DB");
@@ -281,7 +288,7 @@ const string App::get_db_url()
     throw RunTimeError("invalid DbBackend configuration");
 }
 
-void App::init_engine(const string &db_name)
+void App::init_engine(const Yb::String &db_name)
 {
     if (!engine_.get()) {
         Yb::ILogger::Ptr yb_logger(new_logger("yb").release());
@@ -293,7 +300,7 @@ void App::init_engine(const string &db_name)
         Yb::SqlSource src(get_db_url());
         src[_T("&id")] = db_name;
         pool->add_source(src);
-        engine_.reset(new Yb::Engine(Yb::Engine::READ_WRITE, pool, WIDEN(db_name)));
+        engine_.reset(new Yb::Engine(Yb::Engine::READ_WRITE, pool, db_name));
         engine_->set_echo(true);
         engine_->set_logger(yb_logger);
     }
@@ -306,14 +313,6 @@ void App::init(IConfig::Ptr config, bool use_db)
     use_db_ = use_db;
     if (use_db_) {
         init_engine(cfg().get_value("DbBackend/@id"));
-#if 0
-        // dump schema:
-        std::auto_ptr<Yb::Session> session(new_session().release());
-        std::string prefix = "/tmp/" + get_process_name() +
-            "-" + Yb::to_string(Yb::get_process_id());
-        session->schema().export_xml(prefix + ".xml");
-        session->schema().export_ddl(prefix + ".sql", "MYSQL");
-#endif
     }
 }
 
@@ -327,7 +326,7 @@ App::~App()
     engine_.reset(NULL);
     if (log_.get()) {
         info("log finished");
-        Yb::LogAppender *appender = dynamic_cast<Yb::LogAppender *> (
+        FileLogAppender *appender = dynamic_cast<FileLogAppender *> (
                 appender_.get());
         if (appender)
             appender->flush();
