@@ -94,7 +94,7 @@ TEST_CASE( "Testing BASE64 coding", "[base64]" ) {
         {"ABC",   "QUJD"},
         {"ABCD",  "QUJDRA=="},
     };
-    
+
     SECTION( "testing encoding" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
@@ -162,7 +162,7 @@ TEST_CASE( "Testing BCD coding", "[bcd]" ) {
             "12 34 56 78 90 12 34 56 12 34 56 78 90 12 34 5F"},
     };
 
-    SECTION( "testing encoding" ) { 
+    SECTION( "testing encoding" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string encode_bcd = bcd_encode(p.first);
@@ -178,7 +178,7 @@ TEST_CASE( "Testing BCD coding", "[bcd]" ) {
         }
     }
 
-    SECTION( "testing decoding" ) { 
+    SECTION( "testing decoding" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string code;
@@ -242,7 +242,7 @@ TEST_CASE( "Testing PKCS7 coding", "[pkcs7]" ) {
             "abcdefghijklmnopabcdefghijklmno\x01"},
     };
 
-    SECTION( "testing encoding" ) { 
+    SECTION( "testing encoding" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string encode_pkcs7 = pkcs7_encode(p.first);
@@ -250,7 +250,7 @@ TEST_CASE( "Testing PKCS7 coding", "[pkcs7]" ) {
         }
     }
 
-    SECTION( "testing decoding" ) { 
+    SECTION( "testing decoding" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
             std::string decode_pkcs7 = pkcs7_decode(p.second);
@@ -288,8 +288,8 @@ TEST_CASE( "Testing AES coding", "[aes]") {
             "08 7F B2 43 85 52 94 E2 00 2D B9 59 B4 D8 95 27 "
             "B3 0A 93 0E C3 7E B0 7A 79 26 F7 82 5C D8 80 9F";
     /*
-    openssl enc -aes-256-cbc -in plain.txt -out encrypted.bin -nosalt \ 
-      -K 3132333435363738393031323334353637383930313233343536373839303132 \ 
+    openssl enc -aes-256-cbc -in plain.txt -out encrypted.bin -nosalt \
+      -K 3132333435363738393031323334353637383930313233343536373839303132 \
       -iv 00000000000000000000000000000000
     */
 
@@ -349,7 +349,7 @@ TEST_CASE( "Testing AES random coding", "[aes]") {
         cases.push_back(generate_random_string(16 * (rand() % 5 + 1)));
     }
 
-    SECTION( "testing encode/decode" ) { 
+    SECTION( "testing encode/decode" ) {
         AESCrypter aes_crypter(key, AES_CRYPTER_ECB);
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
@@ -359,7 +359,7 @@ TEST_CASE( "Testing AES random coding", "[aes]") {
         }
     }
 
-    SECTION( "testing encode/decode with CBC" ) { 
+    SECTION( "testing encode/decode with CBC" ) {
         AESCrypter aes_crypter(key, AES_CRYPTER_CBC);
         for (auto i = cases.begin(); i != cases.end(); ++i) {
             const auto &p = *i;
@@ -399,7 +399,7 @@ TEST_CASE( "Testing full coding", "[full][base64][aes][bcd]") {
             std::string encode_b64 =    encode_base64(encode_aes);
             std::string decode_b64 =    decode_base64(encode_b64);
             std::string decode_aes =    aes_crypter.decrypt(decode_b64);
-            std::string decode_bindec = bcd_decode(decode_aes); 
+            std::string decode_bindec = bcd_decode(decode_aes);
             CHECK(p == decode_bindec);
         }
     }
@@ -421,7 +421,7 @@ TEST_CASE( "Testing full coding with PKCS7 and CBC mode", "[full][base64][aes][p
             std::string encode_b64 =    encode_base64(encode_aes);
             std::string decode_b64 =    decode_base64(encode_b64);
             std::string decode_aes =    aes_crypter.decrypt(decode_b64);
-            std::string decode_pkcs7 =  pkcs7_decode(decode_aes); 
+            std::string decode_pkcs7 =  pkcs7_decode(decode_aes);
             CHECK( p == decode_pkcs7 );
         }
     }
@@ -480,6 +480,30 @@ TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
         CHECK("556677****3344,445566****3344"
                 == filter_log_msg("5566778811223344,4455667711223344"));
     }
+    SECTION( "testing Short PAN filtering" ) {
+        CHECK("45561111222" == filter_log_msg("45561111222"));
+        CHECK("355611112222" == filter_log_msg("355611112222"));
+        CHECK("45****2222" == filter_log_msg("455611112222"));
+        CHECK("45****2223" == filter_log_msg("4556111122223"));
+        CHECK("45****2233" == filter_log_msg("45561111222233"));
+        CHECK("45****2333" == filter_log_msg("455611112222333"));
+    }
+    SECTION( "testing Token filtering" ) {
+        CHECK("65e84be33532fb784c48129675f9eff" == filter_log_msg(
+                    "65e84be33532fb784c48129675f9eff"));
+        CHECK("65e84be33532fb784c48129675f9effab" == filter_log_msg(
+                    "65e84be33532fb784c48129675f9effab"));
+        CHECK("65e8xxxx37c5" == filter_log_msg(
+                    "65e84be368c0ea744b2cf58ee02337c5"));
+        CHECK("65E8xxxx37C5" == filter_log_msg(
+                    "65E84BE368C0EA744B2CF58EE02337C5"));
+        CHECK(",65E8xxxx37C5" == filter_log_msg(
+                    ",65E84BE368C0EA744B2CF58EE02337C5"));
+        CHECK("65E8xxxx37C5," == filter_log_msg(
+                    "65E84BE368C0EA744B2CF58EE02337C5,"));
+        CHECK("65E8xxxx37C5,8588xxxx81cd" == filter_log_msg(
+                    "65E84BE368C0EA744B2CF58EE02337C5,8588310792bdcd0c8f334867c54581cd"));
+    }
     SECTION( "testing Key filtering" ) {
         CHECK("65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c50" == filter_log_msg(
                     "65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c50"));
@@ -496,7 +520,16 @@ TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
         CHECK("65E84BE3....E02337C5,8588310a....c54581cd" == filter_log_msg(
                     "65E84BE33532FB784C48129675F9EFF3A682B27168C0EA744B2CF58EE02337C5,8588310a98676af6e22563c1559e1ae20f85950792bdcd0c8f334867c54581cd"));
     }
-    SECTION( "CVN filtering" ) {
+    SECTION( "HMAC Key filtering" ) {
+        CHECK("VRms????Y1s=" == filter_log_msg("VRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s="));
+        CHECK("azazaVRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s="
+                == filter_log_msg("azazaVRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s="));
+        CHECK("VRms????Y1s=,VRms????Y1s="
+                == filter_log_msg("VRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s=,VRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s="));
+        CHECK("\"VRms????Y1s=YYY\""
+                == filter_log_msg("\"VRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s=YYY\""));
+    }
+    SECTION( "PAN filtering" ) {
         CHECK( "'cvn':\"***\",  'cvv2': '2345', \"CVV\":\"***\", 'cVc2': \"***\"" ==
                 filter_log_msg("'cvn':'123',  'cvv2': '2345', \"CVV\":'324', 'cVc2': '345'") );
         CHECK( "cvn=***&cvv2=2345&CVV=***&cVc2=***" ==

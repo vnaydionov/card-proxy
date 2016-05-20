@@ -18,7 +18,8 @@ const std::string escape_nl(const std::string &msg)
     for (; i != iend; ++i) {
         if (!(*i >= '\040' && *i <= '\176')) {
             // not a printable character
-            sprintf(buf, "#%03o", (*i & 0xff));
+            snprintf(buf, sizeof(buf), "#%03o", (*i & 0xff));
+            buf[sizeof(buf) - 1] = 0;
             result += buf;
         }
         else
@@ -29,68 +30,72 @@ const std::string escape_nl(const std::string &msg)
 
 const std::string filter_log_msg(const std::string &msg)
 {
-    static const boost::regex *cn_re = NULL;
-    if (!cn_re)
-        cn_re = new boost::regex("([^\\d])([45]\\d{5})(\\d{6,9})(\\d{4})([^\\d])");
-    static const std::string *obf_fmt = NULL;
-    if (!obf_fmt)
-        obf_fmt = new std::string("\\1\\2****\\4\\5");
+    std::string fixed_msg = msg;
+
+    // cards 16-19
+    static const boost::regex *card_re = NULL;
+    if (!card_re)
+        card_re = new boost::regex(
+                "(?:(?<=[^\\d])|^)([45]\\d{5})(\\d{6,9})(\\d{4})(?=[^\\d]|$)");
+    std::string card_re_sub = "\\1****\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *card_re, card_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // cards 12-15
+    static const boost::regex *short_card_re = NULL;
+    if (!short_card_re)
+        short_card_re = new boost::regex(
+                "(?:(?<=[^\\d])|^)([45]\\d{1})(\\d{6,9})(\\d{4})(?=[^\\d]|$)");
+    std::string short_card_re_sub = "\\1****\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *short_card_re, short_card_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // parts of master key
     static const boost::regex *key_re = NULL;
     if (!key_re)
         key_re = new boost::regex(
-            "([^0-9a-fA-F])([0-9a-fA-F]{8})([0-9a-fA-F]{48})([0-9a-fA-F]{8})([^0-9a-fA-F])");
-    static const std::string *obfk_fmt = NULL;
-    if (!obfk_fmt)
-        obfk_fmt = new std::string("\\1\\2....\\4\\5");
+                "(?:(?<=[^0-9a-fA-F])|^)([0-9a-fA-F]{8})([0-9a-fA-F]{48})([0-9a-fA-F]{8})(?=[^0-9a-fA-F]|$)");
+    std::string key_re_sub = "\\1....\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *key_re, key_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // search tokens
+    static const boost::regex *token_re = NULL;
+    if (!token_re)
+        token_re = new boost::regex(
+                "(?:(?<=[^0-9a-fA-F])|^)([a-fA-F0-9]{4})([a-fA-F0-9]{24})([a-fA-F0-9]{4})(?=[^0-9a-fA-F]|$)");
+    std::string token_re_sub = "\\1xxxx\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *token_re, token_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // hmacs
+    static const boost::regex *hmac_re = NULL;
+    if (!hmac_re)
+        hmac_re = new boost::regex(
+                "(?:(?<=[^a-zA-Z0-9+/])|^)([a-zA-Z0-9+/]{4})([a-zA-Z0-9+/]{36})([a-zA-Z0-9+/]{3}=)");
+    std::string hmac_re_sub = "\\1????\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *hmac_re, hmac_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // cvn json
     static const boost::regex *cvn_json_re = NULL;
     if (!cvn_json_re)
         cvn_json_re = new boost::regex(
-            "([\'\"][cC][vV][cCvVnN]2?[\'\"]):( *)([\'\"]\\d{3}[\'\"])");
-    static const std::string *cvn_json_fmt = NULL;
-    if (!cvn_json_fmt)
-        cvn_json_fmt = new std::string("\\1:\\2\"***\"");
+                "([\'\"][cC][vV][cCvVnN]2?[\'\"]):( *)([\'\"]\\d{3}[\'\"])");
+    std::string cvn_json_re_sub("\\1:\\2\"***\"");
+    fixed_msg = boost::regex_replace(fixed_msg, *cvn_json_re, cvn_json_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // cvn form-encoded
     static const boost::regex *cvn_url_re = NULL;
     if (!cvn_url_re)
         cvn_url_re = new boost::regex(
-            "([cC][vV][cCvVnN]2?)=(\\d{3})(?=[^\\d]|$)");
-    static const std::string *cvn_url_fmt = NULL;
-    if (!cvn_url_fmt)
-        cvn_url_fmt = new std::string("\\1=***");
+                "([cC][vV][cCvVnN]2?)=(\\d{3})(?=[^\\d]|$)");
+    std::string cvn_url_re_sub("\\1=***");
+    fixed_msg = boost::regex_replace(fixed_msg, *cvn_url_re, cvn_url_re_sub,
+            boost::match_default | boost::format_perl);
 
-    std::string fixed_msg = " " + msg + " ";
-    while (true) {
-        const std::string orig_msg = fixed_msg;
-        fixed_msg = boost::regex_replace(
-                fixed_msg, *cn_re, *obf_fmt,
-                boost::match_default | boost::format_perl);
-        if (fixed_msg == orig_msg)
-            break;
-    }
-    while (true) {
-        const std::string orig_msg = fixed_msg;
-        fixed_msg = boost::regex_replace(
-                fixed_msg, *key_re, *obfk_fmt,
-                boost::match_default | boost::format_perl);
-        if (fixed_msg == orig_msg)
-            break;
-    }
-    while (true) {
-        const std::string orig_msg = fixed_msg;
-        fixed_msg = boost::regex_replace(
-                fixed_msg, *cvn_json_re, *cvn_json_fmt,
-                boost::match_default | boost::format_perl);
-        if (fixed_msg == orig_msg)
-            break;
-    }
-    while (true) {
-        const std::string orig_msg = fixed_msg;
-        fixed_msg = boost::regex_replace(
-                fixed_msg, *cvn_url_re, *cvn_url_fmt,
-                boost::match_default | boost::format_perl);
-        if (fixed_msg == orig_msg)
-            break;
-    }
-    return fixed_msg.substr(1, fixed_msg.size() - 2);
+    return fixed_msg;
 }
 
 using namespace std;
