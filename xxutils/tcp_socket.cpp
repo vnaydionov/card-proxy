@@ -125,9 +125,8 @@ TcpSocket::accept(string *ip_addr, int *port)
     if (ip_addr) {
         unsigned ip = ntohl(addr.sin_addr.s_addr);
         char buf[100];
-        snprintf(buf, sizeof(buf), "%d.%d.%d.%d",
-                 ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255);
-        buf[sizeof(buf) - 1] = 0;
+        sprintf(buf, "%d.%d.%d.%d",
+                ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255);
         *ip_addr = string(buf);
     }
     return s2;
