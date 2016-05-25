@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <stdexcept>
+#include <boost/regex.hpp>
 #include <util/nlogger.h>
 #include <util/element_tree.h>
 #include "conf_reader.h"
@@ -49,6 +50,10 @@ class KeyKeeper
 
     typedef std::pair<std::string, Storage> PeerData;
 
+    static const std::string &get_checked_param(
+            const Yb::StringDict &params,
+            const std::string &name,
+            const boost::regex *format_re = NULL);
     static const std::string format_ts(double ts);
     PeerData call_peer(const std::string &peer_uri,
             const std::string &method,
@@ -57,10 +62,11 @@ class KeyKeeper
             bool parse_items = true);
     PeerData read_peer(const std::string &peer_uri);
     void apply_update(const PeerData &peer_data);
-    void push_to_peers();
+    void push_to_peers(const Storage &snapshot);
     void fetch_data();
     void update_data_if_needed();
     const std::vector<int> find_id_versions(const Yb::StringDict &params);
+    const Storage do_write(const Yb::StringDict &params, bool update);
 
 public:
     KeyKeeper(IConfig &cfg, Yb::ILogger &log);

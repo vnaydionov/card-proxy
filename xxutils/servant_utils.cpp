@@ -192,7 +192,8 @@ const HttpResponse XmlHttpWrapper::operator() (const HttpRequest &request)
         return response;
     }
     catch (const ApiResult &ex) {
-        t.set_ok();
+        if (ex.http_code() == 200)
+            t.set_ok();
         HttpResponse response(HTTP_1_0, ex.http_code(), ex.http_desc());
         response.set_response_body(dump_result(ex.result()), cont_type);
         return response;

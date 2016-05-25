@@ -37,9 +37,9 @@ public:
     ~TimerGuard();
 };
 
+
 Yb::ElementTree::ElementPtr mk_resp(const Yb::String &status,
         const Yb::String &status_code = _T(""));
-
 
 class ApiResult: public std::runtime_error
 {
@@ -59,6 +59,22 @@ public:
     int http_code() const { return http_code_; }
     const std::string &http_desc() const { return http_desc_; }
 };
+
+class InvalidParam: public ApiResult
+{
+    std::string param_;
+public:
+    explicit InvalidParam(const std::string &param)
+        : ApiResult(mk_resp("error", "invalid_param"),
+                    400, "Invalid parameter")
+        , param_(param)
+    {}
+    virtual ~InvalidParam() throw () {}
+    const std::string &param() const { return param_; }
+};
+
+#define ASSERT_PARAM(cond, param) \
+    do { if (!(cond)) throw InvalidParam(param); } while(0)
 
 
 typedef const HttpResponse (*PlainHttpHandler)(

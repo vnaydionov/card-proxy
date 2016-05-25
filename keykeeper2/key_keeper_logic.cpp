@@ -3,7 +3,6 @@
 #include "utils.h"
 #include "app_class.h"
 #include "servant_utils.h"
-#include <boost/regex.hpp>
 
 #include <util/util_config.h>
 #if defined(YBUTIL_WINDOWS)
@@ -43,6 +42,19 @@ Yb::LongInt _get_random()
 double get_time()
 {
     return Yb::get_cur_time_millisec()/1000.;
+}
+
+const std::string &KeyKeeper::get_checked_param(
+        const Yb::StringDict &params,
+        const std::string &name,
+        const boost::regex *format_re)
+{
+    auto j = params.find(name);
+    ASSERT_PARAM(j != params.end(), name);
+    const auto &value = j->second;
+    if (format_re)
+        ASSERT_PARAM(regex_match(value, *format_re, boost::format_perl), name);
+    return value;
 }
 
 const std::string KeyKeeper::format_ts(double ts)
@@ -121,19 +133,17 @@ void KeyKeeper::apply_update(const KeyKeeper::PeerData &peer_data)
     }
 }
 
-void KeyKeeper::push_to_peers()
+void KeyKeeper::push_to_peers(const KeyKeeper::Storage &snapshot)
 {
     std::vector<std::string> peer_uris;
-    Storage storage;
     {
         Yb::ScopedLock lock(mutex_);
         peer_uris = peer_uris_;
-        storage = storage_;
     }
     // craft params
     HttpParams params;
     int c = 0;
-    for (auto i = storage.begin(), iend = storage.end();
+    for (auto i = snapshot.begin(), iend = snapshot.end();
             i != iend; ++i, ++c)
     {
         const auto &id = i->first;
@@ -280,95 +290,76 @@ Yb::ElementTree::ElementPtr KeyKeeper::get()
     return read();
 }
 
+const KeyKeeper::Storage KeyKeeper::do_write(const Yb::StringDict &params, bool update)
+{
+    Storage snapshot;
+    {
+        Yb::ScopedLock lock(mutex_);
+        if (update)
+            snapshot = storage_;
+        const std::vector<int> id_versions = find_id_versions(params);
+        auto i = id_versions.begin(), iend = id_versions.end();
+        for (; i != iend; ++i) {
+            std::string suffix;
+            if (*i >= 0)
+                suffix = "_" + Yb::to_string(*i);
+            const auto &id = get_checked_param(
+                    params, "id" + suffix, &id_fmt);
+            const auto &data = get_checked_param(
+                    params, "data" + suffix, &data_fmt);
+            double create_ts = boost::lexical_cast<double>(
+                    get_checked_param(params, "create_ts" + suffix));
+            snapshot[id] = Info(data, create_ts);
+        }
+        storage_ = snapshot;
+    }
+    return snapshot;
+}
+
 Yb::ElementTree::ElementPtr KeyKeeper::write(const Yb::StringDict &params, bool update)
 {
-    Storage storage;
-    if (update)
-    {
-        Yb::ScopedLock lock(mutex_);
-        storage = storage_;
-    }
-    const std::vector<int> id_versions = find_id_versions(params);
-    auto i = id_versions.begin(), iend = id_versions.end();
-    for (; i != iend; ++i) {
-        std::string suffix;
-        if (*i >= 0)
-            suffix = "_" + Yb::to_string(*i);
-
-        auto j = params.find("id" + suffix);
-        YB_ASSERT(j != params.end());
-        const auto &id = j->second;
-        YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
-
-        j = params.find("data" + suffix);
-        YB_ASSERT(j != params.end());
-        const auto &data = j->second;
-        YB_ASSERT(regex_match(data, data_fmt, boost::format_perl));
-
-        j = params.find("create_ts" + suffix);
-        YB_ASSERT(j != params.end());
-        double create_ts = boost::lexical_cast<double>(j->second);
-
-        storage[id] = Info(data, create_ts);
-    }
-    {
-        Yb::ScopedLock lock(mutex_);
-        std::swap(storage, storage_);
-    }
+    do_write(params, update);
     return mk_resp();
 }
 
-
 Yb::ElementTree::ElementPtr KeyKeeper::set(const Yb::StringDict &params)
 {
-    auto j = params.find("id");
-    YB_ASSERT(j != params.end());
-    const auto &id = j->second;
-    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
-
-    j = params.find("data");
-    YB_ASSERT(j != params.end());
-    const auto &data = j->second;
-    YB_ASSERT(regex_match(data, data_fmt, boost::format_perl));
-
+    const auto &id = get_checked_param(params, "id", &id_fmt);
+    const auto &data = get_checked_param(params, "data", &data_fmt);
     Yb::StringDict fixed_params = params;
     fixed_params["create_ts"] = format_ts(get_time());
-    write(fixed_params, true);
-    push_to_peers();
+    Storage snapshot = do_write(fixed_params, true);
+    push_to_peers(snapshot);
     return mk_resp();
 }
 
 Yb::ElementTree::ElementPtr KeyKeeper::unset(const Yb::StringDict &params)
 {
-    auto j = params.find("id");
-    YB_ASSERT(j != params.end());
-    const auto &id = j->second;
-    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
-
-    YB_ASSERT(storage_.find(id) != storage_.end());
+    const auto &id = get_checked_param(params, "id", &id_fmt);
+    Storage snapshot;
     {
         Yb::ScopedLock lock(mutex_);
-        storage_.erase(storage_.find(id));
+        auto j = storage_.find(id);
+        ASSERT_PARAM(j != storage_.end(), "id");
+        storage_.erase(j);
+        snapshot = storage_;
     }
-    push_to_peers();
+    push_to_peers(snapshot);
     return mk_resp();
 }
 
 Yb::ElementTree::ElementPtr KeyKeeper::cleanup(const Yb::StringDict &params)
 {
-    auto j = params.find("id");
-    YB_ASSERT(j != params.end());
-    const auto &id = j->second;
-    YB_ASSERT(regex_match(id, id_fmt, boost::format_perl));
-
-    YB_ASSERT(storage_.find(id) != storage_.end());
+    const auto &id = get_checked_param(params, "id", &id_fmt);
+    Storage snapshot;
     {
         Yb::ScopedLock lock(mutex_);
-        Storage new_storage;
-        new_storage[id] = storage_[id];
-        std::swap(new_storage, storage_);
+        auto j = storage_.find(id);
+        ASSERT_PARAM(j != storage_.end(), "id");
+        snapshot[id] = j->second;
+        storage_ = snapshot;
     }
-    push_to_peers();
+    push_to_peers(snapshot);
     return mk_resp();
 }
 

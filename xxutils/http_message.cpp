@@ -125,7 +125,8 @@ HttpRequest::url_encode(const std::string &s, bool path_mode)
     for (size_t i = 0; i < s.size(); ++i) {
         unsigned char c = s[i];
         if (c <= 32 || c >= 127 || strchr(replace, c)) {
-            sprintf(buf, "%%%02X", c);
+            snprintf(buf, sizeof(buf), "%%%02X", c);
+            buf[sizeof(buf) - 1] = 0;
             result += WIDEN(buf);
         }
         else

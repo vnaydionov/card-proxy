@@ -250,8 +250,9 @@ void TokenizerConfig::assemble_master_keys(
                 id.size() - prefix.size() - suffix.size());
         try {
             logger.debug("assembling master key ver" + ver_str);
-            const auto &kek3_hex = i->second;
             int ver = boost::lexical_cast<int>(ver_str);
+            mk_valid[ver] = false;
+            const auto &kek3_hex = i->second;
             const auto &kek1_hex = kk_api.get_key_by_version(ver);
             auto j = xml_params.find(prefix + ver_str + "_PART2");
             if (xml_params.end() == j)
