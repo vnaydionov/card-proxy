@@ -12,13 +12,18 @@ public:
     HttpServerBase(const std::string &ip_addr, int port, int back_log,
             Yb::ILogger *root_logger,
             const Yb::String &content_type, const std::string &bad_resp);
+    void bind();
     void serve();
+    bool is_bound() const { return is_bound_; }
+    bool is_serving() const { return is_serving_; }
 
 protected:
     virtual bool has_handler_for_path(const Yb::String &path) = 0;
     virtual const HttpResponse call_handler(const HttpRequest &request) = 0;
 
 private:
+    bool is_bound_;
+    bool is_serving_;
     std::string ip_addr_;
     int port_;
     int back_log_;
@@ -33,7 +38,7 @@ private:
     static HttpResponse make_response(int code, const Yb::String &desc,
                                       const std::string &body,
                                       const Yb::String &cont_type);
-    static bool send_response(TcpSocket &cl_sock, Yb::ILogger &logger,
+    static bool send_response(TcpSocket &cl_sock, Yb::ILogger *logger,
                               const HttpResponse &response);
     // non-copyable
     HttpServerBase(const HttpServerBase &);

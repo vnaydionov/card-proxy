@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <util/string_utils.h>
 #include "stack_trace.h"
 #include "utils.h"
@@ -257,6 +258,40 @@ const std::string fmt_string_escape(const std::string &s)
         r += s[pos];
     }
     return r;
+}
+
+const std::string replace_str(const std::string &str,
+                              const std::string &search,
+                              const std::string &replace)
+{
+    if (!search.size())
+        return str;
+    size_t pos = 0;
+    size_t next_pos = str.find(search, pos);
+    if (std::string::npos == next_pos)
+        return str;
+    std::string result;
+    do {
+        result.append(str, pos, next_pos - pos);
+        result.append(replace);
+        pos = next_pos + search.size();
+        next_pos = str.find(search, pos);
+    } while (next_pos != std::string::npos);
+    result.append(str, pos, str.size() - pos);
+    return result;
+}
+
+const std::string get_utc_iso_ts()
+{
+    boost::posix_time::ptime ts =
+        boost::posix_time::second_clock::universal_time();
+
+    std::auto_ptr<boost::posix_time::time_facet> facet(
+            new boost::posix_time::time_facet("%Y-%m-%d %H:%M:%S"));
+    std::ostringstream out;
+    out.imbue(std::locale(out.getloc(), facet.release()));
+    out << ts;
+    return out.str();
 }
 
 // vim:ts=4:sts=4:sw=4:et:

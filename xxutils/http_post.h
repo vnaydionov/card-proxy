@@ -7,6 +7,9 @@
 #include <stdexcept>
 #include <util/nlogger.h>
 #include "http_message.h"
+#include "servant_utils.h"
+
+#define HTTP_POST_NO_LOGGER ((Yb::ILogger *)-1)
 
 class HttpClientError: public std::runtime_error
 {
@@ -32,7 +35,9 @@ const HttpResponse http_post(const std::string &uri,
     const std::string &body = "",
     bool ssl_validate = true,
     const std::string &client_cer = "",
-    const std::string &client_key = "");
+    const std::string &client_key = "",
+    bool dump_headers = false,
+    const FiltersMap &filters = FiltersMap());
 
 #endif // CARD_PROXY__HTTP_POST_H
 // vim:ts=4:sts=4:sw=4:et:

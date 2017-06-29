@@ -4,6 +4,7 @@
 #include <util/data_types.h>
 
 enum {
+    HTTP_X = 0,
     HTTP_1_0 = 10,
     HTTP_1_1 = 11,
 };
@@ -120,7 +121,7 @@ public:
 
     static void parse_header_line(const Yb::String &line,
             Yb::String &header_name, Yb::String &header_value);
-private:
+protected:
     int proto_ver_;  // HTTP_1_0 HTTP_1_1 ..
     Yb::StringDict headers_;
     std::string body_;
@@ -172,6 +173,12 @@ public:
     void set_response_body(const std::string &body,
                            const Yb::String &content_type,
                            bool set_content_length=true);
+
+    static const std::pair<int, Yb::String>
+        parse_status(const Yb::String &line);
+
+    void put_header_line(const std::string &line);
+    void put_body_piece(const std::string &line);
 
     int resp_code() const { return resp_code_; }
 

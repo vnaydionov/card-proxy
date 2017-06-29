@@ -113,6 +113,17 @@ AESBlockSizeException::AESBlockSizeException(int expected_size, const std::strin
     : RunTimeError(msg + ": " + Yb::to_string(expected_size))
 {}
 
+const std::string sha1_digest(const std::string &s)
+{
+    std::string out;
+    out.resize(SHA_DIGEST_LENGTH);
+    SHA_CTX ctx;
+    SHA1_Init(&ctx);
+    SHA1_Update(&ctx, s.data(), s.size());
+    SHA1_Final((unsigned char *)&out[0], &ctx);
+    return out;
+}
+
 const std::string sha256_digest(const std::string &s)
 {
     std::string out;

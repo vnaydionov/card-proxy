@@ -32,24 +32,6 @@ const std::string filter_log_msg(const std::string &msg)
 {
     std::string fixed_msg = msg;
 
-    // cards 16-19
-    static const boost::regex *card_re = NULL;
-    if (!card_re)
-        card_re = new boost::regex(
-                "(?:(?<=[^\\d])|^)([45]\\d{5})(\\d{6,9})(\\d{4})(?=[^\\d]|$)");
-    std::string card_re_sub = "\\1****\\3";
-    fixed_msg = boost::regex_replace(fixed_msg, *card_re, card_re_sub,
-            boost::match_default | boost::format_perl);
-
-    // cards 12-15
-    static const boost::regex *short_card_re = NULL;
-    if (!short_card_re)
-        short_card_re = new boost::regex(
-                "(?:(?<=[^\\d])|^)([45]\\d{1})(\\d{6,9})(\\d{4})(?=[^\\d]|$)");
-    std::string short_card_re_sub = "\\1****\\3";
-    fixed_msg = boost::regex_replace(fixed_msg, *short_card_re, short_card_re_sub,
-            boost::match_default | boost::format_perl);
-
     // parts of master key
     static const boost::regex *key_re = NULL;
     if (!key_re)
@@ -77,12 +59,38 @@ const std::string filter_log_msg(const std::string &msg)
     fixed_msg = boost::regex_replace(fixed_msg, *hmac_re, hmac_re_sub,
             boost::match_default | boost::format_perl);
 
+    const std::string pan_char_re_str = "(?:[0-9][^:a-tv-zA-TV-Z0-9]{0,5})";
+
+    // cards 16-19
+    static const boost::regex *card_re = NULL;
+    if (!card_re)
+        card_re = new boost::regex(
+                replace_str(
+                    "(?:(?<=[^\\d])|^)(PCHAR{6})(PCHAR{6,9})(PCHAR{4})(?=[^\\d]|$)",
+                    "PCHAR", pan_char_re_str
+                ));
+    const std::string card_re_sub = "\\1XXXX\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *card_re, card_re_sub,
+            boost::match_default | boost::format_perl);
+
+    // cards 12-15
+    static const boost::regex *short_card_re = NULL;
+    if (!short_card_re)
+        short_card_re = new boost::regex(
+                replace_str(
+                    "(?:(?<=[^\\d])|^)(PCHAR{2})(PCHAR{6,9})(PCHAR{4})(?=[^\\d]|$)",
+                    "PCHAR", pan_char_re_str
+                ));
+    const std::string short_card_re_sub = "\\1XXXX\\3";
+    fixed_msg = boost::regex_replace(fixed_msg, *short_card_re, short_card_re_sub,
+            boost::match_default | boost::format_perl);
+
     // cvn json
     static const boost::regex *cvn_json_re = NULL;
     if (!cvn_json_re)
         cvn_json_re = new boost::regex(
                 "([\'\"][cC][vV][cCvVnN]2?[\'\"]):( *)([\'\"]\\d{3}[\'\"])");
-    std::string cvn_json_re_sub("\\1:\\2\"***\"");
+    std::string cvn_json_re_sub("\\1:\\2\"XXX\"");
     fixed_msg = boost::regex_replace(fixed_msg, *cvn_json_re, cvn_json_re_sub,
             boost::match_default | boost::format_perl);
 
@@ -91,7 +99,7 @@ const std::string filter_log_msg(const std::string &msg)
     if (!cvn_url_re)
         cvn_url_re = new boost::regex(
                 "([cC][vV][cCvVnN]2?)=(\\d{3})(?=[^\\d]|$)");
-    std::string cvn_url_re_sub("\\1=***");
+    std::string cvn_url_re_sub("\\1=XXX");
     fixed_msg = boost::regex_replace(fixed_msg, *cvn_url_re, cvn_url_re_sub,
             boost::match_default | boost::format_perl);
 

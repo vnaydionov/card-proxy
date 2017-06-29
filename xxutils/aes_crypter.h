@@ -32,6 +32,7 @@ public:
     AESBlockSizeException(int expected_size, const std::string &msg);
 };
 
+const std::string sha1_digest(const std::string &s);
 const std::string sha256_digest(const std::string &s);
 std::string &xor_buffer(std::string &buf, const std::string &second);
 const std::string hmac_sha256_digest(const std::string &hk, const std::string &s);

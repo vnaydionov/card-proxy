@@ -33,6 +33,11 @@ class JsonObject
     mutable bool owns_;
 
 public:
+    JsonObject()
+        : jobj_(NULL)
+        , owns_(false)
+    {}
+
     explicit JsonObject(json_object *jobj, bool owns)
         : jobj_(jobj)
         , owns_(owns)
@@ -96,6 +101,12 @@ public:
     const std::string serialize()
     {
         return std::string(json_object_to_json_string(jobj_));
+    }
+
+    bool has_field(const std::string &name)
+    {
+        json_object *field_jobj = json_object_object_get(jobj_, name.c_str());
+        return field_jobj != NULL;
     }
 
     JsonObject get_field(const std::string &name)
@@ -183,6 +194,20 @@ public:
     void delete_field(const std::string &name)
     {
         json_object_object_del(jobj_, name.c_str());
+    }
+
+    const std::string pop_str_field(const std::string &name)
+    {
+        const std::string result = get_str_field(name);
+        delete_field(name);
+        return result;
+    }
+
+    const std::string pop_typed_field(const std::string &name)
+    {
+        const std::string result = get_typed_field(name);
+        delete_field(name);
+        return result;
     }
 };
 

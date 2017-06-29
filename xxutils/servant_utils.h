@@ -18,7 +18,11 @@ double datetime_diff(const Yb::DateTime &a, const Yb::DateTime &b);
 const std::string uri_decode(const std::string &s);
 const std::string serialize_params(const Yb::StringDict &params);
 
-const std::string dict2str(const Yb::StringDict &params);
+typedef const std::string (* FilterFunc)(const std::string &value);
+typedef std::map<std::string, FilterFunc> FiltersMap;
+const std::string mute_param(const std::string &value);
+const std::string dict2str(const Yb::StringDict &params,
+                           const FiltersMap &filters = FiltersMap());
 
 class TimerGuard
 {
@@ -115,6 +119,7 @@ public:
     const Yb::String &prefix() const { return prefix_; }
 
     const HttpResponse operator() (const HttpRequest &request);
+    bool is_plain() const { return g_ != NULL; }
 };
 
 #define WRAP(prefix, func) XmlHttpWrapper(_T(#func), func, prefix)

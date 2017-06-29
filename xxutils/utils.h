@@ -32,6 +32,10 @@ std::string generate_random_hex_string(size_t length);
 const std::string read_file(const std::string &file_name);
 const std::string get_process_name();
 const std::string fmt_string_escape(const std::string &s);
+const std::string replace_str(const std::string &str,
+                              const std::string &search,
+                              const std::string &replace);
+const std::string get_utc_iso_ts();
 
 #endif // CARD_PROXY__UTILS_H
 // vim:ts=4:sts=4:sw=4:et:

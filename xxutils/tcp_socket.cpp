@@ -8,6 +8,15 @@
 using namespace std;
 
 void
+sleep_msec(int msec)
+{
+    struct timeval t;
+    t.tv_sec = msec / 1000;
+    t.tv_usec = (msec % 1000) * 1000;
+    ::select(0, NULL, NULL, NULL, &t);
+}
+
+void
 TcpSocket::init_socket_lib()
 {
 #ifdef YBUTIL_WINDOWS

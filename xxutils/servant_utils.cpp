@@ -52,17 +52,29 @@ const std::string serialize_params(const Yb::StringDict &params)
     return HttpRequest::serialize_params(params);
 }
 
-const std::string dict2str(const Yb::StringDict &params)
+const std::string mute_param(const std::string &value)
+{
+    return std::string(value.size(), '*');
+}
+
+const std::string dict2str(const Yb::StringDict &params,
+                           const FiltersMap &filters)
 {
     using Yb::StrUtils::dquote;
     using Yb::StrUtils::c_string_escape;
+    using Yb::StrUtils::str_to_lower;
     std::ostringstream out;
     out << "{";
     Yb::StringDict::const_iterator it = params.begin(), end = params.end();
     for (bool first = true; it != end; ++it, first = false) {
         if (!first)
             out << ", ";
-        out << NARROW(it->first) << ": " << NARROW(dquote(c_string_escape(it->second)));
+        std::string key = str_to_lower(it->first);
+        std::string value = it->second;
+        auto f = filters.find(key);
+        if (f != filters.end())
+            value = f->second(value);
+        out << NARROW(key) << ": " << NARROW(dquote(c_string_escape(value)));
     }
     out << "}";
     return out.str();
@@ -115,11 +127,11 @@ const HttpResponse XmlHttpWrapper::try_call(TimerGuard &t,
 {
     logger_->info("Method " + NARROW(name_) +
                   std::string(n? " re": " ") + "started.");
-    if (f_)
+    if (!is_plain())
     {
         const Yb::StringDict &params = request.params();
         logger_->debug("Method " + NARROW(name_) +
-                       ": params: " + dict2str(params));
+                       ": params: " + NARROW(dict2str(params)));
         // call xml wrapped
         std::auto_ptr<Yb::Session> session;
         if (theApp::instance().uses_db())
@@ -177,6 +189,12 @@ const HttpResponse XmlHttpWrapper::operator() (const HttpRequest &request)
     TimerGuard t(*logger_, NARROW(name_));
     try {
         check_auth(request);
+
+        // do not restart plain methods
+        if (is_plain())
+            return try_call(t, request, 0);
+
+        // try to restart XML methods in case of DB error
         try {
             return try_call(t, request, 0);
         }
