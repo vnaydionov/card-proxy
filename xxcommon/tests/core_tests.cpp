@@ -3,6 +3,7 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <util/string_utils.h>
 
 #include "catch.hpp"
 
@@ -429,9 +430,9 @@ TEST_CASE( "Testing full coding with PKCS7 and CBC mode", "[full][base64][aes][p
 
 TEST_CASE( "Testing PAN masking", "[full][mask]" ) {
     std::vector<std::pair<std::string, std::string>> cases{
-        {"1234567890123456", "123456******3456"},
-        {"12345678901234", "123456****1234"},
-        {"123456789012345678", "123456********5678"},
+        {"1234567890123456", "123456****3456"},
+        {"123456789012", "12****9012"},
+        {"1234567890123456789", "123456****6789"},
     };
     SECTION( "testing masks" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
@@ -441,8 +442,8 @@ TEST_CASE( "Testing PAN masking", "[full][mask]" ) {
     }
     SECTION( "trying to mask PAN of invalid length" ) {
         CHECK_THROWS( mask_pan("") );
-        CHECK_THROWS( mask_pan("123456789012") );
-        CHECK_THROWS( mask_pan("12345678901234567890123") );
+        CHECK_THROWS( mask_pan("12345678901") );
+        CHECK_THROWS( mask_pan("12345678901234567890") );
     }
 }
 
@@ -450,7 +451,7 @@ TEST_CASE( "Testing PAN normalization", "[full][normalize]" ) {
     std::vector<std::pair<std::string, std::string>> cases{
         {"  1234 5678 9012 3456\t\n", "1234567890123456"},
         {"1 2 3 4  5678901\n\n2 \t 34", "12345678901234"},
-        {"12345678901\n\n2 \t 34567890  ", "12345678901234567890"},
+        {"12345678901\n\n2 \t 3456789  ", "1234567890123456789"},
     };
     SECTION( "testing normalize" ) {
         for (auto i = cases.begin(); i != cases.end(); ++i) {
@@ -467,26 +468,64 @@ TEST_CASE( "Testing PAN normalization", "[full][normalize]" ) {
 
 TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
     SECTION( "testing PAN filtering" ) {
-        CHECK("3455667711223344" == filter_log_msg("3455667711223344"));
-        CHECK("445566****3344" == filter_log_msg("4455667711223344"));
-        CHECK("6455667711223344" == filter_log_msg("6455667711223344"));
-        CHECK("556677****3344" == filter_log_msg("5566778811223344"));
-        CHECK("556677****3344" == filter_log_msg("55667788111223344"));
-        CHECK("556677****3344" == filter_log_msg("556677881111223344"));
-        CHECK("556677****3344" == filter_log_msg("5566778811111223344"));
+        CHECK("045566XXXX3344" == filter_log_msg("0455667711223344"));
+        CHECK("145566XXXX3344" == filter_log_msg("1455667711223344"));
+        CHECK("245566XXXX3344" == filter_log_msg("2455667711223344"));
+        CHECK("345566XXXX3344" == filter_log_msg("3455667711223344"));
+        CHECK("445566XXXX3344" == filter_log_msg("4455667711223344"));
+        CHECK("556677XXXX3344" == filter_log_msg("5566778811223344"));
+        CHECK("656677XXXX3344" == filter_log_msg("6566778811223344"));
+        CHECK("745566XXXX3344" == filter_log_msg("7455667711223344"));
+        CHECK("845566XXXX3344" == filter_log_msg("8455667711223344"));
+        CHECK("945566XXXX3344" == filter_log_msg("9455667711223344"));
+        CHECK("556677XXXX3344" == filter_log_msg("55667788111223344"));
+        CHECK("556677XXXX3344" == filter_log_msg("556677881111223344"));
+        CHECK("556677XXXX3344" == filter_log_msg("5566778811111223344"));
         CHECK("55667788111111223344" == filter_log_msg("55667788111111223344"));
-        CHECK("556677****3344 " == filter_log_msg("5566778811223344 "));
-        CHECK(" 556677****3344" == filter_log_msg(" 5566778811223344"));
-        CHECK("556677****3344,445566****3344"
+        CHECK("556677XXXX3344 " == filter_log_msg("5566778811223344 "));
+        CHECK(" 556677XXXX3344" == filter_log_msg(" 5566778811223344"));
+        CHECK("556677XXXX3344,445566XXXX3344"
                 == filter_log_msg("5566778811223344,4455667711223344"));
     }
     SECTION( "testing Short PAN filtering" ) {
         CHECK("45561111222" == filter_log_msg("45561111222"));
-        CHECK("355611112222" == filter_log_msg("355611112222"));
-        CHECK("45****2222" == filter_log_msg("455611112222"));
-        CHECK("45****2223" == filter_log_msg("4556111122223"));
-        CHECK("45****2233" == filter_log_msg("45561111222233"));
-        CHECK("45****2333" == filter_log_msg("455611112222333"));
+        CHECK("05XXXX2222" == filter_log_msg("055611112222"));
+        CHECK("15XXXX2222" == filter_log_msg("155611112222"));
+        CHECK("25XXXX2222" == filter_log_msg("255611112222"));
+        CHECK("35XXXX2222" == filter_log_msg("355611112222"));
+        CHECK("45XXXX2222" == filter_log_msg("455611112222"));
+        CHECK("55XXXX2222" == filter_log_msg("555611112222"));
+        CHECK("65XXXX2222" == filter_log_msg("655611112222"));
+        CHECK("75XXXX2222" == filter_log_msg("755611112222"));
+        CHECK("85XXXX2222" == filter_log_msg("855611112222"));
+        CHECK("95XXXX2222" == filter_log_msg("955611112222"));
+        CHECK("45XXXX2223" == filter_log_msg("4556111122223"));
+        CHECK("45XXXX2233" == filter_log_msg("45561111222233"));
+        CHECK("45XXXX2333" == filter_log_msg("455611112222333"));
+    }
+    SECTION( "testing PAN filtering with delimiters" ) {
+        CHECK("5566 77XXXX3344" == filter_log_msg("5566 7788 1122 3344"));
+        CHECK("6566 77XXXX3344" == filter_log_msg("6566 7788 1122 13344"));
+        CHECK("6566 77XXXX3344" == filter_log_msg("6566 7788 1122 223344"));
+        CHECK("6566 77XXXX3344" == filter_log_msg("6566 7788 1122 3333344"));
+        CHECK("5566\t77XXXX3344" == filter_log_msg("5566\t7788\t1122\t3344"));
+        CHECK("5566-77XXXX3344" == filter_log_msg("5566-7788-1122-3344"));
+    }
+    SECTION( "testing short PAN filtering with delimiters" ) {
+        CHECK("45-56111-1222" == filter_log_msg("45-56111-1222"));
+        CHECK("05-XXXX2222" == filter_log_msg("05-561111-2222"));
+        CHECK("15-XXXX22-22" == filter_log_msg("15-56-11-11-22-22"));
+        CHECK("35\tXXXX2222" == filter_log_msg("35\t56\t1111\t2222"));
+        CHECK("45 XXXX22 22" == filter_log_msg("45 56 11 11 22 22"));
+        CHECK("65 XXXX2222" == filter_log_msg("65 56-11-11 2222"));
+        CHECK("45-XXXX2223" == filter_log_msg("45-561-1112-2223"));
+        CHECK("45 XXXX22 33" == filter_log_msg("45 56 11 11 22 22 33"));
+        CHECK("45\tXXXX2333" == filter_log_msg("45\t561111222\t2333"));
+        CHECK("4    5-----XXXX2&2!!2###2"
+                == filter_log_msg("4    5-----5?????6 11 ?11 2&2!!2###2"));
+        CHECK("4 5 XXXX2-3 3\t3" == filter_log_msg("4 5 5 6-1 1 1 1-2 2 2 2-3 3\t3"));
+        CHECK("[u'0', u'5', u'XXXX2', u'2', u'2', u'2']"
+                == filter_log_msg("[u'0', u'5', u'5', u'6', u'1', u'1', u'1', u'1', u'2', u'2', u'2', u'2']"));
     }
     SECTION( "testing Token filtering" ) {
         CHECK("65e84be33532fb784c48129675f9eff" == filter_log_msg(
@@ -529,10 +568,10 @@ TEST_CASE( "Testing PAN and Key filtering", "[full][filter_log]" ) {
         CHECK("\"VRms????Y1s=YYY\""
                 == filter_log_msg("\"VRms1Uky1e1Yc58wgIuLeEcnowRfzElBV84PILmHY1s=YYY\""));
     }
-    SECTION( "PAN filtering" ) {
-        CHECK( "'cvn':\"***\",  'cvv2': '2345', \"CVV\":\"***\", 'cVc2': \"***\"" ==
+    SECTION( "CVN filtering" ) {
+        CHECK( "'cvn':\"XXX\",  'cvv2': '2345', \"CVV\":\"XXX\", 'cVc2': \"XXX\"" ==
                 filter_log_msg("'cvn':'123',  'cvv2': '2345', \"CVV\":'324', 'cVc2': '345'") );
-        CHECK( "cvn=***&cvv2=2345&CVV=***&cVc2=***" ==
+        CHECK( "cvn=XXX&cvv2=2345&CVV=XXX&cVc2=XXX" ==
                 filter_log_msg("cvn=123&cvv2=2345&CVV=324&cVc2=345") );
     }
 }
@@ -581,8 +620,19 @@ TEST_CASE( "Some tests for JSON", "[full][json]" ) {
                 "\"ddd\": true, \"eee\": 3.140000 }" == o.serialize());
         o.delete_field("eee");
         o.delete_field("bbb");
+        CHECK( o.has_field("aaa") );
+        CHECK( !o.has_field("bbb") );
+        CHECK( o.has_field("ccc") );
+        CHECK( o.has_field("ddd") );
+        CHECK( !o.has_field("eee") );
         CHECK("{ \"aaa\": \"qwerty\", \"ccc\": -100500, "
                 "\"ddd\": true }" == o.serialize());
+        o.add_str_field("ccc", "xyz");
+        JsonObject ddd = JsonObject::new_object();
+        ddd.add_typed_field("eee", "b:false");
+        o.add_field("ddd", ddd); 
+        CHECK("{ \"aaa\": \"qwerty\", \"ccc\": \"xyz\", "
+                "\"ddd\": { \"eee\": false } }" == o.serialize());
     }
 }
 
@@ -652,6 +702,100 @@ TEST_CASE( "Some tests for Luhn algorithm", "[full][luhn]" ) {
     for (int i = 8; i < 32; ++i) {
         CHECK(luhn_check(generate_pan(i).c_str(), i));
     }
+}
+
+const int TEST_PORT = 52348;
+
+typedef const HttpResponse (*TestHttpHandler)(const HttpRequest &request);
+
+class TestHttpServer;
+
+class BackgroundHttpServerThread: public Yb::Thread
+{
+    TestHttpServer *serv_;
+    void on_run();
+public:
+    BackgroundHttpServerThread(TestHttpServer *serv) : serv_(serv) {}
+};
+
+class TestHttpServer: public HttpServer<TestHttpHandler>
+{
+    static const HttpResponse process(const HttpRequest &request)
+    {
+        int c = boost::lexical_cast<int>(request.params()["a"]) +
+                boost::lexical_cast<int>(request.params()["b"]);
+        HttpResponse resp(HTTP_1_0, 200, "Okay");
+        resp.set_response_body("<c>" + boost::lexical_cast<std::string>(c)
+                               + "</c>\n", "application/xyz");
+        return resp;
+    }
+
+    static const HandlerMap mk_handlers()
+    {
+        HandlerMap m;
+        m["/process"] = TestHttpServer::process;
+        return m;
+    }
+
+public:
+    TestHttpServer():
+        HttpServer("127.0.0.1", TEST_PORT, 1, mk_handlers(), NULL)
+    {}
+
+    void start()
+    {
+        BackgroundHttpServerThread *thr = new BackgroundHttpServerThread(this);
+        thr->start();
+    }
+};
+
+void BackgroundHttpServerThread::on_run() { serv_->serve(); }
+
+TEST_CASE( "Test HTTP server/client", "[full][http]" ) {
+
+    TestHttpServer serv;
+    try {
+        serv.bind();
+    }
+    catch (...) {}
+    REQUIRE( serv.is_bound() );
+    serv.start();
+    sleep(1);
+    REQUIRE( serv.is_serving() );
+
+    HttpResponse r = http_post("http://127.0.0.1:" +
+                               boost::lexical_cast<std::string>(TEST_PORT) +
+                               "/process?b=11&a=31",
+                               HTTP_POST_NO_LOGGER, 0, "GET");
+
+    CHECK( 200 == r.resp_code() );
+    CHECK( "Okay" == r.resp_desc() );
+    CHECK( "application/xyz" == r.get_header("content-type") );
+    CHECK( 10 == r.get_content_length() );
+    CHECK( "<c>42</c>\n" == r.body() );
+}
+
+TEST_CASE( "Test replace_str correctness", "[full][replace_str]" ) {
+    CHECK( "" == replace_str("", "", "") );
+    CHECK( "abc" == replace_str("abc", "x", "y") );
+    CHECK( "ac" == replace_str("abc", "b", "") );
+    CHECK( "acd" == replace_str("abcbd", "b", "") );
+    CHECK( "a" == replace_str("abb", "b", "") );
+    CHECK( "b" == replace_str("a", "a", "b") );
+    CHECK( "bb" == replace_str("aa", "a", "b") );
+    CHECK( "bbc" == replace_str("aac", "a", "b") );
+    CHECK( "cbb" == replace_str("caa", "a", "b") );
+    CHECK( "axy" == replace_str("abc", "bc", "xy") );
+    CHECK( "xybxyc" == replace_str("abac", "a", "xy") );
+    CHECK( "xyxy" == replace_str("acac", "ac", "xy") );
+    CHECK( "xac" == replace_str("acacac", "acac", "x") );
+    CHECK( "x" == replace_str("acac", "acac", "x") );
+}
+
+TEST_CASE( "Test get_utc_iso_ts", "[full][utc_ts]" ) {
+    const auto ts = get_utc_iso_ts();
+    CHECK( Yb::StrUtils::starts_with(ts, "20") );
+    CHECK( ts.size() == strlen("2016-08-30 12:35:00") );
 }
 
 // vim:ts=4:sts=4:sw=4:et:

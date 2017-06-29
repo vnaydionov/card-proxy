@@ -5,8 +5,8 @@
 #include "app_class.h"
 #include "tokenizer.h"
 
-std::string mask_pan(const std::string &pan);
-std::string normalize_pan(const std::string &pan);
+const std::string mask_pan(const std::string &pan);
+const std::string normalize_pan(const std::string &pan);
 int normalize_year(int year);
 char luhn_control_digit(const char *num, size_t len);
 bool luhn_check(const char *num, size_t len);

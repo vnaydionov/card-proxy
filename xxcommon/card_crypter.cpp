@@ -1,14 +1,7 @@
 // -*- Mode: C++; c-basic-offset: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #include "card_crypter.h"
 
-std::string mask_pan(const std::string &pan)
-{
-    if (pan.size() < 13 || pan.size() > 20)
-        throw RunTimeError("Strange PAN length: " + Yb::to_string(pan.size()));
-    return pan.substr(0, 6) + std::string(pan.size() - 10, '*') + pan.substr(pan.size() - 4);
-}
-
-std::string normalize_pan(const std::string &pan)
+const std::string normalize_pan(const std::string &pan)
 {
     std::string r;
     r.reserve(pan.size());
@@ -17,9 +10,20 @@ std::string normalize_pan(const std::string &pan)
         if (c >= '0' && c <= '9')
             r += c;
         else if (!std::strchr(" \t\n\r", c))
-            throw RunTimeError("Wrong character in PAN: " + Yb::to_string((int )c));
+            throw RunTimeError("Wrong character in PAN");
     }
+    if (r.size() < 12 || r.size() > 19)
+        throw RunTimeError("Invalid PAN length: " + Yb::to_string(pan.size()));
     return r;
+}
+
+const std::string mask_pan(const std::string &pan)
+{
+    std::string norm_pan = normalize_pan(pan);
+    if (norm_pan.size() < 16)
+        return pan.substr(0, 2) + "****" + pan.substr(pan.size() - 4);
+    else
+        return pan.substr(0, 6) + "****" + pan.substr(pan.size() - 4);
 }
 
 int normalize_year(int year)

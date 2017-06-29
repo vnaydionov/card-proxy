@@ -221,7 +221,7 @@ static const std::string decode_part(const std::string &s, int part_n)
     return kek_n;
 }
 
-void TokenizerConfig::assemble_master_keys(
+bool TokenizerConfig::assemble_master_keys(
         Yb::ILogger &logger,
         IConfig &config,
         const ConfigMap &xml_params,
@@ -232,6 +232,7 @@ void TokenizerConfig::assemble_master_keys(
         VersionMap &master_keys,
         CheckMap &valid_master_keys)
 {
+    bool at_least_one_valid = false;
     VersionMap mk_parts1, mk_parts2, mk_parts3, mk;
     CheckMap mk_valid;
     auto kk_config = get_keykeeper_controller(config);
@@ -266,6 +267,8 @@ void TokenizerConfig::assemble_master_keys(
             logger.info("master key ver" + ver_str + " assembled OK");
             mk_valid[ver] = check_kek(logger,
                     ver, master_key, db_params);
+            if (mk_valid[ver])
+                at_least_one_valid = true;
         }
         catch (const std::exception &e) {
             logger.error("assembling master key ver"
@@ -278,6 +281,7 @@ void TokenizerConfig::assemble_master_keys(
     std::swap(mk_parts3, master_key_parts3);
     std::swap(mk, master_keys);
     std::swap(mk_valid, valid_master_keys);
+    return at_least_one_valid;
 }
 
 bool TokenizerConfig::check_kek(
@@ -473,7 +477,7 @@ void TokenizerConfig::reload(bool hmac_needed)
     VersionMap master_key_parts1, master_key_parts2,
                master_key_parts3, master_keys;
     CheckMap valid_master_keys;
-    assemble_master_keys(
+    bool at_least_one_valid = assemble_master_keys(
             *logger, config, xml_params, db_params,
             master_key_parts1, master_key_parts2,
             master_key_parts3, master_keys,
@@ -494,7 +498,8 @@ void TokenizerConfig::reload(bool hmac_needed)
     std::swap(master_keys, master_keys_);
     std::swap(valid_master_keys, valid_master_keys_);
     std::swap(hmac_keys, hmac_keys_);
-    ts_ = time(NULL);
+    if (at_least_one_valid)
+        ts_ = time(NULL);
 }
 
 TokenizerConfig &TokenizerConfig::refresh(bool force_refresh)
@@ -614,8 +619,9 @@ const std::string Tokenizer::search(const std::string &plain_text)
                 result = do_search<Domain::DataToken>(hmac_digest);
             else
                 result = do_search<Domain::SecureVault>(hmac_digest);
-            logger_->debug("deduplicated using HMAC ver"
-                           + Yb::to_string(hmac_version));
+            logger_->info("Token deduplicated using HMAC ver"
+                          + Yb::to_string(hmac_version)
+                          + ", token: " + result);
             break;
         }
         catch (const Yb::NoDataFound &) {
@@ -656,6 +662,7 @@ const std::string Tokenizer::tokenize(const std::string &plain_text,
         do_tokenize<Domain::SecureVault>(
                 finish_ts, hmac_version, hmac_digest,
                 token_string, crypted, data_key);
+    logger_->info("New token created: " + token_string);
     return token_string;
 }
 
@@ -670,8 +677,10 @@ const std::string Tokenizer::detokenize(const std::string &token_string)
         else
             do_detokenize<Domain::SecureVault>(token_string,
                     dek_crypted, kek_version, data_crypted);
+        logger_->info("Token decoded: " + token_string);
     }
     catch (const Yb::NoDataFound &) {
+        logger_->error("Token not found: " + token_string);
         throw TokenNotFound();
     }
     tokenizer_config(false);
@@ -686,6 +695,7 @@ bool Tokenizer::remove_data_token(const std::string &token_string)
             do_delete<Domain::DataToken>(token_string);
         else
             do_delete<Domain::SecureVault>(token_string);
+        logger_->info("Token removed: " + token_string);
     }
     catch (const Yb::NoDataFound &) {
         return false;

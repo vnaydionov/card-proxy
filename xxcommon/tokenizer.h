@@ -77,7 +77,7 @@ class TokenizerConfig
     static const ConfigMap load_config_from_db(
             Yb::Session &session);
 
-    static void assemble_master_keys(
+    static bool assemble_master_keys(
             Yb::ILogger &logger,
             IConfig &config,
             const ConfigMap &xml_params,
